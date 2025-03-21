@@ -4,9 +4,6 @@
         "src": "package.json",
         "use": "@vercel/node"
       }
-    ],
-    "scripts": {
-      "install": "npm install --legacy-peer-deps"
-    }
+    ]
   }
   
