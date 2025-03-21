@@ -89,7 +89,7 @@ export function AddStudentDialog({ open, onOpenChange }: AddStudentDialogProps) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="h-full overflow-y-auto md:h-auto max-w-full sm:max-w-[600px]">
+      <DialogContent className="h-full overflow-y-auto md:h-auto max-w-full">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Agregar Nuevo Alumno</DialogTitle>
