@@ -135,10 +135,6 @@ export function PaymentsTable() {
               <DropdownMenuCheckboxItem>Híbrido</DropdownMenuCheckboxItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button size="sm" variant="outline" className="h-8 gap-1">
-            <Download className="h-3.5 w-3.5" />
-            <span className="hidden xs:inline">Exportar</span>
-          </Button>
           <Button size="sm" className="h-8 gap-1" onClick={() => setIsAddPaymentOpen(true)}>
             <Plus className="h-3.5 w-3.5" />
             <span className="hidden xs:inline">Nuevo Pago</span>
