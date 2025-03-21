@@ -146,13 +146,14 @@ export function PaymentsTable() {
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
+      <Card className="border-none">
+        <CardHeader className="px-0">
           <CardTitle>Pagos</CardTitle>
           <CardDescription>Gestiona los pagos y vencimientos de tus alumnos.</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
+        <CardContent className="p-0">
+          {/* Tabla para pantallas grandes */}
+          <div className="hidden md:block overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -219,6 +220,74 @@ export function PaymentsTable() {
                 ))}
               </TableBody>
             </Table>
+          </div>
+
+          {/* Cards en móviles */}
+          <div className="grid gap-4 md:hidden">
+            {filteredPayments.map((payment) => (
+              <Card key={payment.id} className="p-2 shadow-md">
+                <CardHeader>
+                  <div className="flex justify-between">
+                  <CardTitle className="text-xl">{payment.studentName}</CardTitle>
+
+                  <div className="flex items-center">
+                    <Badge
+                      variant={
+                        payment.status === "Pagado"
+                          ? "success"
+                          : payment.status === "Pendiente"
+                            ? "warning"
+                            : "destructive"
+                      }
+                      className="text-sm px-4 rounded-[300px]"
+                    >
+                      {payment.status}
+                    </Badge>
+                  </div>
+                  </div>
+
+                </CardHeader>
+                <CardContent className="space-y-2 mt-0">
+                  <div className="flex items-center gap-2"
+                  > 
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <span className="">Fecha de Pago:</span> {new Date(payment.date).toLocaleDateString()}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <span className="">Vencimiento:</span> {new Date(payment.dueDate).toLocaleDateString()}
+                  </div>
+
+                  <div>
+                    <span className="">Monto:</span> ${payment.amount.toLocaleString()}
+                  </div>
+
+
+                  {/* Botones de acción */}
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => handleEdit(payment)}
+                      variant="outline"
+                      className="flex-1 w-full"
+                    >
+                      <Edit className="h-4 w-4" />
+                      Editar
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => handleDelete(payment)}
+                      variant="destructive"
+                      className="flex-1 w-full"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Eliminar
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </CardContent>
       </Card>

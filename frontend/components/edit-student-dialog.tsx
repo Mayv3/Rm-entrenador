@@ -112,7 +112,7 @@ export function EditStudentDialog({ open, onOpenChange, student }: EditStudentDi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="h-full overflow-y-auto md:h-auto max-w-[600px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Editar Alumno</DialogTitle>
