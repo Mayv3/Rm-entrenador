@@ -173,7 +173,7 @@ export function AddStudentDialog({ open, onOpenChange }: AddStudentDialogProps) 
             <div className="grid gap-2">
               <Label>Días de Entrenamiento</Label>
               <div className="flex flex-wrap gap-4">
-                {["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"].map((day, index) => (
+                {["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"].map((day, index) => (
                   <div key={index} className="flex items-center space-x-2">
                     <Checkbox id={day} checked={formData.schedule[day]} onCheckedChange={(checked) => handleScheduleChange(day, checked)} />
                     <Label htmlFor={day}>{day.charAt(0).toUpperCase() + day.slice(1, 3)}</Label>
