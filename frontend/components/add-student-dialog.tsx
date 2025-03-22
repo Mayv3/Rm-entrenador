@@ -89,7 +89,7 @@ export function AddStudentDialog({ open, onOpenChange }: AddStudentDialogProps) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="h-full overflow-y-auto md:h-auto max-w-full">
+      <DialogContent className="h-full overflow-y-auto md:h-auto max-w-full sm:max-w-[600px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Agregar Nuevo Alumno</DialogTitle>
@@ -97,16 +97,19 @@ export function AddStudentDialog({ open, onOpenChange }: AddStudentDialogProps) 
               Completa la información del nuevo alumno. Todos los campos son obligatorios.
             </DialogDescription>
           </DialogHeader>
+
           <div className="grid gap-4 py-4">
-            {/* Form Fields */}
+            {/* Nombre */}
             <div className="grid gap-2">
               <Label htmlFor="name">Nombre Completo</Label>
               <Input id="name" name="name" value={formData.name} onChange={handleChange} required />
             </div>
+
+            {/* Modalidad */}
             <div className="grid gap-2">
               <Label htmlFor="modality">Modalidad</Label>
               <Select value={formData.modality} onValueChange={(value) => handleSelectChange("modality", value)}>
-                <SelectTrigger>
+                <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="Seleccionar modalidad" />
                 </SelectTrigger>
                 <SelectContent>
@@ -116,137 +119,76 @@ export function AddStudentDialog({ open, onOpenChange }: AddStudentDialogProps) 
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Fecha de Nacimiento */}
             <div className="grid gap-2">
               <Label htmlFor="birthDate">Fecha de Nacimiento</Label>
-              <Input
-                id="birthDate"
-                name="birthDate"
-                type="date"
-                value={formData.birthDate}
-                onChange={handleChange}
-                required
-              />
+              <Input id="birthDate" name="birthDate" type="date" value={formData.birthDate} onChange={handleChange} required />
             </div>
+
+            {/* WhatsApp */}
             <div className="grid gap-2">
               <Label htmlFor="whatsapp">Contacto WhatsApp</Label>
-              <Input
-                id="whatsapp"
-                name="whatsapp"
-                value={formData.whatsapp}
-                onChange={handleChange}
-                placeholder="+54 9 11 1234-5678"
-                required
-              />
+              <Input id="whatsapp" name="whatsapp" value={formData.whatsapp} onChange={handleChange} placeholder="+54 9 11 1234-5678" required />
             </div>
+
+            {/* Plan de Entrenamiento */}
             <div className="grid gap-2">
               <Label>Plan de Entrenamiento</Label>
               <div className="flex flex-col space-y-3">
-                <div className="flex items-center space-x-2">
-                  <Select value={formData.planType} onValueChange={(value) => handleSelectChange("planType", value)}>
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="Tipo de plan" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="google">Google Sheets</SelectItem>
-                      <SelectItem value="excel">Excel</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="text"
-                    placeholder="Buscar plan..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="mb-2 p-2 border rounded"
-                  />
-                  <Select
-                    name="planUrl"
-                    value={formData.planUrl}
-                    onValueChange={(value) => handleSelectChange("planUrl", value)}
-                    required
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecciona un plan" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {filteredFiles.map((file, index) => (
-                        <SelectItem key={index} value={file.url}>
-                          {file.nameFile}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <Select value={formData.planType} onValueChange={(value) => handleSelectChange("planType", value)}>
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectValue placeholder="Tipo de plan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="google">Google Sheets</SelectItem>
+                    <SelectItem value="excel">Excel</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <input
+                  type="text"
+                  placeholder="Buscar plan..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full p-2 border rounded sm:w-auto"
+                />
+
+                <Select name="planUrl" value={formData.planUrl} onValueChange={(value) => handleSelectChange("planUrl", value)} required>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecciona un plan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {filteredFiles.map((file, index) => (
+                      <SelectItem key={index} value={file.url}>
+                        {file.nameFile}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-            {/* Schedule and Time */}
+
+            {/* Días de Entrenamiento */}
             <div className="grid gap-2">
-                          <Label>Días de Entrenamiento</Label>
-                          <div className="flex flex-wrap gap-4">
-                            <div className="flex items-center space-x-2">
-                              <Checkbox
-                                id="monday"
-                                checked={formData.schedule.monday}
-                                onCheckedChange={(checked) => handleScheduleChange("monday", checked as boolean)}
-                              />
-                              <Label htmlFor="monday">Lun</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Checkbox
-                                id="tuesday"
-                                checked={formData.schedule.tuesday}
-                                onCheckedChange={(checked) => handleScheduleChange("tuesday", checked as boolean)}
-                              />
-                              <Label htmlFor="tuesday">Mar</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Checkbox
-                                id="wednesday"
-                                checked={formData.schedule.wednesday}
-                                onCheckedChange={(checked) => handleScheduleChange("wednesday", checked as boolean)}
-                              />
-                              <Label htmlFor="wednesday">Mié</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Checkbox
-                                id="thursday"
-                                checked={formData.schedule.thursday}
-                                onCheckedChange={(checked) => handleScheduleChange("thursday", checked as boolean)}
-                              />
-                              <Label htmlFor="thursday">Jue</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Checkbox
-                                id="friday"
-                                checked={formData.schedule.friday}
-                                onCheckedChange={(checked) => handleScheduleChange("friday", checked as boolean)}
-                              />
-                              <Label htmlFor="friday">Vie</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Checkbox
-                                id="saturday"
-                                checked={formData.schedule.saturday}
-                                onCheckedChange={(checked) => handleScheduleChange("saturday", checked as boolean)}
-                              />
-                              <Label htmlFor="saturday">Sáb</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Checkbox
-                                id="sunday"
-                                checked={formData.schedule.sunday}
-                                onCheckedChange={(checked) => handleScheduleChange("sunday", checked as boolean)}
-                              />
-                              <Label htmlFor="sunday">Dom</Label>
-                            </div>
-                          </div>
-                        </div>
+              <Label>Días de Entrenamiento</Label>
+              <div className="flex flex-wrap gap-4">
+                {["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"].map((day, index) => (
+                  <div key={index} className="flex items-center space-x-2">
+                    <Checkbox id={day} checked={formData.schedule[day]} onCheckedChange={(checked) => handleScheduleChange(day, checked)} />
+                    <Label htmlFor={day}>{day.charAt(0).toUpperCase() + day.slice(1, 3)}</Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Horario */}
             <div className="grid gap-2">
               <Label htmlFor="time">Horario</Label>
               <Input id="time" name="time" type="time" value={formData.time} onChange={handleChange} required />
             </div>
           </div>
+
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
