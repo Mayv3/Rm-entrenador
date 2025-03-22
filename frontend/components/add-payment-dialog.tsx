@@ -1,8 +1,7 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -21,7 +20,7 @@ interface AddPaymentDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
-// Sample data - in a real app this would come from a database
+// Lista de alumnos (simulación)
 const students = [
   { id: "1", name: "Carlos Rodríguez" },
   { id: "2", name: "María González" },
@@ -30,15 +29,27 @@ const students = [
   { id: "5", name: "Fernando López" },
 ]
 
+// Función para calcular la fecha de vencimiento (1 mes después)
+const calculateDueDate = (date: string): string => {
+  if (!date) return ""
+  const newDate = new Date(date)
+  newDate.setMonth(newDate.getMonth() + 1)
+  return newDate.toISOString().split("T")[0] // Formato YYYY-MM-DD
+}
+
 export function AddPaymentDialog({ open, onOpenChange }: AddPaymentDialogProps) {
   const [formData, setFormData] = useState({
     studentId: "",
     amount: "",
     date: new Date().toISOString().split("T")[0],
-    dueDate: "",
+    dueDate: calculateDueDate(new Date().toISOString().split("T")[0]),
     modality: "",
     status: "Pagado",
   })
+
+  useEffect(() => {
+    setFormData((prev) => ({ ...prev, dueDate: calculateDueDate(prev.date) }))
+  }, [formData.date])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -51,8 +62,7 @@ export function AddPaymentDialog({ open, onOpenChange }: AddPaymentDialogProps) 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    // Here you would typically save the data to your database
-    console.log("Form submitted:", formData)
+    console.log("Formulario enviado:", formData)
     onOpenChange(false)
   }
 
@@ -80,6 +90,7 @@ export function AddPaymentDialog({ open, onOpenChange }: AddPaymentDialogProps) 
                 </SelectContent>
               </Select>
             </div>
+
             <div className="grid gap-2">
               <Label htmlFor="amount">Monto</Label>
               <Input
@@ -92,21 +103,17 @@ export function AddPaymentDialog({ open, onOpenChange }: AddPaymentDialogProps) 
                 required
               />
             </div>
+
             <div className="grid gap-2">
               <Label htmlFor="date">Fecha de Pago</Label>
               <Input id="date" name="date" type="date" value={formData.date} onChange={handleChange} required />
             </div>
+
             <div className="grid gap-2">
               <Label htmlFor="dueDate">Fecha de Vencimiento</Label>
-              <Input
-                id="dueDate"
-                name="dueDate"
-                type="date"
-                value={formData.dueDate}
-                onChange={handleChange}
-                required
-              />
+              <Input id="dueDate" name="dueDate" type="date" value={formData.dueDate} readOnly />
             </div>
+
             <div className="grid gap-2">
               <Label htmlFor="modality">Modalidad</Label>
               <Select value={formData.modality} onValueChange={(value) => handleSelectChange("modality", value)}>
@@ -120,6 +127,7 @@ export function AddPaymentDialog({ open, onOpenChange }: AddPaymentDialogProps) 
                 </SelectContent>
               </Select>
             </div>
+
             <div className="grid gap-2">
               <Label htmlFor="status">Estado</Label>
               <Select value={formData.status} onValueChange={(value) => handleSelectChange("status", value)}>
@@ -134,6 +142,7 @@ export function AddPaymentDialog({ open, onOpenChange }: AddPaymentDialogProps) 
               </Select>
             </div>
           </div>
+
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
@@ -145,4 +154,3 @@ export function AddPaymentDialog({ open, onOpenChange }: AddPaymentDialogProps) 
     </Dialog>
   )
 }
-
