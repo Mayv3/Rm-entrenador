@@ -120,17 +120,6 @@ export function StudentsTable() {
               <div className="flex items-center gap-2">
                 Último entreno: {new Date(student.lastTraining).toLocaleDateString()}
               </div>
-              <div className="flex items-center gap-2">
-                <span>Asistencia:</span>
-                {Number.parseInt(student.attendance) > 80 ? (
-                  <Check className="h-4 w-4 text-green-500" />
-                ) : Number.parseInt(student.attendance) > 60 ? (
-                  <Check className="h-4 w-4 text-yellow-500" />
-                ) : (
-                  <X className="h-4 w-4 text-red-500" />
-                )}
-                {student.attendance}%
-              </div>
               <div className="flex gap-2">
                 <a
                   href={`https://wa.me/${student.whatsapp.replace(/\D/g, "")}`}
@@ -170,7 +159,7 @@ export function StudentsTable() {
       <Card className="hidden md:block">
         <CardHeader>
           <CardTitle>Alumnos</CardTitle>
-          <CardDescription>Gestiona la información y asistencia de tus alumnos.</CardDescription>
+          <CardDescription>Gestiona la información de tus alumnos.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -184,7 +173,6 @@ export function StudentsTable() {
                   <TableHead>Plan</TableHead>
                   <TableHead className="hidden lg:table-cell">Días y Turnos</TableHead>
                   <TableHead className="hidden lg:table-cell">Último Entreno</TableHead>
-                  <TableHead>Asistencia</TableHead>
                   <TableHead>Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -222,18 +210,6 @@ export function StudentsTable() {
                     <TableCell className="hidden lg:table-cell">{student.schedule}</TableCell>
                     <TableCell className="hidden lg:table-cell">
                       {new Date(student.lastTraining).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {Number.parseInt(student.attendance) > 80 ? (
-                          <Check className="h-4 w-4 text-green-500" />
-                        ) : Number.parseInt(student.attendance) > 60 ? (
-                          <Check className="h-4 w-4 text-yellow-500" />
-                        ) : (
-                          <X className="h-4 w-4 text-red-500" />
-                        )}
-                        {student.attendance}%
-                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
