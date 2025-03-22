@@ -20,7 +20,6 @@ interface AddPaymentDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
-// Lista de alumnos (simulación)
 const students = [
   { id: "1", name: "Carlos Rodríguez" },
   { id: "2", name: "María González" },
@@ -29,12 +28,11 @@ const students = [
   { id: "5", name: "Fernando López" },
 ]
 
-// Función para calcular la fecha de vencimiento (1 mes después)
-const calculateDueDate = (date: string): string => {
+const calculateDueDate = (date: string, months: number): string => {
   if (!date) return ""
   const newDate = new Date(date)
-  newDate.setMonth(newDate.getMonth() + 1)
-  return newDate.toISOString().split("T")[0] // Formato YYYY-MM-DD
+  newDate.setMonth(newDate.getMonth() + months)
+  return newDate.toISOString().split("T")[0]
 }
 
 export function AddPaymentDialog({ open, onOpenChange }: AddPaymentDialogProps) {
@@ -42,13 +40,13 @@ export function AddPaymentDialog({ open, onOpenChange }: AddPaymentDialogProps) 
     studentId: "",
     amount: "",
     date: new Date().toISOString().split("T")[0],
-    dueDate: calculateDueDate(new Date().toISOString().split("T")[0]),
+    dueDate: calculateDueDate(new Date().toISOString().split("T")[0], 1),
     modality: "",
     status: "Pagado",
   })
 
   useEffect(() => {
-    setFormData((prev) => ({ ...prev, dueDate: calculateDueDate(prev.date) }))
+    setFormData((prev) => ({ ...prev, dueDate: calculateDueDate(prev.date, 1) }))
   }, [formData.date])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -58,6 +56,10 @@ export function AddPaymentDialog({ open, onOpenChange }: AddPaymentDialogProps) 
 
   const handleSelectChange = (name: string, value: string) => {
     setFormData((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const handleDueDateChange = (months: number) => {
+    setFormData((prev) => ({ ...prev, dueDate: calculateDueDate(prev.date, months) }))
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -93,15 +95,7 @@ export function AddPaymentDialog({ open, onOpenChange }: AddPaymentDialogProps) 
 
             <div className="grid gap-2">
               <Label htmlFor="amount">Monto</Label>
-              <Input
-                id="amount"
-                name="amount"
-                type="number"
-                value={formData.amount}
-                onChange={handleChange}
-                placeholder="0.00"
-                required
-              />
+              <Input id="amount" name="amount" type="number" value={formData.amount} onChange={handleChange} placeholder="0.00" required />
             </div>
 
             <div className="grid gap-2">
@@ -112,6 +106,12 @@ export function AddPaymentDialog({ open, onOpenChange }: AddPaymentDialogProps) 
             <div className="grid gap-2">
               <Label htmlFor="dueDate">Fecha de Vencimiento</Label>
               <Input id="dueDate" name="dueDate" type="date" value={formData.dueDate} readOnly />
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
+              <Button type="button" onClick={() => handleDueDateChange(1)}>Pagar 1 Mes</Button>
+              <Button type="button" onClick={() => handleDueDateChange(3)}>Pagar 3 Meses</Button>
+              <Button type="button" onClick={() => handleDueDateChange(6)}>Pagar 6 Meses</Button>
             </div>
 
             <div className="grid gap-2">
@@ -127,26 +127,10 @@ export function AddPaymentDialog({ open, onOpenChange }: AddPaymentDialogProps) 
                 </SelectContent>
               </Select>
             </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="status">Estado</Label>
-              <Select value={formData.status} onValueChange={(value) => handleSelectChange("status", value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar estado" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Pagado">Pagado</SelectItem>
-                  <SelectItem value="Pendiente">Pendiente</SelectItem>
-                  <SelectItem value="Vencido">Vencido</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancelar
-            </Button>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
             <Button type="submit">Guardar</Button>
           </DialogFooter>
         </form>
