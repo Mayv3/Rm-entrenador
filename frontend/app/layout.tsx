@@ -10,6 +10,9 @@ export const metadata: Metadata = {
   title: "RM ENTRENADOR",
   description: "Plataforma de entrenamiento y seguimiento de alumnos.",
   viewport: "width=device-width, initial-scale=1",
+  icons: {
+    icon: "/favicon.png", // Ruta del favicon en la carpeta public
+  },
 };
 
 export default function RootLayout({
@@ -19,6 +22,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es" suppressHydrationWarning className={comfortaa.className}>
+      <head>
+        <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+      </head>
       <body>
         <ThemeProvider
           attribute="class"
