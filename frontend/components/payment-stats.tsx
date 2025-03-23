@@ -14,27 +14,27 @@ export function PaymentStats({ totalPaid, totalPending, totalOverdue, totalIncom
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Total Pagado</CardTitle>
-          <DollarSign className="h-4 w-4 text-muted-foreground" />
+          <DollarSign className="h-4 w-4 text-[var(--primary-color)]" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">${totalPaid.toLocaleString()}</div>
-          <p className="text-xs text-muted-foreground">Pagos completados</p>
+          <p className="text-xs text-[var(--primary-color)]">Pagos completados</p>
         </CardContent>
       </Card>
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Pendiente de Pago</CardTitle>
-          <Clock className="h-4 w-4 text-muted-foreground" />
+          <Clock className="h-4 w-4 text-[var(--primary-color)]" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">${totalPending.toLocaleString()}</div>
-          <p className="text-xs text-muted-foreground">Pagos por cobrar</p>
+          <p className="text-xs text-[var(--primary-color)]">Pagos por cobrar</p>
         </CardContent>
       </Card>
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Pagos Vencidos</CardTitle>
-          <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+          <AlertTriangle className="h-4 w-4 text-[var(--primary-color)]" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">${totalOverdue.toLocaleString()}</div>
@@ -44,7 +44,7 @@ export function PaymentStats({ totalPaid, totalPending, totalOverdue, totalIncom
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Ingresos Totales</CardTitle>
-          <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          <TrendingUp className="h-4 w-4 text-[var(--primary-color)]" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">${totalIncome.toLocaleString()}</div>

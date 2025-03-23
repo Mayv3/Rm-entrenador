@@ -49,6 +49,8 @@ export function AddStudentDialog({ open, onOpenChange }: AddStudentDialogProps) 
     file.nameFile.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+
+  
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
@@ -77,7 +79,7 @@ export function AddStudentDialog({ open, onOpenChange }: AddStudentDialogProps) 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await axios.get("http://localhost:3001/files");
+        const response = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/files`);
         setFiles(response.data);
         console.log(response.data)
       } catch (error) {

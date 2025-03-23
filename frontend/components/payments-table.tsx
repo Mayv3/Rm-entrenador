@@ -135,7 +135,7 @@ export function PaymentsTable() {
               <DropdownMenuCheckboxItem>Híbrido</DropdownMenuCheckboxItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button size="sm" className="h-8 gap-1" onClick={() => setIsAddPaymentOpen(true)}>
+          <Button size="sm" className="h-8 gap-1 bg-[var(--primary-color)]" onClick={() => setIsAddPaymentOpen(true)}>
             <Plus className="h-3.5 w-3.5" />
             <span className="hidden xs:inline">Nuevo Pago</span>
           </Button>
@@ -179,12 +179,12 @@ export function PaymentsTable() {
                     <TableCell className="hidden lg:table-cell">{payment.modality}</TableCell>
                     <TableCell>
                       <Badge
-                        variant={
+                        className={
                           payment.status === "Pagado"
-                            ? "success"
+                            ? "bg-primary"
                             : payment.status === "Pendiente"
-                              ? "warning"
-                              : "destructive"
+                              ? "bg-warning text-white"
+                              : "bg-destructive text-white"
                         }
                       >
                         {payment.status}
@@ -224,28 +224,28 @@ export function PaymentsTable() {
               <Card key={payment.id} className="p-2 shadow-md">
                 <CardHeader>
                   <div className="flex justify-between">
-                  <CardTitle className="text-xl">{payment.studentName}</CardTitle>
+                    <CardTitle className="text-xl">{payment.studentName}</CardTitle>
 
-                  <div className="flex items-center">
-                    <Badge
-                      variant={
-                        payment.status === "Pagado"
-                          ? "success"
-                          : payment.status === "Pendiente"
-                            ? "warning"
-                            : "destructive"
-                      }
-                      className="text-sm px-4 rounded-[300px]"
-                    >
-                      {payment.status}
-                    </Badge>
-                  </div>
+                    <div className="flex items-center">
+                      <Badge
+                        className={
+                          payment.status === "Pagado"
+                            ? "bg-[#22b567]"
+                            : payment.status === "Pendiente"
+                              ? "bg-warning text-white"
+                              : "bg-destructive text-white"
+                        }
+                      >
+                        {payment.status}
+                      </Badge>
+
+                    </div>
                   </div>
 
                 </CardHeader>
                 <CardContent className="space-y-2 mt-0">
                   <div className="flex items-center gap-2"
-                  > 
+                  >
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                     <span className="">Fecha de Pago:</span> {new Date(payment.date).toLocaleDateString()}
                   </div>

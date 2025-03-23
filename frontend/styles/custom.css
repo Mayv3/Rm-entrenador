@@ -1,0 +1,16 @@
+@import url("https://fonts.googleapis.com/css2?family=Comfortaa:wght@400&display=swap");
+
+body {
+  font-family: "Comfortaa", sans-serif !important;
+}
+
+/* Variables personalizadas */
+:root {
+  --primary-color: #22b567;
+}
+
+/* Clase personalizada */
+.active-tab {
+  background-color: var(--primary-color);
+  color: white;
+}

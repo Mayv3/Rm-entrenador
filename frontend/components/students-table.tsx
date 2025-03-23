@@ -95,7 +95,7 @@ export function StudentsTable() {
               <DropdownMenuCheckboxItem>Híbrido</DropdownMenuCheckboxItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button size="sm" className="h-8 gap-1" onClick={() => setIsAddStudentOpen(true)}>
+          <Button size="sm" className="h-8 gap-1 bg-[var(--primary-color)]" onClick={() => setIsAddStudentOpen(true)}>
             <Plus className="h-3.5 w-3.5" />
             <span className="hidden xs:inline">Nuevo Alumno</span>
           </Button>
@@ -125,7 +125,7 @@ export function StudentsTable() {
                   href={`https://wa.me/${student.whatsapp.replace(/\D/g, "")}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex-1 flex items-center justify-center py-2 rounded bg-green-500 text-white hover:bg-green-600 transition-colors"
+                  className="flex-1 flex items-center justify-center py-2 rounded bg-[var(--primary-color)] text-white hover:bg-green-600 transition-colors"
                 >
                   <MessageSquare className="h-4 w-4" />
                   <span className="ml-2">WhatsApp</span>
