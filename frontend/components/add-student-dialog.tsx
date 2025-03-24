@@ -195,7 +195,7 @@ export function AddStudentDialog({ open, onOpenChange }: AddStudentDialogProps) 
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit">Guardar</Button>
+            <Button type="submit" className="bg-[var(--primary-color)] hover:bg-[var(--primary-color)] text-white">Guardar</Button>
           </DialogFooter>
         </form>
       </DialogContent>
