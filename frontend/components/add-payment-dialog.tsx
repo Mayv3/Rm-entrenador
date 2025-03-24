@@ -109,11 +109,10 @@ export function AddPaymentDialog({ open, onOpenChange }: AddPaymentDialogProps) 
             </div>
 
             <div className="grid grid-cols-3 gap-2">
-              <Button type="button" onClick={() => handleDueDateChange(1)}>Pagar 1 Mes</Button>
-              <Button type="button" onClick={() => handleDueDateChange(3)}>Pagar 3 Meses</Button>
-              <Button type="button" onClick={() => handleDueDateChange(6)}>Pagar 6 Meses</Button>
+              <Button className="bg-[var(--primary-color)] hover:bg-[var(--primary-color)]" type="button" onClick={() => handleDueDateChange(1)}>Pagar 1 Mes</Button>
+              <Button className="bg-[var(--primary-color)] hover:bg-[var(--primary-color)]" type="button" onClick={() => handleDueDateChange(3)}>Pagar 3 Meses</Button>
+              <Button className="bg-[var(--primary-color)] hover:bg-[var(--primary-color)]" type="button" onClick={() => handleDueDateChange(6)}>Pagar 6 Meses</Button>
             </div>
-
             <div className="grid gap-2">
               <Label htmlFor="modality">Modalidad</Label>
               <Select value={formData.modality} onValueChange={(value) => handleSelectChange("modality", value)}>
@@ -131,7 +130,7 @@ export function AddPaymentDialog({ open, onOpenChange }: AddPaymentDialogProps) 
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button type="submit">Guardar</Button>
+            <Button type="submit" className="bg-[var(--primary-color)] hover:bg-[var(--primary-color)]">Guardar</Button>
           </DialogFooter>
         </form>
       </DialogContent>

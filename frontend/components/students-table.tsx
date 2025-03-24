@@ -95,9 +95,9 @@ export function StudentsTable() {
               <DropdownMenuCheckboxItem>Híbrido</DropdownMenuCheckboxItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button size="sm" className="h-8 gap-1 bg-[var(--primary-color)]" onClick={() => setIsAddStudentOpen(true)}>
+          <Button size="sm" className="h-8 gap-1 bg-[var(--primary-color)] hover:bg-[var(--primary-color)]" onClick={() => setIsAddStudentOpen(true)}>
             <Plus className="h-3.5 w-3.5" />
-            <span className="hidden xs:inline">Nuevo Alumno</span>
+            <span className="hidden xs:inline"  >Nuevo Alumno</span>
           </Button>
         </div>
       </div>

@@ -135,7 +135,7 @@ export function PaymentsTable() {
               <DropdownMenuCheckboxItem>Híbrido</DropdownMenuCheckboxItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button size="sm" className="h-8 gap-1 bg-[var(--primary-color)]" onClick={() => setIsAddPaymentOpen(true)}>
+          <Button size="sm" className="h-8 gap-1 bg-[var(--primary-color)] hover:bg-[var(--primary-color)]" onClick={() => setIsAddPaymentOpen(true)}>
             <Plus className="h-3.5 w-3.5" />
             <span className="hidden xs:inline">Nuevo Pago</span>
           </Button>
@@ -181,7 +181,7 @@ export function PaymentsTable() {
                       <Badge
                         className={
                           payment.status === "Pagado"
-                            ? "bg-primary"
+                            ? "bg-[#22b567]"
                             : payment.status === "Pendiente"
                               ? "bg-warning text-white"
                               : "bg-destructive text-white"
