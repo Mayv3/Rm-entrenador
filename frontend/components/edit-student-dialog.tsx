@@ -241,7 +241,7 @@ export function EditStudentDialog({ open, onOpenChange, student }: EditStudentDi
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit">Guardar Cambios</Button>
+            <Button type="submit" className="bg-[var(--primary-color)] hover:bg-[var(--primary-color)] text-white">Guardar Cambios</Button>
           </DialogFooter>
         </form>
       </DialogContent>
