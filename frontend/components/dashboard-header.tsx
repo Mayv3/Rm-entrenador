@@ -17,7 +17,7 @@ export function DashboardHeader() {
   return (
     <header className="sticky top-0 z-40 border-b bg-background">
       <div className="flex h-16 items-center justify-between py-10 px-4 container">
-        <div className="absolute left-1/2 transform -translate-x-1/2 bg-red-200">
+        <div className="absolute left-1/2 transform -translate-x-1/2">
           <Image src={logoRodrigoEntrenador} alt="Logo" width={150} className="z-10" />
         </div>
         <div className="flex h-16 items-center justify-between py-10 px-4 container flex-row-reverse">
