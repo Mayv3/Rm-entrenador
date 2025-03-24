@@ -71,10 +71,10 @@ export default function LoginPage() {
             )}
             <Button
               type="submit"
-              className="w-full bg-[var(--primary-color)]"
+              className="w-full bg-[var(--primary-color)] hover:bg-[var(--primary-color)]"
               disabled={loading}
             >
-              {loading ? "Loading..." : "Login"}
+              {loading ? "Cargando..." : "Inicia sesión"}
             </Button>
           </form>
         </CardContent>
