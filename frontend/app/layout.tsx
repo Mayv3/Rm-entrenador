@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import "@/styles/globals.css";
 import { Comfortaa } from "next/font/google";
-
 import { ThemeProvider } from "@/components/theme-provider";
 
 const comfortaa = Comfortaa({ subsets: ["latin"], weight: "400" });
@@ -11,7 +10,7 @@ export const metadata: Metadata = {
   description: "Plataforma de entrenamiento y seguimiento de alumnos.",
   viewport: "width=device-width, initial-scale=1",
   icons: {
-    icon: "/favicon.png", // Ruta del favicon en la carpeta public
+    icon: "/favicon.png",
   },
 };
 
@@ -30,7 +29,7 @@ export default function RootLayout({
           attribute="class"
           defaultTheme="light"
           disableTransitionOnChange
-          forcedTheme="light" // ✅ Siempre en modo claro
+          forcedTheme="light"
         >
           {children}
         </ThemeProvider>
