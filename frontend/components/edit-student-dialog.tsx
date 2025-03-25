@@ -68,7 +68,6 @@ export function EditStudentDialog({ open, onOpenChange, student }: EditStudentDi
         sunday: student.schedule.includes("Dom"),
       }
 
-      // Extraer la hora del horario (asumiendo formato "Lun, Mie, Vie - 18:00")
       const timeMatch = student.schedule.match(/(\d{1,2}:\d{2})/)
       const time = timeMatch ? timeMatch[1] : ""
 

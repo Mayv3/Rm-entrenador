@@ -277,7 +277,6 @@ export function StudentsTable() {
       </>
     )}
 
-
       <AddStudentDialog open={isAddStudentOpen} onOpenChange={setIsAddStudentOpen} onStudentAdded={fetchStudents} />
 
       {selectedStudent && (
@@ -287,6 +286,7 @@ export function StudentsTable() {
             open={isDeleteStudentOpen}
             onOpenChange={setIsDeleteStudentOpen}
             student={selectedStudent}
+            onStudentDeleted={fetchStudents}
           />
         </>
       )}

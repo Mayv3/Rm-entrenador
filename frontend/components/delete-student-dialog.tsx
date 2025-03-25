@@ -9,7 +9,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import axios from "axios"
+import { promises } from "dns"
 import { AlertTriangle } from "lucide-react"
+import { useRouter } from "next/router"
+import { useState } from "react"
 
 interface Student {
   id: string
@@ -20,14 +24,32 @@ interface DeleteStudentDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   student: Student
+  onStudentDeleted?: () => Promise<void> | void
 }
 
-export function DeleteStudentDialog({ open, onOpenChange, student }: DeleteStudentDialogProps) {
-  const handleDelete = () => {
-    // Aquí iría la lógica para eliminar el estudiante de la base de datos
-    console.log("Estudiante eliminado:", student.id)
-    onOpenChange(false)
+
+export function DeleteStudentDialog({ open, onOpenChange, student, onStudentDeleted }: DeleteStudentDialogProps) {
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  const handleDelete = async () => {
+    setIsDeleting(true)
+    try {
+      await axios.delete(`${process.env.NEXT_PUBLIC_URL_BACKEND}/clients/${student.id}`)
+      
+      if (onStudentDeleted) {
+        onStudentDeleted()
+      }
+
+      
+      onOpenChange(false)
+    } catch (error) {
+      console.error("Error eliminando estudiante:", error)
+    } finally {
+      setIsDeleting(false)
+    }
   }
+
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
