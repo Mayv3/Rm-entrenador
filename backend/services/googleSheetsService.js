@@ -180,13 +180,12 @@ export const updateClientInSheet = async (req, res) => {
     });
 
     const rows = response.data.values;
-    const rowIndex = parseInt(id) - 1; // Convertir ID a índice (fila 2 = ID 1)
+    const rowIndex = parseInt(id) - 1; 
 
     if (rowIndex < 0 || rowIndex >= rows.length) {
       return res.status(404).json({ message: "Cliente no encontrado" });
     }
 
-    // 2. Preparar datos actualizados
     const { name, modality, birthDate, whatsapp, planUrl, schedule, time, lastTraining, lastAntro } = clientData;
 
     const daysMap = {
@@ -206,10 +205,9 @@ export const updateClientInSheet = async (req, res) => {
 
     const scheduleString = `${selectedDays} - ${time}`;
 
-    // 3. Actualizar la fila en Google Sheets
     await sheets.spreadsheets.values.update({
       spreadsheetId: SPREADSHEET_ID,
-      range: `${SHEET_NAME}!A${rowIndex + 2}:G${rowIndex + 2}`, // +2 porque la data empieza en fila 2
+      range: `${SHEET_NAME}!A${rowIndex + 2}:h${rowIndex + 2}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values: [[name, modality, birthDate, whatsapp, planUrl, scheduleString, lastTraining, lastAntro]],

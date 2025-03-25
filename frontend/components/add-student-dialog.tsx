@@ -74,7 +74,6 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
       const response = await axios.post(`${process.env.NEXT_PUBLIC_URL_BACKEND}/add-student`, formData);
       
       if (response.status === 200) {
-        console.log("Alumno agregado con éxito:", response.data);
         onStudentAdded();
         onOpenChange(false);
       } else {

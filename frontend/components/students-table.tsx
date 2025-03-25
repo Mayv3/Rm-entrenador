@@ -281,7 +281,7 @@ export function StudentsTable() {
 
       {selectedStudent && (
         <>
-          <EditStudentDialog open={isEditStudentOpen} onOpenChange={setIsEditStudentOpen} student={selectedStudent} />
+          <EditStudentDialog open={isEditStudentOpen} onOpenChange={setIsEditStudentOpen} student={selectedStudent} onStudentUpdated={fetchStudents}   />
           <DeleteStudentDialog
             open={isDeleteStudentOpen}
             onOpenChange={setIsDeleteStudentOpen}
