@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   Calendar,
   Check,
@@ -28,19 +28,9 @@ import { AddStudentDialog } from "@/components/add-student-dialog"
 import { MessageSquare } from "lucide-react"
 import { EditStudentDialog } from "@/components/edit-student-dialog"
 import { DeleteStudentDialog } from "@/components/delete-student-dialog"
+import { Loader } from "@/components/ui/loader"
 
-const students = [
-  {
-    id: "1",
-    name: "Nicolas Pereyra",
-    modality: "Presencial",
-    birthDate: "2003-12-01",
-    whatsapp: "+543513274314",
-    schedule: "Lun, Mie, Vie - 9:00",
-    lastTraining: "2023-07-10",
-    planUrl: "https://docs.google.com/spreadsheets/d/example1",
-  },
-]
+import axios from "axios"
 
 export function StudentsTable() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -48,13 +38,16 @@ export function StudentsTable() {
   const [isEditStudentOpen, setIsEditStudentOpen] = useState(false)
   const [isDeleteStudentOpen, setIsDeleteStudentOpen] = useState(false)
   const [selectedStudent, setSelectedStudent] = useState<(typeof students)[0] | null>(null)
+  const [students, setStudents] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
 
   const filteredStudents = students.filter(
     (student) =>
-      student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.modality.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.whatsapp.includes(searchTerm),
-  )
+      student?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student?.modalidad?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student?.whatsapp?.includes(searchTerm),
+
+  );
 
   const handleEdit = (student: (typeof students)[0]) => {
     setSelectedStudent(student)
@@ -65,6 +58,22 @@ export function StudentsTable() {
     setSelectedStudent(student)
     setIsDeleteStudentOpen(true)
   }
+
+  const fetchStudents = async () => {
+    setIsLoading(true)
+    try {
+      const response = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/getallstudents`);
+      setStudents(response.data);
+    } catch (error) {
+      console.error("Error obteniendo los estudiantes:", error);
+    } finally {
+      setIsLoading(false)
+    }
+  };
+
+  useEffect(() => {
+    fetchStudents();
+  }, []);
 
   return (
     <>
@@ -96,139 +105,180 @@ export function StudentsTable() {
           </DropdownMenu>
           <Button size="sm" className="h-8 gap-1 bg-[var(--primary-color)] hover:bg-[var(--primary-color)]" onClick={() => setIsAddStudentOpen(true)}>
             <Plus className="h-3.5 w-3.5" />
-            <span className="hidden xs:inline"  >Nuevo Alumno</span>
+            <span className="hidden xs:inline">Nuevo Alumno</span>
           </Button>
         </div>
       </div>
 
-      {/* Vista en mobile con cards */}
-      <div className="grid gap-4 md:hidden">
-        {filteredStudents.map((student) => (
-          <Card key={student.id} className="p-4">
-            <CardHeader>
-              <CardTitle>{student.name}</CardTitle>
-              <CardDescription>{student.modality}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                {new Date(student.birthDate).toLocaleDateString()}
-              </div>
-
-              <div className="text-sm text-muted-foreground">{student.schedule}</div>
-              <div className="flex items-center gap-2">
-                Último entreno: {new Date(student.lastTraining).toLocaleDateString()}
-              </div>
-              <div className="flex gap-2">
-                <a
-                  href={`https://wa.me/${student.whatsapp.replace(/\D/g, "")}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 flex items-center justify-center py-2 rounded bg-[var(--primary-color)] text-white hover:bg-green-600 transition-colors"
-                >
-                  <MessageSquare className="h-4 w-4" />
-                  <span className="ml-2">WhatsApp</span>
-                </a>
-                <a
-                  href={student.planUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 flex items-center justify-center py-2 rounded bg-blue-500 text-white hover:bg-blue-600 transition-colors"
-                >
-                  <FileText className="h-4 w-4" />
-                  <span className="ml-2">Plan</span>
-                </a>
-              </div>
-              <div className="flex gap-2">
-                <Button size="sm" onClick={() => handleEdit(student)} variant="outline" className="flex-1 w-full">
-                  <Edit className="h-4 w-4" />
-                  Editar
-                </Button>
-                <Button size="sm" onClick={() => handleDelete(student)} variant="destructive" className="flex-1 w-full">
-                  <Trash2 className="h-4 w-4" />
-                  Eliminar
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+      {isLoading ? (
+      <div className="flex items-center justify-center min-h-[300px]">
+        <Loader className="h-8 w-8" />
       </div>
+    ) : (
+      <>
+        {/* Vista mobile */}
+        <div className="grid gap-4 md:hidden">
+          {filteredStudents.map((student) => (
+            <Card key={student.id} className="p-4">
+              <CardHeader>
+                <CardTitle>{student.nombre}</CardTitle>
+                <CardDescription>{student.modalidad}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  {new Date(student.fecha_de_nacimiento).toLocaleDateString()}
+                </div>
 
-      {/* Vista en desktop con tabla */}
-      <Card className="hidden md:block">
-        <CardHeader>
-          <CardTitle>Alumnos</CardTitle>
-          <CardDescription>Gestiona la información de tus alumnos.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nombre Completo</TableHead>
-                  <TableHead>Modalidad</TableHead>
-                  <TableHead className="hidden md:table-cell">Fecha de Nacimiento</TableHead>
-                  <TableHead>WhatsApp</TableHead>
-                  <TableHead>Plan</TableHead>
-                  <TableHead className="hidden lg:table-cell">Días y Turnos</TableHead>
-                  <TableHead className="hidden lg:table-cell">Último Entreno</TableHead>
-                  <TableHead>Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredStudents.map((student) => (
-                  <TableRow key={student.id}>
-                    <TableCell className="font-medium">{student.name}</TableCell>
-                    <TableCell>{student.modality}</TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        {new Date(student.birthDate).toLocaleDateString()}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <a
-                        href={`https://wa.me/${student.whatsapp.replace(/\D/g, "")}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-500 text-white hover:bg-green-600 transition-colors"
-                      >
-                        <MessageSquare className="h-4 w-4" />
-                      </a>
-                    </TableCell>
-                    <TableCell>
-                      <a
-                        href={student.planUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-500 text-white hover:bg-blue-600 transition-colors"
-                      >
-                        <FileText className="h-4 w-4" />
-                      </a>
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell">{student.schedule}</TableCell>
-                    <TableCell className="hidden lg:table-cell">
-                      {new Date(student.lastTraining).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-500 hover:text-blue-700" onClick={() => handleEdit(student)}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-700" onClick={() => handleDelete(student)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+                <div className="text-sm text-muted-foreground">{student.dias}</div>
+                <div className="flex items-center gap-2">
+                  Último entreno: {new Date(student.ultimo_entrenamiento).toLocaleDateString()}
+                </div>
+                <div className="flex gap-2">
+                  <a
+                    href={`https://wa.me/${student.telefono.replace(/\D/g, "")}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 flex items-center justify-center py-2 rounded bg-[var(--primary-color)] text-white hover:bg-green-600 transition-colors"
+                  >
+                    <MessageSquare className="h-4 w-4" />
+                    <span className="ml-2">WhatsApp</span>
+                  </a>
+                  <a
+                    href={student.plan}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 flex items-center justify-center py-2 rounded bg-blue-500 text-white hover:bg-blue-600 transition-colors"
+                  >
+                    <FileText className="h-4 w-4" />
+                    <span className="ml-2">Plan</span>
+                  </a>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={() => handleEdit(student)} variant="outline" className="flex-1 w-full">
+                    <Edit className="h-4 w-4" />
+                    Editar
+                  </Button>
+                  <Button size="sm" onClick={() => handleDelete(student)} variant="destructive" className="flex-1 w-full">
+                    <Trash2 className="h-4 w-4" />
+                    Eliminar
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
 
-      <AddStudentDialog open={isAddStudentOpen} onOpenChange={setIsAddStudentOpen} />
+        {/* Vista desktop */}
+        <Card className="hidden md:block">
+          <CardHeader>
+            <CardTitle>Alumnos</CardTitle>
+            <CardDescription>Gestiona la información de tus alumnos.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {filteredStudents.length > 0 ? (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nombre Completo</TableHead>
+                      <TableHead>Modalidad</TableHead>
+                      <TableHead className="hidden md:table-cell">Fecha de Nacimiento</TableHead>
+                      <TableHead>WhatsApp</TableHead>
+                      <TableHead>Plan</TableHead>
+                      <TableHead className="hidden lg:table-cell">Días y Turnos</TableHead>
+                      <TableHead className="hidden lg:table-cell">Último Entreno</TableHead>
+                      <TableHead className="hidden lg:table-cell">Última antropometria</TableHead>
+                      <TableHead>Acciones</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredStudents.map((student) => (
+                      <TableRow key={student.id}>
+                        <TableCell className="font-medium">{student.nombre}</TableCell>
+                        <TableCell>
+                          <span className={`inline-block w-2 h-2 rounded-full mr-2 ${
+                            student.modalidad === 'Presencial' ? 'bg-green-500' : 
+                            student.modalidad === 'Online' ? 'bg-blue-500' : 'bg-purple-500'
+                          }`} />
+                          {student.modalidad}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                            {new Date(student.fecha_de_nacimiento).toLocaleDateString()}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <a
+                            href={`https://wa.me/${student.telefono.replace(/\D/g, "")}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-500 text-white hover:bg-green-600 transition-colors"
+                          >
+                            <MessageSquare className="h-4 w-4" />
+                          </a>
+                        </TableCell>
+                        <TableCell>
+                          <a
+                            href={student.plan}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-500 text-white hover:bg-blue-600 transition-colors"
+                          >
+                            <FileText className="h-4 w-4" />
+                          </a>
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell">{student.dias}</TableCell>
+                        <TableCell className="hidden lg:table-cell">
+                          {new Date(student.ultimo_entrenamiento).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell">
+                          {student.ultima_antro ? new Date(student.ultima_antro).toLocaleDateString() : 'N/A'}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-blue-500 hover:text-blue-700" 
+                              onClick={() => {
+                                setSelectedStudent(student);
+                                setIsEditStudentOpen(true);
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-red-500 hover:text-red-700"
+                              onClick={() => {
+                                setSelectedStudent(student);
+                                setIsDeleteStudentOpen(true);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                No se encontraron estudiantes
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </>
+    )}
+
+
+      <AddStudentDialog open={isAddStudentOpen} onOpenChange={setIsAddStudentOpen} onStudentAdded={fetchStudents} />
 
       {selectedStudent && (
         <>
@@ -241,6 +291,8 @@ export function StudentsTable() {
         </>
       )}
     </>
-  )
+  );
+
+
 }
 

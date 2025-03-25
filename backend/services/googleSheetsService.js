@@ -23,57 +23,6 @@ const SPREADSHEET_ID = "1huhphdJkYImMuRhWjq7IhVm_QiG-l2C-RumFPkoLGYc";
 const SHEET_NAME = "Hoja 1";
 
 
-export const addClientToSheet = async (clientData) => {
-  try {
-    const { birthDate, modality, name, planUrl, schedule, time, whatsapp, lastTraining } = clientData;
-
-    // Mapeo de días a formato abreviado
-    const daysMap = {
-      monday: "Lun",
-      tuesday: "Mar",
-      wednesday: "Mié",
-      thursday: "Jue",
-      friday: "Vie",
-      saturday: "Sáb",
-      sunday: "Dom",
-    };
-
-    // Construir string de días seleccionados
-    const selectedDays = Object.entries(schedule)
-      .filter(([_, value]) => value)
-      .map(([day]) => daysMap[day])
-      .join(", ");
-
-    const scheduleString = selectedDays ? `${selectedDays} - ${time}` : "No definido";
-
-    // Preparar los valores para insertar
-    const values = [[name, modality, birthDate, whatsapp, planUrl, scheduleString, lastTraining]];
-
-    // Insertar en la hoja
-    const response = await sheets.spreadsheets.values.append({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `${SHEET_NAME}!A2:G2`,
-      valueInputOption: "USER_ENTERED",
-      requestBody: { values },
-    });
-
-    // Obtener el ID de la fila insertada
-    const updatedRange = response.data.updates.updatedRange;
-    const rowId = parseInt(updatedRange.match(/A(\d+)/)[1]);
-
-    return { 
-      success: true, 
-      status: 200, 
-      message: "Cliente agregado con éxito",
-      id: rowId - 1, // ID basado en índice (fila - 2)
-      rowNumber: rowId // Número de fila real en Sheets
-    };
-  } catch (error) {
-    console.error("Error al agregar cliente:", error);
-    throw new Error("No se pudo agregar el cliente a la hoja");
-  }
-};
-
 export const getClientsFromSheet = async (req, res) => {
   try {
     const response = await sheets.spreadsheets.values.get({
@@ -111,11 +60,63 @@ export const getClientsFromSheet = async (req, res) => {
   }
 };
 
+export const addClientToSheet = async (clientData) => {
+  try {
+    const { birthDate, modality, name, planUrl, schedule, time, whatsapp, lastTraining, lastAntro } = clientData;
+
+    console.log(clientData);
+
+    // Mapeo de días a formato abreviado
+    const daysMap = {
+      monday: "Lun",
+      tuesday: "Mar",
+      wednesday: "Mié",
+      thursday: "Jue",
+      friday: "Vie",
+      saturday: "Sáb",
+      sunday: "Dom",
+    };
+
+    // Construir string de días seleccionados
+    const selectedDays = Object.entries(schedule)
+      .filter(([_, value]) => value)
+      .map(([day]) => daysMap[day])
+      .join(", ");
+
+    const scheduleString = selectedDays ? `${selectedDays} - ${time}` : "No definido";
+
+    // Preparar los valores para insertar
+    const values = [[name, modality, birthDate, whatsapp, planUrl, scheduleString, lastTraining, lastAntro]];
+
+    // Insertar en la hoja
+    const response = await sheets.spreadsheets.values.append({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${SHEET_NAME}!A2:G2`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: { values },
+    });
+
+    // Obtener el ID de la fila insertada
+    const updatedRange = response.data.updates.updatedRange;
+    const rowId = parseInt(updatedRange.match(/A(\d+)/)[1]);
+
+    return { 
+      success: true, 
+      status: 200, 
+      message: "Cliente agregado con éxito",
+      id: rowId - 1, // ID basado en índice (fila - 2)
+      rowNumber: rowId // Número de fila real en Sheets
+    };
+  } catch (error) {
+    console.error("Error al agregar cliente:", error);
+    throw new Error("No se pudo agregar el cliente a la hoja");
+  }
+};
+
 export const deleteClientFromSheet = async (req, res) => {
   const { id } = req.params;
 
   try {
-    // Obtener todas las filas para verificar que existe el ID
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
       range: `${SHEET_NAME}!A2:H`,
@@ -127,17 +128,14 @@ export const deleteClientFromSheet = async (req, res) => {
       return res.status(404).json({ message: "No se encontraron clientes" });
     }
 
-    // Verificar que el ID es válido
     const numericId = parseInt(id);
     if (isNaN(numericId) || numericId < 1 || numericId > rows.length) {
       return res.status(400).json({ message: "ID de cliente inválido" });
     }
 
-    // El ID corresponde a la posición en el array (fila - 2)
     const rowToDelete = rows[numericId - 1];
     const rowNumber = numericId + 1; // Fila real en Sheets (fila 2 = ID 1)
 
-    // Eliminar la fila usando batchUpdate
     await sheets.spreadsheets.batchUpdate({
       spreadsheetId: SPREADSHEET_ID,
       requestBody: {
@@ -172,11 +170,10 @@ export const deleteClientFromSheet = async (req, res) => {
 };
 
 export const updateClientInSheet = async (req, res) => {
-  const { id } = req.params; // ID del cliente a editar
-  const clientData = req.body; // Nuevos datos
-
+  const { id } = req.params; 
+  const clientData = req.body; 
+  
   try {
-    // 1. Verificar que el cliente existe
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
       range: `${SHEET_NAME}!A2:H`,
@@ -190,7 +187,7 @@ export const updateClientInSheet = async (req, res) => {
     }
 
     // 2. Preparar datos actualizados
-    const { name, modality, birthDate, whatsapp, planUrl, schedule, time, lastTraining } = clientData;
+    const { name, modality, birthDate, whatsapp, planUrl, schedule, time, lastTraining, lastAntro } = clientData;
 
     const daysMap = {
       monday: "Lun",
@@ -215,7 +212,7 @@ export const updateClientInSheet = async (req, res) => {
       range: `${SHEET_NAME}!A${rowIndex + 2}:G${rowIndex + 2}`, // +2 porque la data empieza en fila 2
       valueInputOption: "USER_ENTERED",
       requestBody: {
-        values: [[name, modality, birthDate, whatsapp, planUrl, scheduleString, lastTraining]],
+        values: [[name, modality, birthDate, whatsapp, planUrl, scheduleString, lastTraining, lastAntro]],
       },
     });
 

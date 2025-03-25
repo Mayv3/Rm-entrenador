@@ -20,9 +20,10 @@ import { Checkbox } from "@/components/ui/checkbox"
 interface AddStudentDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onStudentAdded: () => void
 }
 
-export function AddStudentDialog({ open, onOpenChange }: AddStudentDialogProps) {
+export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStudentDialogProps) {
   const [formData, setFormData] = useState({
     name: "",
     modality: "",
@@ -41,6 +42,7 @@ export function AddStudentDialog({ open, onOpenChange }: AddStudentDialogProps) 
     },
     time: "",
     lastTraining: "", 
+    lastAntro: "",
   })
 
   const [files, setFiles] = useState([])
@@ -70,10 +72,10 @@ export function AddStudentDialog({ open, onOpenChange }: AddStudentDialogProps) 
 
     try {
       const response = await axios.post(`${process.env.NEXT_PUBLIC_URL_BACKEND}/add-student`, formData);
-  
+      
       if (response.status === 200) {
         console.log("Alumno agregado con éxito:", response.data);
-        alert("Alumno agregado correctamente");
+        onStudentAdded();
         onOpenChange(false);
       } else {
         console.error("Error al agregar alumno:", response.data);
@@ -213,7 +215,14 @@ export function AddStudentDialog({ open, onOpenChange }: AddStudentDialogProps) 
            <div className="grid gap-2">
               <Label htmlFor="lastTraining">Último Entrenamiento</Label>
               <Input id="lastTraining" name="lastTraining" type="date" value={formData.lastTraining} onChange={handleChange} required />
-            </div>        
+            </div>    
+
+           {/* Ultimo antropometria */}
+
+            <div className="grid gap-2 mt-3">
+              <Label htmlFor="lastAntro">Última antropometria</Label>
+              <Input id="lastAntro" name="lastAntro" type="date" value={formData.lastAntro} onChange={handleChange} required />
+            </div>
 
           <DialogFooter className="mt-5">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
