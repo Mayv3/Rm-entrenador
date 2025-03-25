@@ -53,6 +53,12 @@ export const getClientsFromSheet = async (req, res) => {
         };
       });
 
+      data.sort((a, b) => {
+        const nameA = a.nombre?.toLowerCase() || '';
+        const nameB = b.nombre?.toLowerCase() || '';
+        return nameA.localeCompare(nameB);
+      });
+  
     res.json(data);
   } catch (error) {
     console.error("Error al obtener clientes:", error);

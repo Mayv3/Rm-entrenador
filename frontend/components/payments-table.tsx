@@ -119,13 +119,6 @@ export function PaymentsTable() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 gap-1">
-                <SlidersHorizontal className="h-3.5 w-3.5" />
-                <span className="hidden xs:inline">Filtros</span>
-                <ChevronDown className="h-3.5 w-3.5" />
-              </Button>
-            </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuCheckboxItem>Pagado</DropdownMenuCheckboxItem>
               <DropdownMenuCheckboxItem>Pendiente</DropdownMenuCheckboxItem>

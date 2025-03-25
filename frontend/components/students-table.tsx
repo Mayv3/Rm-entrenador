@@ -103,22 +103,8 @@ export function StudentsTable() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 gap-1">
-                <SlidersHorizontal className="h-3.5 w-3.5" />
-                <span className="hidden xs:inline">Filtros</span>
-                <ChevronDown className="h-3.5 w-3.5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuCheckboxItem>Presencial</DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem>Online</DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem>Híbrido</DropdownMenuCheckboxItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button size="sm" className="h-8 gap-1 bg-[var(--primary-color)] hover:bg-[var(--primary-color)]" onClick={() => setIsAddStudentOpen(true)}>
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button size="sm" className="fixed bottom-16 right-4 w-16 h-16 rounded-full gap-1 bg-[var(--primary-color)] hover:bg-[var(--primary-color)] md:static md:h-10 md:w-[150px] md:py-2 md:rounded-md" onClick={() => setIsAddStudentOpen(true)}>
             <Plus className="h-3.5 w-3.5" />
             <span className="hidden xs:inline">Nuevo Alumno</span>
           </Button>
