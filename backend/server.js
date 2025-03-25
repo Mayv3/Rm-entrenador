@@ -2,6 +2,8 @@ import express from "express";
 import { google } from "googleapis";
 import dotenv from "dotenv";
 import cors from "cors";
+import { addClient, deleteClient, editClient, getClients } from "./controllers/clientController.js";
+import { getClientsFromSheet } from "./services/googleSheetsService.js";
 
 dotenv.config();
 
@@ -28,7 +30,7 @@ const drive = google.drive({ version: "v3", auth });
 
 app.get("/files", async (req, res) => {
   try {
-    const folderId = "17NomItssDyRCHiyVMtWckFq4r2AeqRr2"; // ID de la carpeta en Google Drive
+    const folderId = "17NomItssDyRCHiyVMtWckFq4r2AeqRr2";
     const response = await drive.files.list({
       q: `'${folderId}' in parents and mimeType='application/vnd.google-apps.spreadsheet'`,
       fields: "files(id, name, webViewLink)",
@@ -45,6 +47,13 @@ app.get("/files", async (req, res) => {
     res.status(500).json({ message: "Error obteniendo archivos" });
   }
 });
+
+app.get("/getAllStudents", getClientsFromSheet)
+
+app.post("/add-student", addClient);
+app.get("/getAllStudents", getClients);
+app.delete("/clients/:id", deleteClient);
+app.put("/clients/:id", editClient)
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {

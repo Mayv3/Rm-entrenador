@@ -38,7 +38,6 @@ const students = [
     whatsapp: "+543513274314",
     schedule: "Lun, Mie, Vie - 9:00",
     lastTraining: "2023-07-10",
-    attendance: "85",
     planUrl: "https://docs.google.com/spreadsheets/d/example1",
   },
 ]
