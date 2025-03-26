@@ -75,6 +75,7 @@ export function StudentsTable() {
 
   const fetchStudents = async () => {
     setIsLoading(true)
+    console.log(`${process.env.NEXT_PUBLIC_URL_BACKEND}/getallstudents`)
     try {
       const response = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/getallstudents`);
       setStudents(response.data);
