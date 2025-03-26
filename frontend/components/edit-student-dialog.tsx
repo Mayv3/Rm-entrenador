@@ -54,6 +54,7 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
   )
 
   useEffect(() => {
+    console.log(student)
     if (student) {  
 
     const diasParts = student.dias.split(' - ');
@@ -69,7 +70,7 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
         schedule: {
           monday: student.dias?.includes("Lun") || false,
           tuesday: student.dias?.includes("Mar") || false,
-          wednesday: student.dias?.includes("Miér") || false,
+          wednesday: student.dias?.includes("Mié") || false,
           thursday: student.dias?.includes("Jue") || false,
           friday: student.dias?.includes("Vie") || false,
           saturday: student.dias?.includes("Sáb") || false,
@@ -211,7 +212,7 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
                 {[
                   { key: "monday", label: "Lun" },
                   { key: "tuesday", label: "Mar" },
-                  { key: "wednesday", label: "Miér" },
+                  { key: "wednesday", label: "Mié" },
                   { key: "thursday", label: "Jue" },
                   { key: "friday", label: "Vie" },
                   { key: "saturday", label: "Sáb" },

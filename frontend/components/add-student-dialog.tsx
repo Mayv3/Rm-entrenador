@@ -183,7 +183,7 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
                 {[
                   { key: "monday", label: "Lun" },
                   { key: "tuesday", label: "Mar" },
-                  { key: "wednesday", label: "Miér" },
+                  { key: "wednesday", label: "Mié" },
                   { key: "thursday", label: "Jue" },
                   { key: "friday", label: "Vie" },
                   { key: "saturday", label: "Sáb" },
