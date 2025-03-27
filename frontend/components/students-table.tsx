@@ -134,9 +134,6 @@ export function StudentsTable() {
 
                   <div className="text-sm text-muted-foreground">{student.dias}</div>
                   <div className="flex items-center gap-2">
-                    Último entreno: {formatDate((student.ultimo_entrenamiento))}
-                  </div>
-                  <div className="flex items-center gap-2">
                     Última antropometria: {formatDate((student.ultima_antro))}
                   </div>
                   <div className="flex gap-2">
@@ -188,12 +185,12 @@ export function StudentsTable() {
                       <TableRow>
                         <TableHead>Nombre Completo</TableHead>
                         <TableHead>Modalidad</TableHead>
+                        <TableHead className="hidden lg:table-cell">Días y Turnos</TableHead>
                         <TableHead className="hidden md:table-cell">Fecha de Nacimiento</TableHead>
+                        <TableHead className="hidden lg:table-cell">Fecha de Inicio</TableHead>
+                        <TableHead className="hidden lg:table-cell">Última antropometria</TableHead>
                         <TableHead>WhatsApp</TableHead>
                         <TableHead>Plan</TableHead>
-                        <TableHead className="hidden lg:table-cell">Días y Turnos</TableHead>
-                        <TableHead className="hidden lg:table-cell">Último Entreno</TableHead>
-                        <TableHead className="hidden lg:table-cell">Última antropometria</TableHead>
                         <TableHead>Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -207,11 +204,18 @@ export function StudentsTable() {
                               }`} />
                             {student.modalidad}
                           </TableCell>
+                          <TableCell className="hidden lg:table-cell">{student.dias}</TableCell>
                           <TableCell className="hidden md:table-cell">
                             <div className="flex items-center gap-2">
                               <Calendar className="h-4 w-4 text-muted-foreground" />
                               {formatDate(student.fecha_de_nacimiento)}
                             </div>
+                          </TableCell>
+                          <TableCell className="hidden lg:table-cell">
+                            {formatDate((student.fecha_de_inicio))}
+                          </TableCell>
+                          <TableCell className="hidden lg:table-cell">
+                            {formatDate(student.ultima_antro)}
                           </TableCell>
                           <TableCell>
                             <a
@@ -232,13 +236,6 @@ export function StudentsTable() {
                             >
                               <FileText className="h-4 w-4" />
                             </a>
-                          </TableCell>
-                          <TableCell className="hidden lg:table-cell">{student.dias}</TableCell>
-                          <TableCell className="hidden lg:table-cell">
-                            {formatDate((student.ultimo_entrenamiento))}
-                          </TableCell>
-                          <TableCell className="hidden lg:table-cell">
-                            {formatDate(student.ultima_antro)}
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1">

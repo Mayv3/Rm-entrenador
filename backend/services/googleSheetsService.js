@@ -68,7 +68,7 @@ export const getClientsFromSheet = async (req, res) => {
 
 export const addClientToSheet = async (clientData) => {
   try {
-    const { birthDate, modality, name, planUrl, schedule, time, whatsapp, lastTraining, lastAntro } = clientData;
+    const { birthDate, modality, name, planUrl, schedule, time, whatsapp, startService, lastAntro } = clientData;
 
     console.log(clientData);
 
@@ -92,7 +92,7 @@ export const addClientToSheet = async (clientData) => {
     const scheduleString = selectedDays ? `${selectedDays} - ${time}` : "No definido";
 
     // Preparar los valores para insertar
-    const values = [[name, modality, birthDate, whatsapp, planUrl, scheduleString, lastTraining, lastAntro]];
+    const values = [[name, modality, birthDate, whatsapp, planUrl, scheduleString, startService, lastAntro]];
 
     // Insertar en la hoja
     const response = await sheets.spreadsheets.values.append({

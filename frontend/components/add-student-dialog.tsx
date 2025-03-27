@@ -41,7 +41,7 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
       sunday: false,
     },
     time: "",
-    lastTraining: "", 
+    startService: "", 
     lastAntro: "",
   })
 
@@ -72,10 +72,10 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
 
     try {
       const response = await axios.post(`${process.env.NEXT_PUBLIC_URL_BACKEND}/add-student`, formData);
-      
       if (response.status === 200) {
         onStudentAdded();
         onOpenChange(false);
+        console.log(formData)
       } else {
         console.error("Error al agregar alumno:", response.data);
       }
@@ -212,8 +212,8 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
            {/* Ultimo entrenamiento */}
 
            <div className="grid gap-2">
-              <Label htmlFor="lastTraining">Último Entrenamiento</Label>
-              <Input id="lastTraining" name="lastTraining" type="date" value={formData.lastTraining} onChange={handleChange} required />
+              <Label htmlFor="startService">Fecha de inicio</Label>
+              <Input id="startService" name="startService" type="date" value={formData.startService} onChange={handleChange} required />
             </div>    
 
            {/* Ultimo antropometria */}
