@@ -175,11 +175,11 @@ export const updatePaymentInSheet = async (req, res) => {
     res.json({
       success: true,
       message: "Pago actualizado con éxito",
-      updatedData: clientData,
+      updatedData: paymentData,
     });
 
   } catch (error) {
     console.error("Error al actualizar:", error);
-    res.status(500).json({ message: "Error al editar el cliente" });
+    res.status(500).json({ message: "Error al editar el pago" });
   }
 };
