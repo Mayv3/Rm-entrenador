@@ -21,7 +21,6 @@ interface AddPaymentDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
-
 const calculateDueDate = (date: string, months: number): string => {
   if (!date) return ""
   const newDate = new Date(date)
@@ -39,34 +38,33 @@ export function AddPaymentDialog({ open, onOpenChange }: AddPaymentDialogProps) 
     status: "Pagado",
     phone: ""
   })
-  const [clientsNames, setClientsNames] = useState([])
+
+  const [students, setStudents] = useState([])
 
   useEffect(() => {
-    setFormData((prev) => ({ ...prev, dueDate: calculateDueDate(prev.date, 1) }))
-  }, [formData.date])
-
-  useEffect(() => {
-    const getClientNames = async () => {
+    const getStudents = async () => {
       try {
         const response = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/getallstudents`);
         const studentsData = response.data;
 
-        const names = studentsData.map(student => ({
-          id: student.id,
+        const students = studentsData.map(student => ({
+          id:  String(student.id),
           name: student.nombre
         }));
 
-        console.log(names);
-        setClientsNames(names);
+        console.log("estudiantes", students);
+        setStudents(students);
       } catch (error) {
         console.error("Error al obtener los nombres:", error);
       }
     };
 
-    getClientNames();
+    getStudents();
   }, []);
 
-
+  useEffect(() => {
+    setFormData((prev) => ({ ...prev, dueDate: calculateDueDate(prev.date, 1) }))
+  }, [formData.date])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -87,9 +85,10 @@ export function AddPaymentDialog({ open, onOpenChange }: AddPaymentDialogProps) 
     onOpenChange(false)
   }
 
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="h-screen md:h-auto max-w-full md:max-w-[700px] md:max-h-[90vh]">
+      <DialogContent className="sm:max-w-[500px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Registrar Nuevo Pago</DialogTitle>
@@ -103,7 +102,7 @@ export function AddPaymentDialog({ open, onOpenChange }: AddPaymentDialogProps) 
                   <SelectValue placeholder="Seleccionar alumno" />
                 </SelectTrigger>
                 <SelectContent>
-                  {clientsNames.map((student) => (
+                  {students.map((student) => (
                     <SelectItem key={student.id} value={student.id}>
                       {student.name}
                     </SelectItem>
@@ -147,10 +146,10 @@ export function AddPaymentDialog({ open, onOpenChange }: AddPaymentDialogProps) 
             </div>
           </div>
 
-          <div className="grid gap-2 pb-5">
-            <Label htmlFor="Phone">Whatsapp</Label>
-            <Input id="Phone" name="Phone" type="number" value={formData.Phone} onChange={handleChange} placeholder="Ej: 3451232324" required />
-          </div>
+          <div className="grid gap-2">
+              <Label htmlFor="phone">Whatsapp</Label>
+              <Input id="phone" name="phone" type="number" value={formData.phone} onChange={handleChange} placeholder="0.00" required />
+            </div>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
