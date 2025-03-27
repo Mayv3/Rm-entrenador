@@ -99,7 +99,7 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="h-full overflow-y-auto md:h-auto max-w-full sm:max-w-[600px]">
+      <DialogContent className="h-screen md:h-auto max-w-full md:max-w-[900px] md:max-h-[90vh] overflow-y-scroll">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Agregar Nuevo Alumno</DialogTitle>

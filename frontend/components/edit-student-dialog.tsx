@@ -54,7 +54,6 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
   )
 
   useEffect(() => {
-    console.log(student)
     if (student) {  
 
     const diasParts = student.dias.split(' - ');
@@ -83,6 +82,20 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
     }
   }, [student])
 
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/files`)
+        setFiles(response.data)
+      } catch (error) {
+        console.error("Error fetching files:", error)
+      }
+    }
+    fetchData()
+  }, [])
+
+  
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
@@ -115,21 +128,9 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
     }
   }
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/files`)
-        setFiles(response.data)
-      } catch (error) {
-        console.error("Error fetching files:", error)
-      }
-    }
-    fetchData()
-  }, [])
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="h-full overflow-y-auto md:h-auto max-w-full sm:max-w-[600px]">
+      <DialogContent className="h-screen md:h-auto max-w-full md:max-w-[900px] md:max-h-[90vh] overflow-y-scroll">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Editar Alumno</DialogTitle>

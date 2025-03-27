@@ -121,18 +121,17 @@ export function StudentsTable() {
           {/* Vista mobile */}
           <div className="grid gap-4 md:hidden">
             {filteredStudents.map((student) => (
-              <Card key={student.id} className="p-4">
-                <CardHeader>
+              <Card key={student.id} className="p-3 py-4">
+                <CardHeader className="pb-4">
                   <CardTitle>{student.nombre}</CardTitle>
-                  <CardDescription>{student.modalidad}</CardDescription>
+                  <CardDescription className="text-lg">{student.modalidad}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    {formatDate(student.fecha_de_nacimiento)}
-                  </div>
-
                   <div className="text-sm text-muted-foreground">{student.dias}</div>
+                  <div className="flex items-center gap-2">
+                    Fecha de nacimiento:{" "}
+                     {formatDate(student.fecha_de_nacimiento)}
+                  </div>
                   <div className="flex items-center gap-2">
                     Última antropometria: {formatDate((student.ultima_antro))}
                   </div>
