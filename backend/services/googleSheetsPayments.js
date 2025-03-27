@@ -65,3 +65,35 @@ export const getPaymentsFromSheet = async (req, res) => {
   }
 };
 
+export const addPaymentToSheet = async (PaymentData) => {
+  try {
+    const { studentId, name, modality,  amount, date, dueDate, status, phone} = PaymentData;
+
+    // Preparar los valores para insertar
+    const values = [[studentId, name, modality, amount, date, dueDate, status, phone]];
+
+    // Insertar en la hoja
+    const response = await sheets.spreadsheets.values.append({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${SHEET_NAME}!A:H`, 
+      valueInputOption: "USER_ENTERED",
+      insertDataOption: "INSERT_ROWS", 
+      requestBody: { values },
+    });
+
+    // Obtener el ID de la fila insertada
+    const updatedRange = response.data.updates.updatedRange;
+    const rowId = parseInt(updatedRange.match(/A(\d+)/)[1]);
+
+    return {
+      success: true,
+      status: 200,
+      message: "Cliente agregado con éxito",
+      id: rowId - 1, // ID basado en índice (fila - 2)
+      rowNumber: rowId // Número de fila real en Sheets
+    };
+  } catch (error) {
+    console.error("Error al agregar cliente:", error);
+    throw new Error("No se pudo agregar el cliente a la hoja");
+  }
+};

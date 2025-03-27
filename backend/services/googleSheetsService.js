@@ -72,8 +72,6 @@ export const addClientToSheet = async (clientData) => {
   try {
     const { birthDate, modality, name, planUrl, schedule, time, whatsapp, startService, lastAntro } = clientData;
 
-    console.log(clientData);
-
     // Mapeo de días a formato abreviado
     const daysMap = {
       monday: "Lun",
