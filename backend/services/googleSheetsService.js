@@ -23,6 +23,8 @@ const SPREADSHEET_ID = "1huhphdJkYImMuRhWjq7IhVm_QiG-l2C-RumFPkoLGYc";
 const SHEET_NAME = "Hoja 1";
 
 
+// Alumnos
+
 export const getClientsFromSheet = async (req, res) => {
   try {
     const response = await sheets.spreadsheets.values.get({
@@ -229,3 +231,5 @@ export const updateClientInSheet = async (req, res) => {
     res.status(500).json({ message: "Error al editar el cliente" });
   }
 };
+
+

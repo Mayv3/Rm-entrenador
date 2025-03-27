@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import { addClient, deleteClient, editClient, getClients } from "./controllers/clientController.js";
 import { getClientsFromSheet } from "./services/googleSheetsService.js";
+import { getPayments } from "./controllers/paymentsController.js";
 
 dotenv.config();
 
@@ -48,12 +49,16 @@ app.get("/files", async (req, res) => {
   }
 });
 
-app.get("/getAllStudents", getClientsFromSheet)
+// Estudiantes
 
 app.post("/add-student", addClient);
 app.get("/getAllStudents", getClients);
 app.delete("/clients/:id", deleteClient);
 app.put("/clients/:id", editClient)
+
+// Pagos
+
+app.get("/getAllPayments", getPayments)
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
