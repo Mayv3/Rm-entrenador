@@ -14,19 +14,13 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import axios from "axios"
 
 interface AddPaymentDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
 }
 
-const students = [
-  { id: "1", name: "Carlos Rodríguez" },
-  { id: "2", name: "María González" },
-  { id: "3", name: "Juan Pérez" },
-  { id: "4", name: "Laura Martínez" },
-  { id: "5", name: "Fernando López" },
-]
 
 const calculateDueDate = (date: string, months: number): string => {
   if (!date) return ""
@@ -45,10 +39,34 @@ export function AddPaymentDialog({ open, onOpenChange }: AddPaymentDialogProps) 
     status: "Pagado",
     phone: ""
   })
+  const [clientsNames, setClientsNames] = useState([])
 
   useEffect(() => {
     setFormData((prev) => ({ ...prev, dueDate: calculateDueDate(prev.date, 1) }))
   }, [formData.date])
+
+  useEffect(() => {
+    const getClientNames = async () => {
+      try {
+        const response = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/getallstudents`);
+        const studentsData = response.data;
+
+        const names = studentsData.map(student => ({
+          id: student.id,
+          name: student.nombre
+        }));
+
+        console.log(names);
+        setClientsNames(names);
+      } catch (error) {
+        console.error("Error al obtener los nombres:", error);
+      }
+    };
+
+    getClientNames();
+  }, []);
+
+
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -130,9 +148,9 @@ export function AddPaymentDialog({ open, onOpenChange }: AddPaymentDialogProps) 
           </div>
 
           <div className="grid gap-2 pb-5">
-              <Label htmlFor="Phone">Whatsapp</Label>
-              <Input id="Phone" name="Phone" type="number" value={formData.Phone} onChange={handleChange} placeholder="Ej: 3451232324" required />
-            </div>
+            <Label htmlFor="Phone">Whatsapp</Label>
+            <Input id="Phone" name="Phone" type="number" value={formData.Phone} onChange={handleChange} placeholder="Ej: 3451232324" required />
+          </div>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
