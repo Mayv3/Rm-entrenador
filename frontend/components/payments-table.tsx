@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Calendar, ChevronDown, Download, Edit, Plus, Search, SlidersHorizontal, Trash2 } from "lucide-react"
+import { Calendar, ChevronDown, Download, Edit, MessageSquare, Plus, Search, SlidersHorizontal, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -28,43 +28,8 @@ const payments = [
     dueDate: "2023-07-31",
     modality: "Presencial",
     status: "Pagado",
-  },
-  {
-    id: "2",
-    studentName: "María González",
-    amount: 12000,
-    date: "2023-06-28",
-    dueDate: "2023-07-28",
-    modality: "Online",
-    status: "Pendiente",
-  },
-  {
-    id: "3",
-    studentName: "Juan Pérez",
-    amount: 18000,
-    date: "2023-07-05",
-    dueDate: "2023-08-05",
-    modality: "Híbrido",
-    status: "Pagado",
-  },
-  {
-    id: "4",
-    studentName: "Laura Martínez",
-    amount: 15000,
-    date: "2023-06-15",
-    dueDate: "2023-07-15",
-    modality: "Presencial",
-    status: "Vencido",
-  },
-  {
-    id: "5",
-    studentName: "Fernando López",
-    amount: 12000,
-    date: "2023-07-03",
-    dueDate: "2023-08-03",
-    modality: "Online",
-    status: "Pagado",
-  },
+    phone: "3513274314"
+  }
 ]
 
 export function PaymentsTable() {
@@ -147,11 +112,12 @@ export function PaymentsTable() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Alumno</TableHead>
+                  <TableHead className="hidden lg:table-cell">Modalidad</TableHead>
                   <TableHead>Monto</TableHead>
                   <TableHead className="hidden md:table-cell">Fecha de Pago</TableHead>
                   <TableHead>Vencimiento</TableHead>
-                  <TableHead className="hidden lg:table-cell">Modalidad</TableHead>
                   <TableHead>Estado</TableHead>
+                  <TableHead>Whatsapp</TableHead>
                   <TableHead>Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -159,6 +125,7 @@ export function PaymentsTable() {
                 {filteredPayments.map((payment) => (
                   <TableRow key={payment.id}>
                     <TableCell className="font-medium">{payment.studentName}</TableCell>
+                    <TableCell className="hidden lg:table-cell">{payment.modality}</TableCell>
                     <TableCell>${payment.amount.toLocaleString()}</TableCell>
                     <TableCell className="hidden md:table-cell">
                       {new Date(payment.date).toLocaleDateString()}
@@ -169,7 +136,7 @@ export function PaymentsTable() {
                         {new Date(payment.dueDate).toLocaleDateString()}
                       </div>
                     </TableCell>
-                    <TableCell className="hidden lg:table-cell">{payment.modality}</TableCell>
+                    
                     <TableCell>
                       <Badge
                         className={
@@ -183,6 +150,16 @@ export function PaymentsTable() {
                         {payment.status}
                       </Badge>
                     </TableCell>
+                    <TableCell>
+                            <a
+                              href={`https://wa.me/${payment.phone.replace(/\D/g, "")}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-500 text-white hover:bg-green-600 transition-colors"
+                            >
+                              <MessageSquare className="h-4 w-4" />
+                            </a>
+                          </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
                         <Button

@@ -24,6 +24,7 @@ interface Payment {
   dueDate: string
   modality: string
   status: string
+  phone: number
 }
 
 interface EditPaymentDialogProps {
@@ -49,6 +50,7 @@ export function EditPaymentDialog({ open, onOpenChange, payment }: EditPaymentDi
     dueDate: "",
     modality: "",
     status: "",
+    phone: ""
   })
 
   // Cargar los datos del pago cuando se abre el modal
@@ -65,6 +67,7 @@ export function EditPaymentDialog({ open, onOpenChange, payment }: EditPaymentDi
         dueDate: payment.dueDate,
         modality: payment.modality,
         status: payment.status,
+        phone: payment.phone.toString(),
       })
     }
   }, [open, payment])
@@ -87,7 +90,7 @@ export function EditPaymentDialog({ open, onOpenChange, payment }: EditPaymentDi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="h-screen md:h-auto max-w-full md:max-w-[700px] md:max-h-[90vh]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Editar Pago</DialogTitle>
@@ -163,6 +166,18 @@ export function EditPaymentDialog({ open, onOpenChange, payment }: EditPaymentDi
               </Select>
             </div>
           </div>
+          <div className="grid gap-2 pb-4">
+              <Label htmlFor="amount">Monto</Label>
+              <Input
+                id="amount"
+                name="amount"
+                type="number"
+                value={formData.amount}
+                onChange={handleChange}
+                placeholder="0.00"
+                required
+              />
+            </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar

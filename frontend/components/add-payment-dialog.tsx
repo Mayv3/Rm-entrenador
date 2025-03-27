@@ -43,6 +43,7 @@ export function AddPaymentDialog({ open, onOpenChange }: AddPaymentDialogProps) 
     dueDate: calculateDueDate(new Date().toISOString().split("T")[0], 1),
     modality: "",
     status: "Pagado",
+    phone: ""
   })
 
   useEffect(() => {
@@ -70,7 +71,7 @@ export function AddPaymentDialog({ open, onOpenChange }: AddPaymentDialogProps) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="h-screen md:h-auto max-w-full md:max-w-[700px] md:max-h-[90vh]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Registrar Nuevo Pago</DialogTitle>
@@ -127,6 +128,11 @@ export function AddPaymentDialog({ open, onOpenChange }: AddPaymentDialogProps) 
               </Select>
             </div>
           </div>
+
+          <div className="grid gap-2 pb-5">
+              <Label htmlFor="Phone">Whatsapp</Label>
+              <Input id="Phone" name="Phone" type="number" value={formData.Phone} onChange={handleChange} placeholder="Ej: 3451232324" required />
+            </div>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
