@@ -192,7 +192,7 @@ export const updateClientInSheet = async (req, res) => {
       return res.status(404).json({ message: "Cliente no encontrado" });
     }
 
-    const { name, modality, birthDate, whatsapp, planUrl, schedule, time, lastTraining, lastAntro } = clientData;
+    const { name, modality, birthDate, whatsapp, planUrl, schedule, time, startService, lastAntro } = clientData;
 
     const daysMap = {
       monday: "Lun",
@@ -216,7 +216,7 @@ export const updateClientInSheet = async (req, res) => {
       range: `${SHEET_NAME}!A${rowIndex + 2}:h${rowIndex + 2}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
-        values: [[name, modality, birthDate, whatsapp, planUrl, scheduleString, lastTraining, lastAntro]],
+        values: [[name, modality, birthDate, whatsapp, planUrl, scheduleString, startService, lastAntro]],
       },
     });
 

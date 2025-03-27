@@ -42,7 +42,7 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
       sunday: false,
     },
     time: "",
-    lastTraining: "",
+    startService: "",
     lastAntro: "",
   })
 
@@ -77,7 +77,7 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
           sunday: student.dias?.includes("Dom") || false,
         },
         time: hora || "", //
-        lastTraining: student.ultimo_entrenamiento || "",
+        startService: student.fecha_de_inicio || "",
         lastAntro: student.ultima_antro || "",
       })
     }
@@ -238,8 +238,8 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
 
             {/* Último entrenamiento */}
             <div className="grid gap-2">
-              <Label htmlFor="lastTraining">Último Entrenamiento</Label>
-              <Input id="lastTraining" name="lastTraining" type="date" value={formData.lastTraining} onChange={handleChange} required />
+              <Label htmlFor="startService">Fecha de inicio</Label>
+              <Input id="startService" name="startService" type="date" value={formData.startService} onChange={handleChange} required />
             </div>
 
             {/* Última antropometría */}

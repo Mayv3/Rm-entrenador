@@ -199,10 +199,12 @@ export function StudentsTable() {
                         <TableRow key={student.id}>
                           <TableCell className="font-medium">{student.nombre}</TableCell>
                           <TableCell>
-                            <span className={`inline-block w-2 h-2 rounded-full mr-2 ${student.modalidad === 'Presencial' ? 'bg-green-500' :
+                            <div className="flex items-center">
+                            <span className={`inline-block w-[10px] h-[10px] rounded-full mr-2 ${student.modalidad === 'Presencial' ? 'bg-green-500' :
                               student.modalidad === 'Online' ? 'bg-blue-500' : 'bg-purple-500'
                               }`} />
                             {student.modalidad}
+                            </div>
                           </TableCell>
                           <TableCell className="hidden lg:table-cell">{student.dias}</TableCell>
                           <TableCell className="hidden md:table-cell">
