@@ -125,7 +125,7 @@ export const deleteClientFromSheet = async (req, res) => {
   try {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
-      range: `${SHEET_NAME}!A2:H`,
+      range: `${SHEET_NAME}!A2:H`, 
     });
 
     const rows = response.data.values;
@@ -134,44 +134,40 @@ export const deleteClientFromSheet = async (req, res) => {
       return res.status(404).json({ message: "No se encontraron clientes" });
     }
 
-    const numericId = parseInt(id);
-    if (isNaN(numericId) || numericId < 1 || numericId > rows.length) {
-      return res.status(400).json({ message: "ID de cliente inválido" });
+    const rowIndex = rows.findIndex(row => row[0] === id);
+    
+    if (rowIndex === -1) {
+      return res.status(404).json({ message: "Cliente no encontrado" });
     }
 
-    const rowToDelete = rows[numericId - 1];
-    const rowNumber = numericId + 1; // Fila real en Sheets (fila 2 = ID 1)
+    const rowNumber = rowIndex + 2;
 
-    await sheets.spreadsheets.batchUpdate({
+    const emptyRow = new Array(rows[rowIndex].length).fill("");
+
+    await sheets.spreadsheets.values.update({
       spreadsheetId: SPREADSHEET_ID,
+      range: `${SHEET_NAME}!A${rowNumber}:H${rowNumber}`, 
+      valueInputOption: "RAW",
       requestBody: {
-        requests: [{
-          deleteDimension: {
-            range: {
-              sheetId: 0, // ID de la hoja (0 para la primera hoja)
-              dimension: "ROWS",
-              startIndex: rowNumber - 1, // Índice base 0
-              endIndex: rowNumber, // Elimina solo una fila
-            },
-          },
-        }],
+        values: [emptyRow], 
       },
     });
 
     res.json({
       success: true,
-      message: "Cliente eliminado con éxito",
+      message: "Datos del cliente eliminados sin borrar la fila",
       deletedClient: {
-        id: numericId,
+        id,
         ...Object.fromEntries(
           ['name', 'modality', 'birthDate', 'whatsapp', 'planUrl', 'schedule', 'lastTraining']
-            .map((key, i) => [key, rowToDelete[i]])
+            .map((key, i) => [key, rows[rowIndex][i]])
         )
       }
     });
+
   } catch (error) {
-    console.error("Error al eliminar cliente:", error);
-    res.status(500).json({ message: "Error al eliminar el cliente" });
+    console.error("Error al vaciar datos del cliente:", error);
+    res.status(500).json({ message: "Error al eliminar los datos del cliente" });
   }
 };
 
