@@ -31,13 +31,13 @@ export const getClientsFromSheet = async (req, res) => {
     });
 
     let rows = response.data.values;
-    
+
     if (!rows || rows.length === 0) {
       return res.json([]);
     }
 
     const headers = rows[0];
-    
+
     // Filtrar filas vacías y mapear datos
     const data = rows.slice(1)
       .filter(row => row.some(cell => cell && cell.trim() !== ""))
@@ -53,12 +53,12 @@ export const getClientsFromSheet = async (req, res) => {
         };
       });
 
-      data.sort((a, b) => {
-        const nameA = a.nombre?.toLowerCase() || '';
-        const nameB = b.nombre?.toLowerCase() || '';
-        return nameA.localeCompare(nameB);
-      });
-  
+    data.sort((a, b) => {
+      const nameA = a.nombre?.toLowerCase() || '';
+      const nameB = b.nombre?.toLowerCase() || '';
+      return nameA.localeCompare(nameB);
+    });
+
     res.json(data);
   } catch (error) {
     console.error("Error al obtener clientes:", error);
@@ -106,9 +106,9 @@ export const addClientToSheet = async (clientData) => {
     const updatedRange = response.data.updates.updatedRange;
     const rowId = parseInt(updatedRange.match(/A(\d+)/)[1]);
 
-    return { 
-      success: true, 
-      status: 200, 
+    return {
+      success: true,
+      status: 200,
       message: "Cliente agregado con éxito",
       id: rowId - 1, // ID basado en índice (fila - 2)
       rowNumber: rowId // Número de fila real en Sheets
@@ -125,31 +125,33 @@ export const deleteClientFromSheet = async (req, res) => {
   try {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
-      range: `${SHEET_NAME}!A2:H`, 
+      range: `${SHEET_NAME}!A2:H`,
     });
 
     const rows = response.data.values;
-    
+
     if (!rows || rows.length === 0) {
       return res.status(404).json({ message: "No se encontraron clientes" });
     }
 
-    const rowIndex = rows.findIndex(row => row[0] === id);
-    
-    if (rowIndex === -1) {
-      return res.status(404).json({ message: "Cliente no encontrado" });
+    const numericId = parseInt(id);
+    if (isNaN(numericId) || numericId < 1 || numericId > rows.length) {
+      return res.status(400).json({ message: "ID de cliente inválido" });
     }
 
-    const rowNumber = rowIndex + 2;
+    const rowToDelete = rows[numericId - 1];
+    const rowNumber = numericId + 1; // Fila real en Sheets (fila 2 = ID 1)
 
-    const emptyRow = new Array(rows[rowIndex].length).fill("");
+    // Crear un array vacío con la misma cantidad de columnas
+    const emptyRow = new Array(rowToDelete.length).fill("");
 
+    // En lugar de eliminar la fila, vaciar sus datos
     await sheets.spreadsheets.values.update({
       spreadsheetId: SPREADSHEET_ID,
-      range: `${SHEET_NAME}!A${rowNumber}:H${rowNumber}`, 
+      range: `${SHEET_NAME}!A${rowNumber}:H${rowNumber}`, // Rango de la fila a vaciar
       valueInputOption: "RAW",
       requestBody: {
-        values: [emptyRow], 
+        values: [emptyRow], // Reemplazar con valores vacíos
       },
     });
 
@@ -157,24 +159,23 @@ export const deleteClientFromSheet = async (req, res) => {
       success: true,
       message: "Datos del cliente eliminados sin borrar la fila",
       deletedClient: {
-        id,
+        id: numericId,
         ...Object.fromEntries(
-          ['name', 'modality', 'birthDate', 'whatsapp', 'planUrl', 'schedule', 'lastTraining']
-            .map((key, i) => [key, rows[rowIndex][i]])
+          ['name', 'modality', 'birthDate', 'whatsapp', 'planUrl', 'schedule', 'startService']
+            .map((key, i) => [key, rowToDelete[i]])
         )
       }
     });
-
   } catch (error) {
-    console.error("Error al vaciar datos del cliente:", error);
-    res.status(500).json({ message: "Error al eliminar los datos del cliente" });
+    console.error("Error al eliminar cliente:", error);
+    res.status(500).json({ message: "Error al eliminar el cliente" });
   }
 };
 
 export const updateClientInSheet = async (req, res) => {
-  const { id } = req.params; 
-  const clientData = req.body; 
-  
+  const { id } = req.params;
+  const clientData = req.body;
+
   try {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
@@ -182,7 +183,7 @@ export const updateClientInSheet = async (req, res) => {
     });
 
     const rows = response.data.values;
-    const rowIndex = parseInt(id) - 1; 
+    const rowIndex = parseInt(id) - 1;
 
     if (rowIndex < 0 || rowIndex >= rows.length) {
       return res.status(404).json({ message: "Cliente no encontrado" });
