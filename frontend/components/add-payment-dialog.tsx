@@ -31,6 +31,7 @@ const calculateDueDate = (date: string, months: number): string => {
 export function AddPaymentDialog({ open, onOpenChange }: AddPaymentDialogProps) {
   const [formData, setFormData] = useState({
     studentId: "",
+    name: "",
     amount: "",
     date: new Date().toISOString().split("T")[0],
     dueDate: calculateDueDate(new Date().toISOString().split("T")[0], 1),
@@ -72,7 +73,16 @@ export function AddPaymentDialog({ open, onOpenChange }: AddPaymentDialogProps) 
   }
 
   const handleSelectChange = (name: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [name]: value }))
+    if (name === "studentId") {
+      const selectedStudent = students.find(student => student.id === value)
+      setFormData((prev) => ({
+        ...prev,
+        studentId: value,
+        name: selectedStudent ? selectedStudent.name : ""
+      }))
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }))
+    }
   }
 
   const handleDueDateChange = (months: number) => {
@@ -81,14 +91,14 @@ export function AddPaymentDialog({ open, onOpenChange }: AddPaymentDialogProps) 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("Formulario enviado:", formData)
+    console.log("Payment enviado:", formData)
     onOpenChange(false)
   }
 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="h-screen md:h-auto max-w-full md:max-w-[700px] md:max-h-[90vh]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Registrar Nuevo Pago</DialogTitle>
@@ -146,9 +156,9 @@ export function AddPaymentDialog({ open, onOpenChange }: AddPaymentDialogProps) 
             </div>
           </div>
 
-          <div className="grid gap-2">
+          <div className="grid gap-2 pb-5">
               <Label htmlFor="phone">Whatsapp</Label>
-              <Input id="phone" name="phone" type="number" value={formData.phone} onChange={handleChange} placeholder="0.00" required />
+              <Input id="phone" name="phone" type="number" value={formData.phone} onChange={handleChange} placeholder="Ej: 351 323 323" required />
             </div>
 
           <DialogFooter>
