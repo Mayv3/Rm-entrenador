@@ -103,7 +103,7 @@ export function AddPaymentDialog({ open, onOpenChange }: AddPaymentDialogProps) 
                   <SelectValue placeholder="Seleccionar alumno" />
                 </SelectTrigger>
                 <SelectContent>
-                  {students.map((student) => (
+                  {clientsNames.map((student) => (
                     <SelectItem key={student.id} value={student.id}>
                       {student.name}
                     </SelectItem>
