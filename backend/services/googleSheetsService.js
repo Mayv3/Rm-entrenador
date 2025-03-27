@@ -97,8 +97,9 @@ export const addClientToSheet = async (clientData) => {
     // Insertar en la hoja
     const response = await sheets.spreadsheets.values.append({
       spreadsheetId: SPREADSHEET_ID,
-      range: `${SHEET_NAME}!A2:G2`,
+      range: `${SHEET_NAME}!A:H`, 
       valueInputOption: "USER_ENTERED",
+      insertDataOption: "INSERT_ROWS", 
       requestBody: { values },
     });
 
