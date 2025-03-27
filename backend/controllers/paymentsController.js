@@ -1,4 +1,4 @@
-import { getPaymentsFromSheet } from "../services/googleSheetsPayments";
+import { getPaymentsFromSheet } from "../services/googleSheetsPayments.js";
 
 export const getPayments = async (req, res) => {
     try {

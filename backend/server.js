@@ -3,7 +3,6 @@ import { google } from "googleapis";
 import dotenv from "dotenv";
 import cors from "cors";
 import { addClient, deleteClient, editClient, getClients } from "./controllers/clientController.js";
-import { getClientsFromSheet } from "./services/googleSheetsService.js";
 import { getPayments } from "./controllers/paymentsController.js";
 
 dotenv.config();
