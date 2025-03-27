@@ -3,7 +3,7 @@ import { google } from "googleapis";
 import dotenv from "dotenv";
 import cors from "cors";
 import { addClient, deleteClient, editClient, getClients } from "./controllers/clientController.js";
-import { addPayment, deletePayment, getPayments } from "./controllers/paymentsController.js";
+import { addPayment, deletePayment, editPayment, getPayments } from "./controllers/paymentsController.js";
 
 dotenv.config();
 
@@ -53,13 +53,14 @@ app.get("/files", async (req, res) => {
 app.post("/add-student", addClient);
 app.get("/getAllStudents", getClients);
 app.delete("/clients/:id", deleteClient);
-app.put("/clients/:id", editClient)
+app.put("/clients/:id", editClient);
 
 // Pagos
 
-app.get("/getAllPayments", getPayments)
-app.post("/addPayment", addPayment)
-app.delete("/payment/:id", deletePayment)
+app.get("/getAllPayments", getPayments);
+app.post("/addPayment", addPayment);
+app.delete("/payment/:id", deletePayment);
+app.put("/payment/:id", editPayment)
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {

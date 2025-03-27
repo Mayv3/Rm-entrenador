@@ -143,3 +143,43 @@ export const deletePaymentFromSheet = async (req, res) => {
     res.status(500).json({ message: "Error al eliminar el cliente" });
   }
 };
+
+export const updatePaymentInSheet = async (req, res) => {
+  const { id } = req.params;
+  const paymentData = req.body;
+
+  try {
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${SHEET_NAME}!A2:H`,
+    });
+
+    const rows = response.data.values;
+    const rowIndex = parseInt(id) - 1;
+
+    if (rowIndex < 0 || rowIndex >= rows.length) {
+      return res.status(404).json({ message: "Pago no encontrado" });
+    }
+
+    const { studentId, name, modality,  amount, date, dueDate, status, phone} = paymentData;
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${SHEET_NAME}!A${rowIndex + 2}:h${rowIndex + 2}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [[studentId, name, modality, amount, date, dueDate, status, phone]],
+      },
+    });
+
+    res.json({
+      success: true,
+      message: "Pago actualizado con éxito",
+      updatedData: clientData,
+    });
+
+  } catch (error) {
+    console.error("Error al actualizar:", error);
+    res.status(500).json({ message: "Error al editar el cliente" });
+  }
+};
