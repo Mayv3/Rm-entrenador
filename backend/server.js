@@ -3,7 +3,7 @@ import { google } from "googleapis";
 import dotenv from "dotenv";
 import cors from "cors";
 import { addClient, deleteClient, editClient, getClients } from "./controllers/clientController.js";
-import { addPayment, getPayments } from "./controllers/paymentsController.js";
+import { addPayment, deletePayment, getPayments } from "./controllers/paymentsController.js";
 
 dotenv.config();
 
@@ -59,6 +59,7 @@ app.put("/clients/:id", editClient)
 
 app.get("/getAllPayments", getPayments)
 app.post("/addPayment", addPayment)
+app.delete("/payment/:id", deletePayment)
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
