@@ -67,10 +67,11 @@ export const getPaymentsFromSheet = async (req, res) => {
 
 export const addPaymentToSheet = async (PaymentData) => {
   try {
-    const { studentId, name, modality,  amount, date, dueDate, status, phone} = PaymentData;
+    const { studentId, name, modality,  amount, date, dueDate, phone} = PaymentData;
 
-    // Preparar los valores para insertar
-    const values = [[studentId, name, amount, date, dueDate, modality, phone, status]];
+    console.log(PaymentData)
+    
+    const values = [[studentId, name, amount, date, dueDate, modality, phone]];
 
     // Insertar en la hoja
     const response = await sheets.spreadsheets.values.append({

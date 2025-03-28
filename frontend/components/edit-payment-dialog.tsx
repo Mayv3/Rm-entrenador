@@ -1,76 +1,68 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogFooter 
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-
-interface Payment {
-  id: string
-  studentName: string
-  amount: number
-  date: string
-  dueDate: string
-  modality: string
-  status: string
-  phone: number
-}
+import axios from "axios"
 
 interface EditPaymentDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  payment: Payment
+  payment: any
+  onPaymentUpdated: () => void
 }
 
-// Sample data - in a real app this would come from a database
-const students = [
-  { id: "1", name: "Carlos Rodríguez" },
-  { id: "2", name: "María González" },
-  { id: "3", name: "Juan Pérez" },
-  { id: "4", name: "Laura Martínez" },
-  { id: "5", name: "Fernando López" },
-]
+const calculateDueDate = (date: string, months: number): string => {
+  if (!date) return ""
+  const newDate = new Date(date)
+  newDate.setMonth(newDate.getMonth() + months)
+  return newDate.toISOString().split("T")[0]
+}
 
-export function EditPaymentDialog({ open, onOpenChange, payment }: EditPaymentDialogProps) {
+export function EditPaymentDialog({ open, onOpenChange, payment, onPaymentUpdated }: EditPaymentDialogProps) {
   const [formData, setFormData] = useState({
+    id: "",
     studentId: "",
+    name: "",
     amount: "",
-    date: "",
-    dueDate: "",
+    date: new Date().toISOString().split("T")[0],
+    dueDate: calculateDueDate(new Date().toISOString().split("T")[0], 1),
     modality: "",
-    status: "",
-    phone: ""
+    whatsapp: ""
   })
 
-  // Cargar los datos del pago cuando se abre el modal
   useEffect(() => {
-    if (open && payment) {
-      // Encontrar el ID del estudiante basado en el nombre
-      const student = students.find((s) => s.name === payment.studentName)
-      const studentId = student ? student.id : ""
-
+    if (payment) {
+      const paymentDate = payment.fecha_de_pago ? new Date(payment.fecha_de_pago).toISOString().split("T")[0] : new Date().toISOString().split("T")[0]
+      const dueDate = payment.fecha_de_vencimiento ? new Date(payment.fecha_de_vencimiento).toISOString().split("T")[0] : calculateDueDate(paymentDate, 1)
+      
       setFormData({
-        studentId,
-        amount: payment.amount.toString(),
-        date: payment.date,
-        dueDate: payment.dueDate,
-        modality: payment.modality,
-        status: payment.status,
-        phone: payment.phone.toString(),
+        id: payment.id,
+        studentId: payment.student_id || "",
+        name: payment.nombre || "",
+        amount: payment.monto?.toString() || "",
+        date: paymentDate,
+        dueDate: dueDate,
+        modality: payment.modalidad || "",
+        whatsapp: payment.whatsapp || ""
       })
     }
-  }, [open, payment])
+  }, [payment])
+
+  useEffect(() => {
+    setFormData((prev) => ({ ...prev, dueDate: calculateDueDate(prev.date, 1) }))
+  }, [formData.date])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -81,11 +73,31 @@ export function EditPaymentDialog({ open, onOpenChange, payment }: EditPaymentDi
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleDueDateChange = (months: number) => {
+    setFormData((prev) => ({ ...prev, dueDate: calculateDueDate(prev.date, months) }))
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Aquí iría la lógica para actualizar el pago en la base de datos
-    console.log("Pago actualizado:", { id: payment.id, ...formData })
-    onOpenChange(false)
+    
+    try {
+      const paymentData = {
+        ...formData,
+        phone: formData.whatsapp
+      }
+
+      const response = await axios.put(
+        `${process.env.NEXT_PUBLIC_URL_BACKEND}/payment/${formData.id}`, 
+        paymentData
+      )
+
+      if (response.status === 200 || response.status === 201) {
+        onOpenChange(false)
+        onPaymentUpdated()
+      }
+    } catch (error) {
+      console.error("Error al actualizar el pago:", error)
+    }
   }
 
   return (
@@ -94,54 +106,85 @@ export function EditPaymentDialog({ open, onOpenChange, payment }: EditPaymentDi
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Editar Pago</DialogTitle>
-            <DialogDescription>Modifica la información del pago. Todos los campos son obligatorios.</DialogDescription>
+            <DialogDescription>Actualiza la información del pago. Todos los campos son obligatorios.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="studentId">Alumno</Label>
-              <Select value={formData.studentId} onValueChange={(value) => handleSelectChange("studentId", value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar alumno" />
-                </SelectTrigger>
-                <SelectContent>
-                  {students.map((student) => (
-                    <SelectItem key={student.id} value={student.id}>
-                      {student.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="name">Alumno</Label>
+              <Input
+                id="name"
+                name="name"
+                value={formData.name}
+                readOnly
+                className="bg-gray-100"
+              />
             </div>
+
             <div className="grid gap-2">
               <Label htmlFor="amount">Monto</Label>
-              <Input
-                id="amount"
-                name="amount"
-                type="number"
-                value={formData.amount}
-                onChange={handleChange}
-                placeholder="0.00"
-                required
+              <Input 
+                id="amount" 
+                name="amount" 
+                type="number" 
+                value={formData.amount} 
+                onChange={handleChange} 
+                placeholder="0.00" 
+                required 
               />
             </div>
+
             <div className="grid gap-2">
               <Label htmlFor="date">Fecha de Pago</Label>
-              <Input id="date" name="date" type="date" value={formData.date} onChange={handleChange} required />
+              <Input 
+                id="date" 
+                name="date" 
+                type="date" 
+                value={formData.date} 
+                onChange={handleChange} 
+                required 
+              />
             </div>
+
             <div className="grid gap-2">
               <Label htmlFor="dueDate">Fecha de Vencimiento</Label>
-              <Input
-                id="dueDate"
-                name="dueDate"
-                type="date"
-                value={formData.dueDate}
-                onChange={handleChange}
-                required
+              <Input 
+                id="dueDate" 
+                name="dueDate" 
+                type="date" 
+                value={formData.dueDate} 
+                readOnly 
               />
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
+              <Button 
+                className="bg-[var(--primary-color)] hover:bg-[var(--primary-color)]" 
+                type="button" 
+                onClick={() => handleDueDateChange(1)}
+              >
+                Pagar 1 Mes
+              </Button>
+              <Button 
+                className="bg-[var(--primary-color)] hover:bg-[var(--primary-color)]" 
+                type="button" 
+                onClick={() => handleDueDateChange(3)}
+              >
+                Pagar 3 Meses
+              </Button>
+              <Button 
+                className="bg-[var(--primary-color)] hover:bg-[var(--primary-color)]" 
+                type="button" 
+                onClick={() => handleDueDateChange(6)}
+              >
+                Pagar 6 Meses
+              </Button>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="modality">Modalidad</Label>
-              <Select value={formData.modality} onValueChange={(value) => handleSelectChange("modality", value)}>
+              <Select 
+                value={formData.modality} 
+                onValueChange={(value) => handleSelectChange("modality", value)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccionar modalidad" />
                 </SelectTrigger>
@@ -152,41 +195,18 @@ export function EditPaymentDialog({ open, onOpenChange, payment }: EditPaymentDi
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="status">Estado</Label>
-              <Select value={formData.status} onValueChange={(value) => handleSelectChange("status", value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar estado" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Pagado">Pagado</SelectItem>
-                  <SelectItem value="Pendiente">Pendiente</SelectItem>
-                  <SelectItem value="Vencido">Vencido</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
-          <div className="grid gap-2 pb-4">
-              <Label htmlFor="amount">Monto</Label>
-              <Input
-                id="amount"
-                name="amount"
-                type="number"
-                value={formData.amount}
-                onChange={handleChange}
-                placeholder="0.00"
-                required
-              />
-            </div>
+
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit" className="bg-[var(--primary-color)] hover:bg-[var(--primary-color)] text-white">Guardar Cambios</Button>
+            <Button type="submit" className="bg-[var(--primary-color)] hover:bg-[var(--primary-color)]">
+              Guardar Cambios
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
   )
 }
-

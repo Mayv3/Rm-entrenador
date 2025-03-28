@@ -3,12 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 interface PaymentStatsProps {
   totalPaid: number
-  totalPending: number
   totalOverdue: number
-  totalIncome: number
 }
 
-export function PaymentStats({ totalPaid, totalPending, totalOverdue, totalIncome }: PaymentStatsProps) {
+export function PaymentStats({ totalPaid, totalOverdue }: PaymentStatsProps) {
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
       <Card>
@@ -17,7 +15,7 @@ export function PaymentStats({ totalPaid, totalPending, totalOverdue, totalIncom
           <DollarSign className="h-4 w-4 text-[var(--primary-color)]" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">${totalPaid.toLocaleString()}</div>
+          <div className="text-2xl font-bold">${totalPaid.toLocaleString("es-AR")}</div>
           <p className="text-xs text-[var(--primary-color)]">Pagos completados</p>
         </CardContent>
       </Card>

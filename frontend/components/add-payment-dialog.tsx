@@ -7,9 +7,9 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogFooter 
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -19,6 +19,7 @@ import axios from "axios"
 interface AddPaymentDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onPaymentUpdated: () => void
 }
 
 const calculateDueDate = (date: string, months: number): string => {
@@ -28,7 +29,7 @@ const calculateDueDate = (date: string, months: number): string => {
   return newDate.toISOString().split("T")[0]
 }
 
-export function AddPaymentDialog({ open, onOpenChange }: AddPaymentDialogProps) {
+export function AddPaymentDialog({ open, onOpenChange, onPaymentUpdated }: AddPaymentDialogProps) {
   const [formData, setFormData] = useState({
     studentId: "",
     name: "",
@@ -36,8 +37,6 @@ export function AddPaymentDialog({ open, onOpenChange }: AddPaymentDialogProps) 
     date: new Date().toISOString().split("T")[0],
     dueDate: calculateDueDate(new Date().toISOString().split("T")[0], 1),
     modality: "",
-    status: "Pagado",
-    phone: ""
   })
 
   const [students, setStudents] = useState([])
@@ -45,23 +44,23 @@ export function AddPaymentDialog({ open, onOpenChange }: AddPaymentDialogProps) 
   useEffect(() => {
     const getStudents = async () => {
       try {
-        const response = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/getallstudents`);
-        const studentsData = response.data;
-
+        const response = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/getallstudents`)
+        const studentsData = response.data
+        
         const students = studentsData.map(student => ({
-          id:  String(student.id),
-          name: student.nombre
-        }));
+          id: String(student.id),
+          name: student.nombre,
+          whatsapp: student.telefono
+        }))
 
-        console.log("estudiantes", students);
-        setStudents(students);
+        setStudents(students)
       } catch (error) {
-        console.error("Error al obtener los nombres:", error);
+        console.error("Error al obtener los nombres:", error)
       }
-    };
+    }
 
-    getStudents();
-  }, []);
+    getStudents()
+  }, [])
 
   useEffect(() => {
     setFormData((prev) => ({ ...prev, dueDate: calculateDueDate(prev.date, 1) }))
@@ -78,7 +77,7 @@ export function AddPaymentDialog({ open, onOpenChange }: AddPaymentDialogProps) 
       setFormData((prev) => ({
         ...prev,
         studentId: value,
-        name: selectedStudent ? selectedStudent.name : ""
+        name: selectedStudent ? selectedStudent.name : "",
       }))
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }))
@@ -89,12 +88,39 @@ export function AddPaymentDialog({ open, onOpenChange }: AddPaymentDialogProps) 
     setFormData((prev) => ({ ...prev, dueDate: calculateDueDate(prev.date, months) }))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("Payment enviado:", formData)
-    onOpenChange(false)
-  }
+    
+    try {
+      const selectedStudent = students.find(student => student.id === formData.studentId)
+      const whatsapp = selectedStudent?.whatsapp || ""
+      
+      const paymentData = {
+        ...formData,
+        phone: whatsapp
+      }
+        console.log(paymentData)
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_URL_BACKEND}/addPayment`, 
+        paymentData
+      )
 
+      if (response.status === 200 || response.status === 201) {
+        onOpenChange(false)
+        onPaymentUpdated()
+        setFormData({
+          studentId: "",
+          name: "",
+          amount: "",
+          date: new Date().toISOString().split("T")[0],
+          dueDate: calculateDueDate(new Date().toISOString().split("T")[0], 1),
+          modality: ""
+        })
+      }
+    } catch (error) {
+      console.error("Error al registrar el pago:", error)
+    }
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -123,27 +149,69 @@ export function AddPaymentDialog({ open, onOpenChange }: AddPaymentDialogProps) 
 
             <div className="grid gap-2">
               <Label htmlFor="amount">Monto</Label>
-              <Input id="amount" name="amount" type="number" value={formData.amount} onChange={handleChange} placeholder="0.00" required />
+              <Input 
+                id="amount" 
+                name="amount" 
+                type="number" 
+                value={formData.amount} 
+                onChange={handleChange} 
+                placeholder="0.00" 
+                required 
+              />
             </div>
 
             <div className="grid gap-2">
               <Label htmlFor="date">Fecha de Pago</Label>
-              <Input id="date" name="date" type="date" value={formData.date} onChange={handleChange} required />
+              <Input 
+                id="date" 
+                name="date" 
+                type="date" 
+                value={formData.date} 
+                onChange={handleChange} 
+                required 
+              />
             </div>
 
             <div className="grid gap-2">
               <Label htmlFor="dueDate">Fecha de Vencimiento</Label>
-              <Input id="dueDate" name="dueDate" type="date" value={formData.dueDate} readOnly />
+              <Input 
+                id="dueDate" 
+                name="dueDate" 
+                type="date" 
+                value={formData.dueDate} 
+                readOnly 
+              />
             </div>
 
             <div className="grid grid-cols-3 gap-2">
-              <Button className="bg-[var(--primary-color)] hover:bg-[var(--primary-color)]" type="button" onClick={() => handleDueDateChange(1)}>Pagar 1 Mes</Button>
-              <Button className="bg-[var(--primary-color)] hover:bg-[var(--primary-color)]" type="button" onClick={() => handleDueDateChange(3)}>Pagar 3 Meses</Button>
-              <Button className="bg-[var(--primary-color)] hover:bg-[var(--primary-color)]" type="button" onClick={() => handleDueDateChange(6)}>Pagar 6 Meses</Button>
+              <Button 
+                className="bg-[var(--primary-color)] hover:bg-[var(--primary-color)]" 
+                type="button" 
+                onClick={() => handleDueDateChange(1)}
+              >
+                Pagar 1 Mes
+              </Button>
+              <Button 
+                className="bg-[var(--primary-color)] hover:bg-[var(--primary-color)]" 
+                type="button" 
+                onClick={() => handleDueDateChange(3)}
+              >
+                Pagar 3 Meses
+              </Button>
+              <Button 
+                className="bg-[var(--primary-color)] hover:bg-[var(--primary-color)]" 
+                type="button" 
+                onClick={() => handleDueDateChange(6)}
+              >
+                Pagar 6 Meses
+              </Button>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="modality">Modalidad</Label>
-              <Select value={formData.modality} onValueChange={(value) => handleSelectChange("modality", value)}>
+              <Select 
+                value={formData.modality} 
+                onValueChange={(value) => handleSelectChange("modality", value)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccionar modalidad" />
                 </SelectTrigger>
@@ -156,14 +224,13 @@ export function AddPaymentDialog({ open, onOpenChange }: AddPaymentDialogProps) 
             </div>
           </div>
 
-          <div className="grid gap-2 pb-5">
-              <Label htmlFor="phone">Whatsapp</Label>
-              <Input id="phone" name="phone" type="number" value={formData.phone} onChange={handleChange} placeholder="Ej: 351 323 323" required />
-            </div>
-
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button type="submit" className="bg-[var(--primary-color)] hover:bg-[var(--primary-color)]">Guardar</Button>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit" className="bg-[var(--primary-color)] hover:bg-[var(--primary-color)]">
+              Guardar
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
