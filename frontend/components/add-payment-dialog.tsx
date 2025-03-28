@@ -90,21 +90,28 @@ export function AddPaymentDialog({ open, onOpenChange, onPaymentUpdated }: AddPa
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+  
+    if (!formData.studentId || !formData.modality) {
+      alert("Todos los campos son obligatorios")
+      return
+    }
+  
     try {
       const selectedStudent = students.find(student => student.id === formData.studentId)
       const whatsapp = selectedStudent?.whatsapp || ""
-      
+  
       const paymentData = {
         ...formData,
         phone: whatsapp
       }
-        console.log(paymentData)
+  
+      console.log(paymentData)
+  
       const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_URL_BACKEND}/addPayment`, 
+        `${process.env.NEXT_PUBLIC_URL_BACKEND}/addPayment`,
         paymentData
       )
-
+  
       if (response.status === 200 || response.status === 201) {
         onOpenChange(false)
         onPaymentUpdated()
