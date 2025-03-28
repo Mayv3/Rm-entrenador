@@ -174,7 +174,7 @@ export function PaymentsTable() {
         </div>
         <Button
           size="sm"
-          className="h-8 gap-1 bg-[var(--primary-color)] hover:bg-[var(--primary-color)]"
+          className="fixed bottom-16 right-4 w-16 h-16 rounded-full gap-1 bg-[var(--primary-color)] hover:bg-[var(--primary-color)] md:static md:h-10 md:w-[150px] md:py-2 md:rounded-md"
           onClick={() => setIsAddPaymentOpen(true)}
         >
           <Plus className="h-3.5 w-3.5" />
