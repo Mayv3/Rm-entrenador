@@ -99,50 +99,59 @@ export const addPaymentToSheet = async (PaymentData) => {
 };
 
 export const deletePaymentFromSheet = async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `${SHEET_NAME}!A2:H`,
-    });
-
-    const rows = response.data.values;
-
-    if (!rows || rows.length === 0) {
-      return res.status(404).json({ message: "No se encontraron pagos" });
+    const { id } = req.params;
+  
+    try {
+      const response = await sheets.spreadsheets.values.get({
+        spreadsheetId: SPREADSHEET_ID,
+        range: `${SHEET_NAME}!A2:H`,  // Rango de las filas que contienen los pagos
+      });
+  
+      const rows = response.data.values;
+  
+      if (!rows || rows.length === 0) {
+        return res.status(404).json({ message: "No se encontraron pagos" });
+      }
+  
+      const numericId = parseInt(id);
+      if (isNaN(numericId) || numericId < 1 || numericId > rows.length) {
+        return res.status(400).json({ message: "ID del pago inválido" });
+      }
+  
+      const rowToDelete = rows[numericId - 1];
+      const rowNumber = numericId + 1; // Fila real en Sheets (fila 2 = ID 1)
+  
+      // Eliminar la fila desplazando las demás filas
+      const request = {
+        spreadsheetId: SPREADSHEET_ID,
+        resource: {
+          requests: [
+            {
+              deleteDimension: {
+                range: {
+                  sheetId: SHEET_ID,  // ID de la hoja de cálculo (debes obtenerlo)
+                  dimension: "ROWS",
+                  startIndex: rowNumber - 1,
+                  endIndex: rowNumber,
+                },
+              },
+            },
+          ],
+        },
+      };
+  
+      // Realizar la eliminación
+      await sheets.spreadsheets.batchUpdate(request);
+  
+      res.json({
+        success: true,
+        message: "Pago eliminado correctamente",
+      });
+    } catch (error) {
+      console.error("Error al eliminar pago:", error);
+      res.status(500).json({ message: "Error al eliminar el pago" });
     }
-
-    const numericId = parseInt(id);
-    if (isNaN(numericId) || numericId < 1 || numericId > rows.length) {
-      return res.status(400).json({ message: "ID del pago inválido" });
-    }
-
-    const rowToDelete = rows[numericId - 1];
-    const rowNumber = numericId + 1; // Fila real en Sheets (fila 2 = ID 1)
-
-    // Crear un array vacío con la misma cantidad de columnas
-    const emptyRow = new Array(rowToDelete.length).fill("");
-
-    // En lugar de eliminar la fila, vaciar sus datos
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `${SHEET_NAME}!A${rowNumber}:H${rowNumber}`, // Rango de la fila a vaciar
-      valueInputOption: "RAW",
-      requestBody: {
-        values: [emptyRow], // Reemplazar con valores vacíos
-      },
-    });
-
-    res.json({
-      success: true,
-      message: "Datos del pago eliminados correctamente",
-    });
-  } catch (error) {
-    console.error("Error al eliminar cliente:", error);
-    res.status(500).json({ message: "Error al eliminar el cliente" });
-  }
-};
+  };
 
 export const updatePaymentInSheet = async (req, res) => {
   const { id } = req.params;

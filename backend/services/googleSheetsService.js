@@ -120,7 +120,7 @@ export const addClientToSheet = async (clientData) => {
   }
 };
 
-export const deleteClientFromSheet = async (req, res) => {
+export const deleteClientFromSheet = async (req, res) => { 
   const { id } = req.params;
 
   try {
@@ -143,29 +143,38 @@ export const deleteClientFromSheet = async (req, res) => {
     const rowToDelete = rows[numericId - 1];
     const rowNumber = numericId + 1; // Fila real en Sheets (fila 2 = ID 1)
 
-    // Crear un array vacío con la misma cantidad de columnas
-    const emptyRow = new Array(rowToDelete.length).fill("");
-
-    // En lugar de eliminar la fila, vaciar sus datos
-    await sheets.spreadsheets.values.update({
+    // Eliminar la fila desplazando las demás filas
+    const request = {
       spreadsheetId: SPREADSHEET_ID,
-      range: `${SHEET_NAME}!A${rowNumber}:H${rowNumber}`, // Rango de la fila a vaciar
-      valueInputOption: "RAW",
-      requestBody: {
-        values: [emptyRow], // Reemplazar con valores vacíos
+      resource: {
+        requests: [
+          {
+            deleteDimension: {
+              range: {
+                sheetId: SHEET_ID,  // ID de la hoja de cálculo (debes obtenerlo)
+                dimension: "ROWS",
+                startIndex: rowNumber - 1,
+                endIndex: rowNumber,
+              },
+            },
+          },
+        ],
       },
-    });
+    };
+
+    // Realizar la eliminación
+    await sheets.spreadsheets.batchUpdate(request);
 
     res.json({
       success: true,
-      message: "Datos del cliente eliminados sin borrar la fila",
+      message: "Cliente eliminado correctamente",
       deletedClient: {
         id: numericId,
         ...Object.fromEntries(
           ['name', 'modality', 'birthDate', 'whatsapp', 'planUrl', 'schedule', 'startService']
             .map((key, i) => [key, rowToDelete[i]])
-        )
-      }
+        ),
+      },
     });
   } catch (error) {
     console.error("Error al eliminar cliente:", error);
