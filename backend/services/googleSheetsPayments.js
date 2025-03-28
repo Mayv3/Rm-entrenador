@@ -178,7 +178,7 @@ export const updatePaymentInSheet = async (req, res) => {
       range: `${SHEET_NAME}!A${rowIndex + 2}:h${rowIndex + 2}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
-        values: [[studentId, name, modality, amount, date, dueDate, status, phone]],
+        values: [[studentId, name, amount, date, dueDate, modality, phone, status]],
       },
     });
 
