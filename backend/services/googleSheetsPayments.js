@@ -98,7 +98,7 @@ export const addPaymentToSheet = async (PaymentData) => {
   }
 };
 
-export const deletePaymentfromSheet = async (req, res) => {
+export const deletePaymentFromSheet = async (req, res) => {
   const { id } = req.params;
 
   try {
