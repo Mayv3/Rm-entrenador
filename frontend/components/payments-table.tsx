@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Edit, MessageSquare, Plus, Search, Trash2 } from "lucide-react";
+import { Calendar, Edit, FileText, MessageSquare, Plus, Search, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { EditPaymentDialog } from "@/components/edit-payment-dialog";
 import { DeletePaymentDialog } from "@/components/delete-payment-dialog";
 import { PaymentStats } from "./payment-stats";
 import axios from "axios";
+import { Loader } from "@/components/ui/loader"
 
 const parseDate = (dateString) => {
   if (!dateString) return null;
@@ -42,7 +43,6 @@ const determineSubscriptionStatus = (pago) => {
   return "Pagado";
 };
 
-
 export function PaymentsTable() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(false);
@@ -51,6 +51,7 @@ export function PaymentsTable() {
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [payments, setPayments] = useState([]);
   const [refreshPayments, setRefreshPayments] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const parseLocalDate = (dateString) => {
     if (!dateString) return null;
@@ -62,6 +63,7 @@ export function PaymentsTable() {
 
   const fetchPayments = async () => {
     try {
+      setIsLoading(true);
       const response = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/getAllPayments`);
       const normalizedPayments = response.data.map(payment => ({
         ...payment,
@@ -75,6 +77,8 @@ export function PaymentsTable() {
       setPayments(normalizedPayments);
     } catch (error) {
       console.error("Error al obtener los pagos:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -93,7 +97,6 @@ export function PaymentsTable() {
 
       setTimeout(() => {
         setRefreshPayments(prev => !prev);
-        // Configurar para que se repita cada 24 horas
         const intervalId = setInterval(() => {
           setRefreshPayments(prev => !prev);
         }, 24 * 60 * 60 * 1000);
@@ -139,6 +142,21 @@ export function PaymentsTable() {
     return Math.floor((today - dueDate) / (1000 * 60 * 60 * 24));
   };
 
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "Pagado":
+        return "bg-green-500";
+      case "Vencido":
+        return "bg-red-500";
+      case "Pendiente":
+        return "bg-yellow-500";
+      case "No renovado":
+        return "bg-black text-white";
+      default:
+        return "bg-gray-500";
+    }
+  };
+
   return (
     <>
       <PaymentStats totalPaid={totalPaid} totalOverdue={totalOverdue} />
@@ -164,74 +182,181 @@ export function PaymentsTable() {
         </Button>
       </div>
 
-      <Card className="border-none">
-        <CardHeader className="px-0">
-          <CardTitle>Suscripciones</CardTitle>
-          <CardDescription>Gestiona los pagos y vencimientos de tus alumnos.</CardDescription>
-        </CardHeader>
-        <CardContent className="p-0 overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Alumno</TableHead>
-                <TableHead>Modalidad</TableHead>
-                <TableHead>Monto</TableHead>
-                <TableHead>Último Pago</TableHead>
-                <TableHead>Vencimiento</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Whatsapp</TableHead>
-                <TableHead>Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredPayments.map((payment) => {
-                const isOverdue = payment.status === "Vencido";
-                const daysOverdue = isOverdue ? getDaysOverdue(payment.fecha_de_vencimiento) : 0;
+      {isLoading ? (
+        <div className="flex items-center justify-center min-h-[300px]">
+          <Loader />
+        </div>
+      ) : (
+        <>
+          {/* Vista mobile */}
+          <div className="grid gap-4 md:hidden">
+            {filteredPayments.map((payment) => {
+              const isOverdue = payment.status === "Vencido";
+              const daysOverdue = isOverdue ? getDaysOverdue(payment.fecha_de_vencimiento) : 0;
 
-                return (
-                  <TableRow key={payment.id}>
-                    <TableCell>{payment.nombre}</TableCell>
-                    <TableCell>{payment.modalidad}</TableCell>
-                    <TableCell>${payment.monto?.toLocaleString()}</TableCell>
-                    <TableCell>{formatDate(payment.fecha_de_pago)}</TableCell>
-                    <TableCell>{formatDate(payment.fecha_de_vencimiento)}</TableCell>
-                    <TableCell>
-                      <Badge
-                        className={
-                          payment.status === "Pagado" ? "bg-green-500" :
-                          payment.status === "Vencido" ? "bg-red-500" :
-                          payment.status === "Pendiente" ? "bg-yellow-500" :
-                          payment.status === "No renovado" ? "bg-black text-white" : "bg-gray-500"
-                        }
-                      >
+              return (
+                <Card key={payment.id} className="p-3 py-4">
+                  <CardHeader className="pb-4">
+                    <CardTitle>{payment.nombre}</CardTitle>
+                    <CardDescription className="text-lg">{payment.modalidad}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Monto:</span>
+                      <span>${payment.monto?.toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Último pago:</span>
+                      <span>{formatDate(payment.fecha_de_pago)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Vencimiento:</span>
+                      <span>{formatDate(payment.fecha_de_vencimiento)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Estado:</span>
+                      <Badge className={getStatusColor(payment.status)}>
                         {payment.status}
                       </Badge>
-                    </TableCell>
-                    <TableCell>
-                            <a
-                              href={`https://wa.me/${payment.whatsapp.replace(/\D/g, "")}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-500 text-white hover:bg-green-600 transition-colors"
-                            >
-                              <MessageSquare className="h-4 w-4" />
-                            </a>
-                          </TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="icon" onClick={() => handleEdit(payment)}>
+                    </div>
+                    
+                    <div className="flex gap-2 pt-2">
+                      <a
+                        href={`https://wa.me/${payment.whatsapp.replace(/\D/g, "")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 flex items-center justify-center py-2 rounded bg-[var(--primary-color)] text-white hover:bg-green-600 transition-colors"
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                        <span className="ml-2">WhatsApp</span>
+                      </a>
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      <Button 
+                        size="sm" 
+                        onClick={() => handleEdit(payment)} 
+                        variant="outline" 
+                        className="flex-1 w-full"
+                      >
                         <Edit className="h-4 w-4" />
+                        Editar
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete(payment)}>
+                      <Button 
+                        size="sm" 
+                        onClick={() => handleDelete(payment)} 
+                        variant="destructive" 
+                        className="flex-1 w-full"
+                      >
                         <Trash2 className="h-4 w-4" />
+                        Eliminar
                       </Button>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Vista desktop */}
+          <Card className="hidden md:block border-none">
+            <CardHeader className="px-0">
+              <CardTitle>Suscripciones</CardTitle>
+              <CardDescription>Gestiona los pagos y vencimientos de tus alumnos.</CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              {filteredPayments.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Alumno</TableHead>
+                        <TableHead>Modalidad</TableHead>
+                        <TableHead>Monto</TableHead>
+                        <TableHead>Último Pago</TableHead>
+                        <TableHead>Vencimiento</TableHead>
+                        <TableHead>Estado</TableHead>
+                        <TableHead>WhatsApp</TableHead>
+                        <TableHead>Acciones</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredPayments.map((payment) => {
+                        const isOverdue = payment.status === "Vencido";
+                        const daysOverdue = isOverdue ? getDaysOverdue(payment.fecha_de_vencimiento) : 0;
+
+                        return (
+                          <TableRow key={payment.id}>
+                            <TableCell className="font-medium">{payment.nombre}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <span className={`inline-block w-[10px] h-[10px] rounded-full mr-2 ${
+                                  payment.modalidad === 'Presencial' ? 'bg-green-500' :
+                                  payment.modalidad === 'Online' ? 'bg-blue-500' : 'bg-purple-500'
+                                }`} />
+                                {payment.modalidad}
+                              </div>
+                            </TableCell>
+                            <TableCell>${payment.monto?.toLocaleString()}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Calendar className="h-4 w-4 text-muted-foreground" />
+                                {formatDate(payment.fecha_de_pago)}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {formatDate(payment.fecha_de_vencimiento)}
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={getStatusColor(payment.status)}>
+                                {payment.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <a
+                                href={`https://wa.me/${payment.whatsapp.replace(/\D/g, "")}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-500 text-white hover:bg-green-600 transition-colors"
+                              >
+                                <MessageSquare className="h-4 w-4" />
+                              </a>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-blue-500 hover:text-blue-700"
+                                  onClick={() => handleEdit(payment)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-red-500 hover:text-red-700"
+                                  onClick={() => handleDelete(payment)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  No se encontraron pagos
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </>
+      )}
 
       <AddPaymentDialog
         open={isAddPaymentOpen}

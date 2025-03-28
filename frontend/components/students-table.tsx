@@ -126,14 +126,19 @@ export function StudentsTable() {
                   <CardTitle>{student.nombre}</CardTitle>
                   <CardDescription className="text-lg">{student.modalidad}</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-2">
+                <CardContent className="space-y-5">
                   <div className="text-sm text-muted-foreground">{student.dias}</div>
                   <div className="flex items-center gap-2">
-                    Fecha de nacimiento:{" "}
-                     {formatDate(student.fecha_de_nacimiento)}
+                    <div className="flex items-center justify-between w-full">
+                      <span className="text-sm text-muted-foreground">Fecha de nacimiento:{" "}</span>
+                      <span>{formatDate(student.fecha_de_nacimiento)}</span>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    Última antropometria: {formatDate((student.ultima_antro))}
+                    <div className="flex items-center justify-between w-full">
+                      <span className="text-sm text-muted-foreground">Última antropometria:</span>
+                      <span>{formatDate((student.ultima_antro))}</span>
+                    </div>
                   </div>
                   <div className="flex gap-2">
                     <a
@@ -199,10 +204,10 @@ export function StudentsTable() {
                           <TableCell className="font-medium">{student.nombre}</TableCell>
                           <TableCell>
                             <div className="flex items-center">
-                            <span className={`inline-block w-[10px] h-[10px] rounded-full mr-2 ${student.modalidad === 'Presencial' ? 'bg-green-500' :
-                              student.modalidad === 'Online' ? 'bg-blue-500' : 'bg-purple-500'
-                              }`} />
-                            {student.modalidad}
+                              <span className={`inline-block w-[10px] h-[10px] rounded-full mr-2 ${student.modalidad === 'Presencial' ? 'bg-green-500' :
+                                student.modalidad === 'Online' ? 'bg-blue-500' : 'bg-purple-500'
+                                }`} />
+                              {student.modalidad}
                             </div>
                           </TableCell>
                           <TableCell className="hidden lg:table-cell">{student.dias}</TableCell>
