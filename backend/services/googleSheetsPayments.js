@@ -121,6 +121,13 @@ export const deletePaymentFromSheet = async (req, res) => {
       const rowToDelete = rows[numericId - 1];
       const rowNumber = numericId + 1; // Fila real en Sheets (fila 2 = ID 1)
   
+      // Obtener el sheetId
+      const sheetMetadata = await sheets.spreadsheets.get({
+        spreadsheetId: SPREADSHEET_ID,
+      });
+  
+      const sheetId = sheetMetadata.data.sheets[0].properties.sheetId;
+  
       // Eliminar la fila desplazando las demás filas
       const request = {
         spreadsheetId: SPREADSHEET_ID,
@@ -129,7 +136,7 @@ export const deletePaymentFromSheet = async (req, res) => {
             {
               deleteDimension: {
                 range: {
-                  sheetId: SPREADSHEET_ID,  // ID de la hoja de cálculo (debes obtenerlo)
+                  sheetId: sheetId,  // Aquí pasamos el sheetId correcto
                   dimension: "ROWS",
                   startIndex: rowNumber - 1,
                   endIndex: rowNumber,
@@ -152,6 +159,7 @@ export const deletePaymentFromSheet = async (req, res) => {
       res.status(500).json({ message: "Error al eliminar el pago" });
     }
   };
+  
 
 export const updatePaymentInSheet = async (req, res) => {
   const { id } = req.params;
