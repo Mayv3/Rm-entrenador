@@ -98,7 +98,7 @@ export const addPaymentToSheet = async (PaymentData) => {
   }
 };
 
-export const deleteClientFromSheet = async (req, res) => {
+export const deletePaymentfromSheet = async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -154,7 +154,6 @@ export const deleteClientFromSheet = async (req, res) => {
   }
 };
   
-
 export const updatePaymentInSheet = async (req, res) => {
   const { id } = req.params;
   const paymentData = req.body;
