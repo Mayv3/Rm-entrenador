@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Calendar, ChevronDown, Download, Edit, MessageSquare, Plus, Search, SlidersHorizontal, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -17,6 +17,7 @@ import { AddPaymentDialog } from "@/components/add-payment-dialog"
 import { PaymentStats } from "@/components/payment-stats"
 import { EditPaymentDialog } from "@/components/edit-payment-dialog"
 import { DeletePaymentDialog } from "@/components/delete-payment-dialog"
+import axios from "axios"
 
 // Sample data - in a real app this would come from a database
 const payments = [
@@ -38,12 +39,13 @@ export function PaymentsTable() {
   const [isEditPaymentOpen, setIsEditPaymentOpen] = useState(false)
   const [isDeletePaymentOpen, setIsDeletePaymentOpen] = useState(false)
   const [selectedPayment, setSelectedPayment] = useState<(typeof payments)[0] | null>(null)
+  const [payments, setPayments] = useState([]);
 
   const filteredPayments = payments.filter(
     (payment) =>
-      payment.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      payment.modality.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      payment.status.toLowerCase().includes(searchTerm.toLowerCase()),
+      payment.studentName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      payment.modality?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      payment.status?.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
   // Calculate statistics
@@ -51,6 +53,7 @@ export function PaymentsTable() {
   const totalPending = payments.filter((p) => p.status === "Pendiente").reduce((sum, p) => sum + p.amount, 0)
   const totalOverdue = payments.filter((p) => p.status === "Vencido").reduce((sum, p) => sum + p.amount, 0)
   const totalIncome = totalPaid + totalPending
+
 
   const handleEdit = (payment: (typeof payments)[0]) => {
     setSelectedPayment(payment)
@@ -62,6 +65,21 @@ export function PaymentsTable() {
     setIsDeletePaymentOpen(true)
   }
 
+  useEffect(() => {
+    const getPayments = async () => {
+      try {
+        const response = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/getAllPayments`)
+        setPayments(response.data)
+      } catch (error) {
+        console.error("Error al obtener los pagos:", error)
+      }
+    }
+    getPayments()
+  }, [])
+
+  useEffect(() => {
+    console.log("Pagos cargados:", payments)
+  }, [payments])
   return (
     <>
       <PaymentStats
@@ -126,7 +144,7 @@ export function PaymentsTable() {
                   <TableRow key={payment.id}>
                     <TableCell className="font-medium">{payment.studentName}</TableCell>
                     <TableCell className="hidden lg:table-cell">{payment.modality}</TableCell>
-                    <TableCell>${payment.amount.toLocaleString()}</TableCell>
+                    <TableCell>${payment.amount?.toLocaleString()}</TableCell>
                     <TableCell className="hidden md:table-cell">
                       {new Date(payment.date).toLocaleDateString()}
                     </TableCell>
@@ -152,7 +170,7 @@ export function PaymentsTable() {
                     </TableCell>
                     <TableCell>
                             <a
-                              href={`https://wa.me/${payment.phone.replace(/\D/g, "")}`}
+                              href={`https://wa.me/${payment.phone?.replace(/\D/g, "")}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-500 text-white hover:bg-green-600 transition-colors"
@@ -191,22 +209,22 @@ export function PaymentsTable() {
           {/* Cards en móviles */}
           <div className="grid gap-4 md:hidden">
             {filteredPayments.map((payment) => (
-              <Card key={payment.id} className="p-2 shadow-md">
+              <Card key={payment?.id} className="p-2 shadow-md">
                 <CardHeader>
                   <div className="flex justify-between">
-                    <CardTitle className="text-xl">{payment.studentName}</CardTitle>
+                    <CardTitle className="text-xl">{payment?.studentName}</CardTitle>
 
                     <div className="flex items-center">
                       <Badge
                         className={
-                          payment.status === "Pagado"
+                          payment?.status === "Pagado"
                             ? "bg-[#22b567]"
-                            : payment.status === "Pendiente"
+                            : payment?.status === "Pendiente"
                               ? "bg-warning text-white"
                               : "bg-destructive text-white"
                         }
                       >
-                        {payment.status}
+                        {payment?.status}
                       </Badge>
 
                     </div>
@@ -226,7 +244,7 @@ export function PaymentsTable() {
                   </div>
 
                   <div>
-                    <span className="">Monto:</span> ${payment.amount.toLocaleString()}
+                    <span className="">Monto:</span> ${payment.amount?.toLocaleString()}
                   </div>
 
 
