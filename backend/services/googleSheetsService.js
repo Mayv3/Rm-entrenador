@@ -120,13 +120,13 @@ export const addClientToSheet = async (clientData) => {
   }
 };
 
-export const deleteClientFromSheet = async (req, res) => { 
+export const deleteClientFromSheet = async (req, res) => {
   const { id } = req.params;
 
   try {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
-      range: `${SHEET_NAME}!A2:H`,
+      range: `${SHEET_NAME}!A2:H`, // Asegúrate de que el rango cubra las columnas adecuadas
     });
 
     const rows = response.data.values;
@@ -143,26 +143,14 @@ export const deleteClientFromSheet = async (req, res) => {
     const rowToDelete = rows[numericId - 1];
     const rowNumber = numericId + 1; // Fila real en Sheets (fila 2 = ID 1)
 
-    // Eliminar la fila desplazando las demás filas
+    // Eliminar la fila con la API de Sheets
     const request = {
       spreadsheetId: SPREADSHEET_ID,
-      resource: {
-        requests: [
-          {
-            deleteDimension: {
-              range: {
-                sheetId: SPREADSHEET_ID,
-                startIndex: rowNumber - 1,
-                endIndex: rowNumber,
-              },
-            },
-          },
-        ],
-      },
+      range: `${SHEET_NAME}!A${rowNumber}:H${rowNumber}`,
     };
 
-    // Realizar la eliminación
-    await sheets.spreadsheets.batchUpdate(request);
+    // Limpiar la fila (si solo se quiere borrar el contenido)
+    await sheets.spreadsheets.values.clear(request);
 
     res.json({
       success: true,
