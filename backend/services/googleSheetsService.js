@@ -151,8 +151,7 @@ export const deleteClientFromSheet = async (req, res) => {
           {
             deleteDimension: {
               range: {
-                sheetId: SHEET_ID,  // ID de la hoja de cálculo (debes obtenerlo)
-                dimension: "ROWS",
+                sheetId: SPREADSHEET_ID,
                 startIndex: rowNumber - 1,
                 endIndex: rowNumber,
               },

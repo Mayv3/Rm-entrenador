@@ -129,7 +129,7 @@ export const deletePaymentFromSheet = async (req, res) => {
             {
               deleteDimension: {
                 range: {
-                  sheetId: SHEET_ID,  // ID de la hoja de cálculo (debes obtenerlo)
+                  sheetId: SPREADSHEET_ID,  // ID de la hoja de cálculo (debes obtenerlo)
                   dimension: "ROWS",
                   startIndex: rowNumber - 1,
                   endIndex: rowNumber,
