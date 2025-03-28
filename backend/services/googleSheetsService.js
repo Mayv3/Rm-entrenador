@@ -120,65 +120,81 @@ export const addClientToSheet = async (clientData) => {
   }
 };
 
-export const deletePaymentFromSheet = async (req, res) => {
+export const deleteClientFromSheet = async (req, res) => {
   const { id } = req.params;
 
   try {
+    // Obtener los metadatos completos de la hoja de cálculo
+    const spreadsheetMetadata = await sheets.spreadsheets.get({
+      spreadsheetId: SPREADSHEET_ID,
+    });
+
+    // Buscar el sheetId de la hoja "Hoja 1"
+    const sheet = spreadsheetMetadata.data.sheets.find(sheet => sheet.properties.title === SHEET_NAME);
+    const sheetId = sheet ? sheet.properties.sheetId : null;
+
+    if (!sheetId) {
+      return res.status(404).json({ message: "Hoja no encontrada" });
+    }
+
+    // Obtener las filas de los datos de la hoja
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
-      range: `${SHEET_NAME}!A2:H`,  // Rango de las filas que contienen los pagos
+      range: `${SHEET_NAME}!A2:H`, // Asegúrate de que el rango cubra las columnas adecuadas
     });
 
     const rows = response.data.values;
 
     if (!rows || rows.length === 0) {
-      return res.status(404).json({ message: "No se encontraron pagos" });
+      return res.status(404).json({ message: "No se encontraron clientes" });
     }
 
     const numericId = parseInt(id);
     if (isNaN(numericId) || numericId < 1 || numericId > rows.length) {
-      return res.status(400).json({ message: "ID del pago inválido" });
+      return res.status(400).json({ message: "ID de cliente inválido" });
     }
 
     const rowToDelete = rows[numericId - 1];
     const rowNumber = numericId + 1; // Fila real en Sheets (fila 2 = ID 1)
 
-    // Obtener el sheetId
-    const sheetMetadata = await sheets.spreadsheets.get({
-      spreadsheetId: SPREADSHEET_ID,
-    });
-
-    const sheetId = sheetMetadata.data.sheets[0].properties.sheetId;
-
-    // Eliminar la fila desplazando las demás filas
+    // Preparar la solicitud de eliminación de la fila
     const request = {
       spreadsheetId: SPREADSHEET_ID,
       resource: {
         requests: [
           {
-            deleteDimension: {
+            deleteRange: {
               range: {
-                sheetId: sheetId,  // Aquí pasamos el sheetId correcto
-                dimension: "ROWS",
-                startIndex: rowNumber - 1,  // Índice de la fila a eliminar (convertido a base 0)
-                endIndex: rowNumber,  // El índice final es el mismo
+                sheetId: sheetId, // Usar el sheetId obtenido
+                startRowIndex: rowNumber - 1, // Índice de la fila a eliminar
+                endRowIndex: rowNumber, // Solo una fila
+                startColumnIndex: 0, // Desde la columna A (índice 0)
+                endColumnIndex: 8, // Hasta la columna H (índice 8)
               },
+              shiftDimension: "ROWS", // Esto hará que las filas se deslicen hacia arriba
             },
           },
         ],
       },
     };
 
-    // Realizar la eliminación
+    // Ejecutar la eliminación
     await sheets.spreadsheets.batchUpdate(request);
 
     res.json({
       success: true,
-      message: "Pago eliminado correctamente",
+      message: "Cliente eliminado correctamente",
+      deletedClient: {
+        id: numericId,
+        ...Object.fromEntries(
+          ['name', 'modality', 'birthDate', 'whatsapp', 'planUrl', 'schedule', 'startService']
+            .map((key, i) => [key, rowToDelete[i]]),
+        ),
+      },
     });
   } catch (error) {
-    console.error("Error al eliminar pago:", error);
-    res.status(500).json({ message: "Error al eliminar el pago" });
+    console.error("Error al eliminar cliente:", error);
+    res.status(500).json({ message: "Error al eliminar el cliente" });
   }
 };
 
