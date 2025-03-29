@@ -22,6 +22,8 @@ const sheets = google.sheets({ version: "v4", auth });
 const SPREADSHEET_ID = "1df4bEiBYJKeTnS3QmJAvFEA6LQhJ36ZihL4mSk_KDl4";
 const SHEET_NAME = "Hoja 1";
 
+// Pagos
+
 export const getPaymentsFromSheet = async (req, res) => {
   try {
     const response = await sheets.spreadsheets.values.get({
