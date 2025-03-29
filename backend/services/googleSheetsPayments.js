@@ -37,7 +37,6 @@ export const getPaymentsFromSheet = async (req, res) => {
 
     const headers = rows[0];
 
-    // Filtrar filas vacías y mapear datos
     const data = rows.slice(1)
       .filter(row => row.some(cell => cell && cell.trim() !== ""))
       .map((row, index) => {
@@ -46,8 +45,8 @@ export const getPaymentsFromSheet = async (req, res) => {
           client[header] = row[i] || "";
         });
         return {
-          id: index + 1, // ID basado en posición
-          rowNumber: index + 2, // Fila real en Sheets (fila 2 = índice 0)
+          id: index + 1, 
+          rowNumber: index + 2, 
           ...client
         };
       });
@@ -73,7 +72,6 @@ export const addPaymentToSheet = async (PaymentData) => {
     
     const values = [[studentId, name, amount, date, dueDate, modality, phone]];
 
-    // Insertar en la hoja
     const response = await sheets.spreadsheets.values.append({
       spreadsheetId: SPREADSHEET_ID,
       range: `${SHEET_NAME}!A:H`, 
@@ -82,7 +80,6 @@ export const addPaymentToSheet = async (PaymentData) => {
       requestBody: { values },
     });
 
-    // Obtener el ID de la fila insertada
     const updatedRange = response.data.updates.updatedRange;
     const rowId = parseInt(updatedRange.match(/A(\d+)/)[1]);
 
@@ -90,8 +87,8 @@ export const addPaymentToSheet = async (PaymentData) => {
       success: true,
       status: 200,
       message: "Cliente agregado con éxito",
-      id: rowId - 1, // ID basado en índice (fila - 2)
-      rowNumber: rowId // Número de fila real en Sheets
+      id: rowId - 1,
+      rowNumber: rowId 
     };
   } catch (error) {
     console.error("Error al agregar cliente:", error);
@@ -120,7 +117,7 @@ export const deletePaymentFromSheet = async (req, res) => {
     }
 
     const rowToDelete = rows[numericId - 1];
-    const rowNumber = numericId + 1; // Fila real en Sheets (fila 2 = ID 1)
+    const rowNumber = numericId + 1; 
 
     await sheets.spreadsheets.batchUpdate({
       spreadsheetId: SPREADSHEET_ID,
@@ -128,10 +125,10 @@ export const deletePaymentFromSheet = async (req, res) => {
         requests: [{
           deleteDimension: {
             range: {
-              sheetId: 0, // ID de la hoja (0 para la primera hoja)
+              sheetId: 0,
               dimension: "ROWS",
-              startIndex: rowNumber - 1, // Índice base 0
-              endIndex: rowNumber, // Elimina solo una fila
+              startIndex: rowNumber - 1,
+              endIndex: rowNumber,
             },
           },
         }],

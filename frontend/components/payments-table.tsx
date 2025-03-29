@@ -53,6 +53,18 @@ export function PaymentsTable() {
   const [refreshPayments, setRefreshPayments] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  const activePayments = payments.filter(p => p.status !== "No renovado");
+
+  const totalPaid = activePayments.reduce((sum, p) => p.status === "Pagado" ? sum + p.monto : sum, 0);
+  const totalOverdue = activePayments.reduce((sum, p) => p.status === "Vencido" ? sum + p.monto : sum, 0);
+
+  const totalPaidStudents = activePayments.filter(p => p.status === "Pagado").length;
+  const totalOverdueStudents = activePayments.filter(p => p.status === "Vencido").length;
+  const totalActiveStudents = activePayments.length;
+  const loyaltyPercentage = totalActiveStudents > 0
+    ? Math.round((totalPaidStudents / totalActiveStudents) * 100)
+    : 0;
+
   const parseLocalDate = (dateString) => {
     if (!dateString) return null;
     if (dateString instanceof Date) return dateString;
@@ -108,9 +120,6 @@ export function PaymentsTable() {
     updateAtMidnight();
   }, [refreshPayments]);
 
-  // Calcular totales
-  const totalPaid = payments.reduce((sum, p) => p.status === "Pagado" ? sum + p.monto : sum, 0);
-  const totalOverdue = payments.reduce((sum, p) => p.status === "Vencido" ? sum + p.monto : sum, 0);
 
   const filteredPayments = payments
     .filter((payment) =>
@@ -148,8 +157,6 @@ export function PaymentsTable() {
         return "bg-green-500";
       case "Vencido":
         return "bg-red-500";
-      case "Pendiente":
-        return "bg-yellow-500";
       case "No renovado":
         return "bg-black text-white";
       default:
@@ -159,7 +166,13 @@ export function PaymentsTable() {
 
   return (
     <>
-      <PaymentStats totalPaid={totalPaid} totalOverdue={totalOverdue} />
+      <PaymentStats
+        totalPaid={totalPaid}
+        totalOverdue={totalOverdue}
+        totalPaidStudents={totalPaidStudents}
+        totalOverdueStudents={totalOverdueStudents}
+        loyaltyPercentage={loyaltyPercentage}
+      />
 
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="relative w-full md:w-96">
@@ -219,7 +232,7 @@ export function PaymentsTable() {
                         {payment.status}
                       </Badge>
                     </div>
-                    
+
                     <div className="flex gap-2 pt-2">
                       <a
                         href={`https://wa.me/${payment.whatsapp.replace(/\D/g, "")}`}
@@ -231,21 +244,21 @@ export function PaymentsTable() {
                         <span className="ml-2">WhatsApp</span>
                       </a>
                     </div>
-                    
+
                     <div className="flex gap-2">
-                      <Button 
-                        size="sm" 
-                        onClick={() => handleEdit(payment)} 
-                        variant="outline" 
+                      <Button
+                        size="sm"
+                        onClick={() => handleEdit(payment)}
+                        variant="outline"
                         className="flex-1 w-full"
                       >
                         <Edit className="h-4 w-4" />
                         Editar
                       </Button>
-                      <Button 
-                        size="sm" 
-                        onClick={() => handleDelete(payment)} 
-                        variant="destructive" 
+                      <Button
+                        size="sm"
+                        onClick={() => handleDelete(payment)}
+                        variant="destructive"
                         className="flex-1 w-full"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -290,10 +303,9 @@ export function PaymentsTable() {
                             <TableCell className="font-medium">{payment.nombre}</TableCell>
                             <TableCell>
                               <div className="flex items-center">
-                                <span className={`inline-block w-[10px] h-[10px] rounded-full mr-2 ${
-                                  payment.modalidad === 'Presencial' ? 'bg-green-500' :
+                                <span className={`inline-block w-[10px] h-[10px] rounded-full mr-2 ${payment.modalidad === 'Presencial' ? 'bg-green-500' :
                                   payment.modalidad === 'Online' ? 'bg-blue-500' : 'bg-purple-500'
-                                }`} />
+                                  }`} />
                                 {payment.modalidad}
                               </div>
                             </TableCell>

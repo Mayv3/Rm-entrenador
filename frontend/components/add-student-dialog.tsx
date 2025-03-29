@@ -220,7 +220,7 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
 
             <div className="grid gap-2 mt-3">
               <Label htmlFor="lastAntro">Última antropometria</Label>
-              <Input id="lastAntro" name="lastAntro" type="date" value={formData.lastAntro} onChange={handleChange} required />
+              <Input id="lastAntro" name="lastAntro" type="date" value={formData.lastAntro} onChange={handleChange} />
             </div>
 
           <DialogFooter className="mt-5">
