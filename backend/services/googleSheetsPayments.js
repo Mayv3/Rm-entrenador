@@ -19,7 +19,7 @@ const auth = new google.auth.GoogleAuth({
 });
 
 const sheets = google.sheets({ version: "v4", auth });
-const SPREADSHEET_ID = "";
+const SPREADSHEET_ID = "1ZLS7WBzhW2L9mcrzrMpc4j3G2EgEq_VsMasPz5hlWp0";
 const SHEET_NAME = "Hoja 1";
 
 // Pagos

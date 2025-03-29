@@ -22,13 +22,12 @@ export default function LoginPage() {
     const username = formData.get("username");
     const password = formData.get("password");
 
-    if (username === "admin" && password === "admin") {
+    if (username === "RM.ENTRENADOR" && password === "40518231") {
       localStorage.setItem("isAuthenticated", "true");
       router.push("/dashboard");
     } else {
-      setError("Invalid credentials");
+      setError("Usuario o contraseña incorrectos");
     }
-
     setLoading(false);
   };
 
