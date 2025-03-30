@@ -51,17 +51,25 @@ export function StudentsTable() {
 
   const formatDate = (dateString: string) => {
     if (!dateString) return 'N/A';
-
-    const date = new Date(dateString);
-
-    const adjustedDate = new Date(date.getTime() + date.getTimezoneOffset() * 60000);
-
-    return adjustedDate.toLocaleDateString('es-AR', {
+  
+    let dateParts;
+    if (dateString.includes('/')) {
+      dateParts = dateString.split('/').map(Number); 
+      dateString = `${dateParts[2]}-${String(dateParts[1]).padStart(2, '0')}-${String(dateParts[0]).padStart(2, '0')}`;
+    }
+  
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+  
+    if (isNaN(date.getTime())) return 'Fecha inválida';
+  
+    return date.toLocaleDateString('es-AR', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric'
     });
   };
+  
 
   const handleEdit = (student: (typeof students)[0]) => {
     setSelectedStudent(student)
@@ -75,11 +83,10 @@ export function StudentsTable() {
 
   const fetchStudents = async () => {
     setIsLoading(true)
-    console.log(`${process.env.NEXT_PUBLIC_URL_BACKEND}/getallstudents`)
     try {
       const response = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/getallstudents`);
       setStudents(response.data);
-      console.log(response.data)
+      console.log(`Estudiantes:`, response.data);
     } catch (error) {
       console.error("Error obteniendo los estudiantes:", error);
     } finally {
@@ -107,7 +114,7 @@ export function StudentsTable() {
         <div className="flex flex-wrap justify-end gap-2">
           <Button size="sm" className="fixed bottom-16 right-4 w-16 h-16 rounded-full gap-1 bg-[var(--primary-color)] hover:bg-[var(--primary-color)] md:static md:h-10 md:w-[150px] md:py-2 md:rounded-md" onClick={() => setIsAddStudentOpen(true)}>
             <Plus className="h-3.5 w-3.5" />
-            <span className="hidden xs:inline">Nuevo Alumno</span>
+            <span className="hidden md:inline">Nuevo alumno</span>
           </Button>
         </div>
       </div>

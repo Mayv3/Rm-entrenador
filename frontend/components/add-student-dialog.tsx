@@ -89,7 +89,6 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
       try {
         const response = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/files`)
         setFiles(response.data)
-        console.log(response.data)
       } catch (error) {
         console.error("Error fetching files:", error)
       }
@@ -139,7 +138,7 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
 
             <div className="grid gap-2">
               <Label htmlFor="birthDate">Fecha de Nacimiento</Label>
-              <Input id="birthDate" name="birthDate" type="date" value={formData.birthDate} onChange={handleChange} required />
+              <Input id="birthDate" name="birthDate" type="date" value={formData.birthDate} onChange={handleChange} />
             </div>
 
             {/* WhatsApp */}

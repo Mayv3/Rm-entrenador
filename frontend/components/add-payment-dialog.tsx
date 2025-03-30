@@ -104,8 +104,7 @@ export function AddPaymentDialog({ open, onOpenChange, onPaymentUpdated }: AddPa
         ...formData,
         phone: whatsapp
       }
-  
-      console.log(paymentData)
+
   
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_URL_BACKEND}/addPayment`,

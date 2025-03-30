@@ -88,7 +88,7 @@ export const addClientToSheet = async (clientData) => {
     const scheduleString = selectedDays ? `${selectedDays} - ${time}` : "No definido";
 
     const values = [[name, modality, birthDate, whatsapp, planUrl, scheduleString, startService, lastAntro]];
-
+    
     const response = await sheets.spreadsheets.values.append({
       spreadsheetId: SPREADSHEET_ID,
       range: `${SHEET_NAME}!A:H`, 

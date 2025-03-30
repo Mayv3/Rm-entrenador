@@ -12,35 +12,66 @@ import { EditPaymentDialog } from "@/components/edit-payment-dialog";
 import { DeletePaymentDialog } from "@/components/delete-payment-dialog";
 import { PaymentStats } from "./payment-stats";
 import axios from "axios";
-import { Loader } from "@/components/ui/loader"
+import { Loader } from "@/components/ui/loader";
 
-const parseDate = (dateString) => {
-  if (!dateString) return null;
-  const date = new Date(dateString);
-  return isNaN(date.getTime()) ? null : date;
-};
 
 const determineSubscriptionStatus = (pago) => {
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
 
-  const fechaVencimiento = parseDate(pago.fecha_de_vencimiento);
-  if (!fechaVencimiento) return "Indefinido";
-  fechaVencimiento.setHours(0, 0, 0, 0);
+  const fechaPago = parseLocalDate(pago.fecha_de_pago);
+  const fechaVencimiento = parseLocalDate(pago.fecha_de_vencimiento);
 
-  const fechaPago = parseDate(pago.fecha_de_pago);
-
-  if (!fechaPago) {
-    const diasVencido = Math.floor((hoy - fechaVencimiento) / (1000 * 60 * 60 * 24));
-
-    if (diasVencido > 31) {
-      return "No renovado";
-    }
-
-    return hoy > fechaVencimiento ? "Vencido" : "Pagado";
+  if (!fechaVencimiento || isNaN(fechaVencimiento.getTime())) {
+    return "Indefinido";
   }
 
-  return "Pagado";
+  fechaVencimiento.setHours(0, 0, 0, 0);
+
+  const diasVencido = Math.floor((hoy - fechaVencimiento) / (1000 * 60 * 60 * 24));
+
+  if (diasVencido > 31) {
+    return "No renovado";
+  }
+
+  if (hoy > fechaVencimiento) {
+    return "Vencido";
+  }
+
+  if (fechaPago && !isNaN(fechaPago.getTime())) {
+    return "Pagado";
+  }
+
+  return "Pendiente";
+};
+
+const parseLocalDate = (dateString) => {
+  if (!dateString) return null;
+  if (dateString instanceof Date) return dateString;
+  
+  if (typeof dateString === 'string' && dateString.includes('/')) {
+    const [day, month, year] = dateString.split('/');
+    const parsedDate = new Date(year, month - 1, day);
+    return isNaN(parsedDate.getTime()) ? null : parsedDate;
+  }
+  
+  const isoDate = new Date(dateString);
+  if (!isNaN(isoDate.getTime())) return isoDate;
+  
+  return null;
+};
+
+const formatDate = (date) => {
+  if (!date) return "No definido";
+  
+  const parsedDate = date instanceof Date ? date : parseLocalDate(date);
+  if (!parsedDate || isNaN(parsedDate.getTime())) return "Fecha inválida";
+
+  const day = String(parsedDate.getDate()).padStart(2, '0');
+  const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
+  const year = parsedDate.getFullYear();
+  
+  return `${day}-${month}-${year}`;
 };
 
 export function PaymentsTable() {
@@ -55,8 +86,8 @@ export function PaymentsTable() {
 
   const activePayments = payments.filter(p => p.status !== "No renovado");
 
-  const totalPaid = activePayments.reduce((sum, p) => p.status === "Pagado" ? sum + p.monto : sum, 0);
-  const totalOverdue = activePayments.reduce((sum, p) => p.status === "Vencido" ? sum + p.monto : sum, 0);
+  const totalPaid = activePayments.reduce((sum, p) => p.status === "Pagado" ? sum + Number(p.monto) : sum, 0);
+  const totalOverdue = activePayments.reduce((sum, p) => p.status === "Vencido" ? sum + Number(p.monto) : sum, 0);
 
   const totalPaidStudents = activePayments.filter(p => p.status === "Pagado").length;
   const totalOverdueStudents = activePayments.filter(p => p.status === "Vencido").length;
@@ -64,14 +95,6 @@ export function PaymentsTable() {
   const loyaltyPercentage = totalActiveStudents > 0
     ? Math.round((totalPaidStudents / totalActiveStudents) * 100)
     : 0;
-
-  const parseLocalDate = (dateString) => {
-    if (!dateString) return null;
-    if (dateString instanceof Date) return dateString;
-    const date = new Date(dateString);
-    const offset = date.getTimezoneOffset() * 60000;
-    return new Date(date.getTime() + offset);
-  };
 
   const fetchPayments = async () => {
     try {
@@ -82,9 +105,7 @@ export function PaymentsTable() {
         monto: Number(payment.monto.toString().replace(/[^\d.-]/g, '')),
         fecha_de_pago: parseLocalDate(payment.fecha_de_pago),
         fecha_de_vencimiento: parseLocalDate(payment.fecha_de_vencimiento),
-        status: determineSubscriptionStatus({
-          fecha_de_vencimiento: payment.fecha_de_vencimiento
-        })
+        status: determineSubscriptionStatus(payment) // Pasa el objeto completo
       }));
       setPayments(normalizedPayments);
     } catch (error) {
@@ -120,7 +141,6 @@ export function PaymentsTable() {
     updateAtMidnight();
   }, [refreshPayments]);
 
-
   const filteredPayments = payments
     .filter((payment) =>
       payment.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -137,10 +157,6 @@ export function PaymentsTable() {
   const handleDelete = (payment) => {
     setSelectedPayment(payment);
     setIsDeletePaymentOpen(true);
-  };
-
-  const formatDate = (date) => {
-    return date ? date.toLocaleDateString() : "No definido";
   };
 
   const getDaysOverdue = (dueDate) => {
@@ -191,7 +207,7 @@ export function PaymentsTable() {
           onClick={() => setIsAddPaymentOpen(true)}
         >
           <Plus className="h-3.5 w-3.5" />
-          <span className="hidden xs:inline">Nuevo Pago</span>
+          <span className="hidden md:inline">Nuevo Pago</span>
         </Button>
       </div>
 
@@ -303,9 +319,10 @@ export function PaymentsTable() {
                             <TableCell className="font-medium">{payment.nombre}</TableCell>
                             <TableCell>
                               <div className="flex items-center">
-                                <span className={`inline-block w-[10px] h-[10px] rounded-full mr-2 ${payment.modalidad === 'Presencial' ? 'bg-green-500' :
+                                <span className={`inline-block w-[10px] h-[10px] rounded-full mr-2 ${
+                                  payment.modalidad === 'Presencial' ? 'bg-green-500' :
                                   payment.modalidad === 'Online' ? 'bg-blue-500' : 'bg-purple-500'
-                                  }`} />
+                                }`} />
                                 {payment.modalidad}
                               </div>
                             </TableCell>

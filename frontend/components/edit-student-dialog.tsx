@@ -53,16 +53,26 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
     file.nameFile.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
+  
   useEffect(() => {
     if (student) {  
-
-    const diasParts = student.dias.split(' - ');
-    const hora = diasParts.length > 1 ? diasParts[1] : '';
-    
+      console.log(student);
+      const diasParts = student.dias.split(' - ');
+      const hora = diasParts.length > 1 ? diasParts[1] : '';
+  
+      const formatDate = (dateString: string) => {
+        const parts = dateString.split("/");
+        if (parts.length === 3) {
+          const [day, month, year] = parts;
+          return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+        }
+        return dateString; 
+      };
+  
       setFormData({
         name: student.nombre || "",
         modality: student.modalidad || "",
-        birthDate: student.fecha_de_nacimiento || "",
+        birthDate: formatDate(student.fecha_de_nacimiento) || "",
         whatsapp: student.telefono || "",
         planUrl: student.plan || "",
         planType: "google",
@@ -75,14 +85,14 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
           saturday: student.dias?.includes("Sáb") || false,
           sunday: student.dias?.includes("Dom") || false,
         },
-        time: hora || "", //
-        startService: student.fecha_de_inicio || "",
-        lastAntro: student.ultima_antro || "",
-      })
+        time: hora || "",
+        startService: formatDate(student.fecha_de_inicio) || "",
+        lastAntro: formatDate(student.ultima_antro) || "",
+      });
     }
-  }, [student])
-
-
+  }, [student]);
+  
+  
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -117,7 +127,6 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
       const response = await axios.put(`${process.env.NEXT_PUBLIC_URL_BACKEND}/clients/${student.id}`, formData)
       
       if (response.status === 200) {
-        console.log("Alumno actualizado con éxito:", response.data)
         onStudentUpdated()
         onOpenChange(false)
       } else {
@@ -167,7 +176,7 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
             {/* Fecha de Nacimiento */}
             <div className="grid gap-2">
               <Label htmlFor="birthDate">Fecha de Nacimiento</Label>
-              <Input id="birthDate" name="birthDate" type="date" value={formData.birthDate} onChange={handleChange} required />
+              <Input id="birthDate" name="birthDate" type="date" value={formData.birthDate} onChange={handleChange}/>
             </div>
 
             {/* WhatsApp */}
@@ -237,16 +246,16 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
               <Input id="time" name="time" type="time" value={formData.time} onChange={handleChange} required />
             </div>
 
-            {/* Último entrenamiento */}
+            {/* Fecha de inicio */}
             <div className="grid gap-2">
               <Label htmlFor="startService">Fecha de inicio</Label>
-              <Input id="startService" name="startService" type="date" value={formData.startService} onChange={handleChange} required />
+              <Input id="startService" name="startService" type="date" value={formData.startService} onChange={handleChange}  />
             </div>
 
             {/* Última antropometría */}
             <div className="grid gap-2 mt-3">
               <Label htmlFor="lastAntro">Última antropometría</Label>
-              <Input id="lastAntro" name="lastAntro" type="date" value={formData.lastAntro} onChange={handleChange} required />
+              <Input id="lastAntro" name="lastAntro" type="date" value={formData.lastAntro} onChange={handleChange} />
             </div>
           </div>
 
