@@ -136,12 +136,7 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
 
             {/* Fecha de Nacimiento */}
 
-            <div className="grid gap-2 hidden sm:block">
-              <Label htmlFor="birthDate">Fecha de Nacimiento</Label>
-              <Input id="birthDate" name="birthDate" type="date" value={formData.birthDate} onChange={handleChange} />
-            </div>
-
-            <div className="grid gap-2 sm:hidden">
+            <div className="grid gap-2">
               <Label htmlFor="birthDate">Fecha de Nacimiento</Label>
               <Input
                 id="birthDate"
