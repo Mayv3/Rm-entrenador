@@ -41,7 +41,7 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
       sunday: false,
     },
     time: "",
-    startService: "", 
+    startService: "",
     lastAntro: "",
   })
 
@@ -136,9 +136,23 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
 
             {/* Fecha de Nacimiento */}
 
-            <div className="grid gap-2">
+            <div className="grid gap-2 hidden sm:block">
               <Label htmlFor="birthDate">Fecha de Nacimiento</Label>
               <Input id="birthDate" name="birthDate" type="date" value={formData.birthDate} onChange={handleChange} />
+            </div>
+
+            <div className="grid gap-2 sm:hidden">
+              <Label htmlFor="birthDate">Fecha de Nacimiento</Label>
+              <Input
+                id="birthDate"
+                name="birthDate"
+                placeholder="Ej: 01/12/2003"
+                type="text"
+                value={formData.birthDate}
+                onChange={handleChange}
+                pattern="^(0[1-9]|[12]\d|3[01])\/(0[1-9]|1[0-2])\/\d{4}$"
+                title="La fecha debe estar en el formato dd/mm/yyyy"
+              />
             </div>
 
             {/* WhatsApp */}
@@ -152,19 +166,11 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
 
             <div className="grid gap-2">
               <Label>Plan de Entrenamiento</Label>
-              <input
-                type="text"
-                placeholder="Buscar plan..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full p-2 border rounded sm:w-auto"
-              />
-
               <Select name="planUrl" value={formData.planUrl} onValueChange={(value) => setFormData((prev) => ({ ...prev, planUrl: value }))} required>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Selecciona un plan" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-50 overflow-y-auto">
                   {filteredFiles.map((file, index) => (
                     <SelectItem key={index} value={file.url}>
                       {file.nameFile}
@@ -208,19 +214,19 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
             </div>
           </div>
 
-           {/* Ultimo entrenamiento */}
+          {/* Ultimo entrenamiento */}
 
-           <div className="grid gap-2">
-              <Label htmlFor="startService">Fecha de inicio</Label>
-              <Input id="startService" name="startService" type="date" value={formData.startService} onChange={handleChange} required />
-            </div>    
+          <div className="grid gap-2">
+            <Label htmlFor="startService">Fecha de inicio</Label>
+            <Input id="startService" name="startService" type="date" value={formData.startService} onChange={handleChange} required />
+          </div>
 
-           {/* Ultimo antropometria */}
+          {/* Ultimo antropometria */}
 
-            <div className="grid gap-2 mt-3">
-              <Label htmlFor="lastAntro">Última antropometria</Label>
-              <Input id="lastAntro" name="lastAntro" type="date" value={formData.lastAntro} onChange={handleChange} />
-            </div>
+          <div className="grid gap-2 mt-3">
+            <Label htmlFor="lastAntro">Última antropometria</Label>
+            <Input id="lastAntro" name="lastAntro" type="date" value={formData.lastAntro} onChange={handleChange} />
+          </div>
 
           <DialogFooter className="mt-5">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

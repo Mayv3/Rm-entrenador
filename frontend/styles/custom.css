@@ -14,3 +14,8 @@ body {
   background-color: var(--primary-color);
   color: white;
 }
+
+
+[data-radix-select-icon] {
+  display: none;
+}

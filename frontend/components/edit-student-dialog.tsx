@@ -188,14 +188,6 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
             {/* Plan de Entrenamiento */}
             <div className="grid gap-2">
               <Label>Plan de Entrenamiento</Label>
-              <input
-                type="text"
-                placeholder="Buscar plan..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full p-2 border rounded sm:w-auto"
-              />
-
               <Select 
                 name="planUrl" 
                 value={formData.planUrl} 
