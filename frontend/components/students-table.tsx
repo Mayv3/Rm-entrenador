@@ -1,96 +1,82 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
+import { useEffect, useState } from "react";
 import {
   Calendar,
-  Check,
-  ChevronDown,
-  Download,
   Edit,
   FileText,
   Plus,
   Search,
-  SlidersHorizontal,
   Trash2,
-  X,
-} from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { AddStudentDialog } from "@/components/add-student-dialog"
-import { MessageSquare } from "lucide-react"
-import { EditStudentDialog } from "@/components/edit-student-dialog"
-import { DeleteStudentDialog } from "@/components/delete-student-dialog"
-import { Loader } from "@/components/ui/loader"
-
-import axios from "axios"
+  MessageSquare,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { AddStudentDialog } from "@/components/add-student-dialog";
+import { EditStudentDialog } from "@/components/edit-student-dialog";
+import { DeleteStudentDialog } from "@/components/delete-student-dialog";
+import { Loader } from "@/components/ui/loader";
+import useDoubleBackExit from "@/hooks/useDoubleBackExit";
+import axios from "axios";
 
 export function StudentsTable() {
-  const [searchTerm, setSearchTerm] = useState("")
-  const [isAddStudentOpen, setIsAddStudentOpen] = useState(false)
-  const [isEditStudentOpen, setIsEditStudentOpen] = useState(false)
-  const [isDeleteStudentOpen, setIsDeleteStudentOpen] = useState(false)
-  const [selectedStudent, setSelectedStudent] = useState<(typeof students)[0] | null>(null)
-  const [students, setStudents] = useState([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isAddStudentOpen, setIsAddStudentOpen] = useState(false);
+  const [isEditStudentOpen, setIsEditStudentOpen] = useState(false);
+  const [isDeleteStudentOpen, setIsDeleteStudentOpen] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [students, setStudents] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const isAnyModalOpen = isAddStudentOpen || isEditStudentOpen || isDeleteStudentOpen;
+  useDoubleBackExit(isAnyModalOpen);
 
   const filteredStudents = students.filter(
     (student) =>
       student?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       student?.modalidad?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student?.whatsapp?.includes(searchTerm),
-
+      student?.whatsapp?.includes(searchTerm)
   );
 
   const formatDate = (dateString: string) => {
-    if (!dateString) return 'N/A';
-  
+    if (!dateString) return "N/A";
     let dateParts;
-    if (dateString.includes('/')) {
-      dateParts = dateString.split('/').map(Number); 
-      dateString = `${dateParts[2]}-${String(dateParts[1]).padStart(2, '0')}-${String(dateParts[0]).padStart(2, '0')}`;
+    if (dateString.includes("/")) {
+      dateParts = dateString.split("/").map(Number);
+      dateString = `${dateParts[2]}-${String(dateParts[1]).padStart(2, "0")}-${String(dateParts[0]).padStart(2, "0")}`;
     }
-  
-    const [year, month, day] = dateString.split('-').map(Number);
+    const [year, month, day] = dateString.split("-").map(Number);
     const date = new Date(year, month - 1, day);
-  
-    if (isNaN(date.getTime())) return 'Fecha inválida';
-  
-    return date.toLocaleDateString('es-AR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
+    if (isNaN(date.getTime())) return "Fecha inválida";
+    return date.toLocaleDateString("es-AR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
     });
   };
-  
 
-  const handleEdit = (student: (typeof students)[0]) => {
-    setSelectedStudent(student)
-    setIsEditStudentOpen(true)
-  }
+  const handleEdit = (student) => {
+    setSelectedStudent(student);
+    setIsEditStudentOpen(true);
+  };
 
-  const handleDelete = (student: (typeof students)[0]) => {
-    setSelectedStudent(student)
-    setIsDeleteStudentOpen(true)
-  }
+  const handleDelete = (student) => {
+    setSelectedStudent(student);
+    setIsDeleteStudentOpen(true);
+  };
 
   const fetchStudents = async () => {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
       const response = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/getallstudents`);
       setStudents(response.data);
-      console.log(`Estudiantes:`, response.data);
+      console.log("Estudiantes:", response.data);
     } catch (error) {
       console.error("Error obteniendo los estudiantes:", error);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   };
 
@@ -112,7 +98,11 @@ export function StudentsTable() {
           />
         </div>
         <div className="flex flex-wrap justify-end gap-2">
-          <Button size="sm" className="fixed bottom-16 right-4 w-16 h-16 rounded-full gap-1 bg-[var(--primary-color)] hover:bg-[var(--primary-color)] md:static md:h-10 md:w-[150px] md:py-2 md:rounded-md" onClick={() => setIsAddStudentOpen(true)}>
+          <Button
+            size="sm"
+            className="fixed bottom-16 right-4 w-16 h-16 rounded-full gap-1 bg-[var(--primary-color)] hover:bg-[var(--primary-color)] md:static md:h-10 md:w-[150px] md:py-2 md:rounded-md"
+            onClick={() => setIsAddStudentOpen(true)}
+          >
             <Plus className="h-3.5 w-3.5" />
             <span className="hidden md:inline">Nuevo alumno</span>
           </Button>
@@ -137,14 +127,14 @@ export function StudentsTable() {
                   <div className="text-sm text-muted-foreground">{student.dias}</div>
                   <div className="flex items-center gap-2">
                     <div className="flex items-center justify-between w-full">
-                      <span className="text-sm text-muted-foreground">Fecha de nacimiento:{" "}</span>
+                      <span className="text-sm text-muted-foreground">Fecha de nacimiento: </span>
                       <span>{formatDate(student.fecha_de_nacimiento)}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="flex items-center justify-between w-full">
                       <span className="text-sm text-muted-foreground">Última antropometria:</span>
-                      <span>{formatDate((student.ultima_antro))}</span>
+                      <span>{formatDate(student.ultima_antro)}</span>
                     </div>
                   </div>
                   <div className="flex gap-2">
@@ -211,9 +201,15 @@ export function StudentsTable() {
                           <TableCell className="font-medium">{student.nombre}</TableCell>
                           <TableCell>
                             <div className="flex items-center">
-                              <span className={`inline-block w-[10px] h-[10px] rounded-full mr-2 ${student.modalidad === 'Presencial' ? 'bg-green-500' :
-                                student.modalidad === 'Online' ? 'bg-blue-500' : 'bg-purple-500'
-                                }`} />
+                              <span
+                                className={`inline-block w-[10px] h-[10px] rounded-full mr-2 ${
+                                  student.modalidad === "Presencial"
+                                    ? "bg-green-500"
+                                    : student.modalidad === "Online"
+                                    ? "bg-blue-500"
+                                    : "bg-purple-500"
+                                }`}
+                              />
                               {student.modalidad}
                             </div>
                           </TableCell>
@@ -225,7 +221,7 @@ export function StudentsTable() {
                             </div>
                           </TableCell>
                           <TableCell className="hidden lg:table-cell">
-                            {formatDate((student.fecha_de_inicio))}
+                            {formatDate(student.fecha_de_inicio)}
                           </TableCell>
                           <TableCell className="hidden lg:table-cell">
                             {formatDate(student.ultima_antro)}
@@ -296,17 +292,9 @@ export function StudentsTable() {
       {selectedStudent && (
         <>
           <EditStudentDialog open={isEditStudentOpen} onOpenChange={setIsEditStudentOpen} student={selectedStudent} onStudentUpdated={fetchStudents} />
-          <DeleteStudentDialog
-            open={isDeleteStudentOpen}
-            onOpenChange={setIsDeleteStudentOpen}
-            student={selectedStudent}
-            onStudentDeleted={fetchStudents}
-          />
+          <DeleteStudentDialog open={isDeleteStudentOpen} onOpenChange={setIsDeleteStudentOpen} student={selectedStudent} onStudentDeleted={fetchStudents} />
         </>
       )}
     </>
   );
-
-
 }
-

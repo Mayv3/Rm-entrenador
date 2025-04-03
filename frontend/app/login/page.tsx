@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -7,39 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import logoRodrigoEntrenador from "../../assets/LOGO-RODRIGO-VERDE.png";
 
-function useDoubleBackExit() {
-  const lastPress = useRef(0);
-
-  useEffect(() => {
-    window.history.pushState(null, "", window.location.href);
-
-    const handlePopState = () => {
-      const now = Date.now();
-
-      if (now - lastPress.current < 2000) {
-        window.removeEventListener("popstate", handlePopState);
-        window.history.back();
-      } else {
-        alert("Presiona dos veces para salir");
-        lastPress.current = now;
-        window.history.pushState(null, "", window.location.href);
-      }
-    };
-
-    window.addEventListener("popstate", handlePopState);
-
-    return () => {
-      window.removeEventListener("popstate", handlePopState);
-    };
-  }, []);
-}
-
 export default function LoginPage() {
   const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-
-  useDoubleBackExit();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -63,15 +35,15 @@ export default function LoginPage() {
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center items-center p-4">
       <Card className="w-full max-w-md">
         <div className="flex justify-center">
-          <CardHeader className="flex justify-center pb-2">
-            <Image
-              src={logoRodrigoEntrenador}
-              alt="Logo"
-              width={200}
-              className="mb-4"
-              priority
-            />
-          </CardHeader>
+        <CardHeader className="flex justify-center pb-2">
+          <Image
+            src={logoRodrigoEntrenador}
+            alt="Logo"
+            width={200}
+            className="mb-4"
+            priority
+          />
+        </CardHeader>
         </div>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
