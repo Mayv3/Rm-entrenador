@@ -64,6 +64,22 @@ export function EditPaymentDialog({ open, onOpenChange, payment, onPaymentUpdate
     setFormData((prev) => ({ ...prev, dueDate: calculateDueDate(prev.date, 1) }))
   }, [formData.date])
 
+  useEffect(() => {
+    if (open) {
+      history.pushState(null, "", location.href)
+      
+      const handlePopState = () => {
+        onOpenChange(false)
+      }
+      
+      window.addEventListener("popstate", handlePopState)
+      
+      return () => {
+        window.removeEventListener("popstate", handlePopState)
+      }
+    }
+  }, [open, onOpenChange])
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))

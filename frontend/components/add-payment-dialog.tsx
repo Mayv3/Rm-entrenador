@@ -104,7 +104,6 @@ export function AddPaymentDialog({ open, onOpenChange, onPaymentUpdated }: AddPa
         ...formData,
         phone: whatsapp
       }
-
   
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_URL_BACKEND}/addPayment`,
@@ -127,6 +126,25 @@ export function AddPaymentDialog({ open, onOpenChange, onPaymentUpdated }: AddPa
       console.error("Error al registrar el pago:", error)
     }
   }
+
+  // Efecto para manejar el botón "atrás" en el celular y cerrar el modal
+  useEffect(() => {
+    if (open) {
+      // Inserta un estado en el historial para capturar el evento de "volver atrás"
+      history.pushState(null, "", location.href)
+      
+      const handlePopState = () => {
+        onOpenChange(false)
+      }
+      
+      window.addEventListener("popstate", handlePopState)
+      
+      // Remueve el listener al cerrar el modal o desmontar el componente
+      return () => {
+        window.removeEventListener("popstate", handlePopState)
+      }
+    }
+  }, [open, onOpenChange])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

@@ -75,7 +75,6 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
       if (response.status === 200) {
         onStudentAdded();
         onOpenChange(false);
-        console.log(formData)
       } else {
         console.error("Error al agregar alumno:", response.data);
       }
@@ -96,6 +95,24 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
     fetchData()
   }, [])
 
+  useEffect(() => {
+    if (open) {
+      // Agrega un estado en el historial para que el botón "atrás" dispare el evento popstate
+      history.pushState(null, "", location.href)
+      
+      const handlePopState = () => {
+        onOpenChange(false)
+      }
+      
+      window.addEventListener("popstate", handlePopState)
+      
+      // Limpieza: remover el listener cuando el modal se cierre
+      return () => {
+        window.removeEventListener("popstate", handlePopState)
+      }
+    }
+  }, [open, onOpenChange])
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="h-screen md:h-auto max-w-full md:max-w-[900px] md:max-h-[90vh] overflow-y-scroll">
@@ -108,7 +125,6 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
-
             {/* Nombre */}
             <div className="grid gap-2">
               <Label htmlFor="name">Nombre Completo</Label>
@@ -116,7 +132,6 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
             </div>
 
             {/* Modalidad */}
-
             <div className="grid gap-2">
               <Label htmlFor="modality">Modalidad</Label>
               <Select
@@ -135,30 +150,24 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
             </div>
 
             {/* Fecha de Nacimiento */}
-
             <div className="grid gap-2">
               <Label htmlFor="birthDate">Fecha de Nacimiento</Label>
               <Input
                 id="birthDate"
                 name="birthDate"
-                placeholder="Ej: 01/12/2003"
-                type="text"
+                type="date"
                 value={formData.birthDate}
                 onChange={handleChange}
-                pattern="^(0[1-9]|[12]\d|3[01])\/(0[1-9]|1[0-2])\/\d{4}$"
-                title="La fecha debe estar en el formato dd/mm/yyyy"
               />
             </div>
 
             {/* WhatsApp */}
-
             <div className="grid gap-2">
               <Label htmlFor="whatsapp">Contacto WhatsApp</Label>
               <Input id="whatsapp" name="whatsapp" value={formData.whatsapp} onChange={handleChange} placeholder="+54 9 11 1234-5678" required />
             </div>
 
             {/* Plan de Entrenamiento */}
-
             <div className="grid gap-2">
               <Label>Plan de Entrenamiento</Label>
               <Select name="planUrl" value={formData.planUrl} onValueChange={(value) => setFormData((prev) => ({ ...prev, planUrl: value }))} required>
@@ -176,7 +185,6 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
             </div>
 
             {/* Días de Entrenamiento */}
-
             <div className="grid gap-2">
               <Label>Días de Entrenamiento</Label>
               <div className="flex flex-wrap gap-4">
@@ -202,24 +210,21 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
             </div>
 
             {/* Horario */}
-
             <div className="grid gap-2">
               <Label htmlFor="time">Horario</Label>
               <Input id="time" name="time" type="time" value={formData.time} onChange={handleChange} required />
             </div>
           </div>
 
-          {/* Ultimo entrenamiento */}
-
+          {/* Fecha de inicio */}
           <div className="grid gap-2">
             <Label htmlFor="startService">Fecha de inicio</Label>
             <Input id="startService" name="startService" type="date" value={formData.startService} onChange={handleChange} required />
           </div>
 
-          {/* Ultimo antropometria */}
-
+          {/* Última antropometría */}
           <div className="grid gap-2 mt-3">
-            <Label htmlFor="lastAntro">Última antropometria</Label>
+            <Label htmlFor="lastAntro">Última antropometría</Label>
             <Input id="lastAntro" name="lastAntro" type="date" value={formData.lastAntro} onChange={handleChange} />
           </div>
 

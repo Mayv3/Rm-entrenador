@@ -53,10 +53,8 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
     file.nameFile.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  
   useEffect(() => {
     if (student) {  
-      console.log(student);
       const diasParts = student.dias.split(' - ');
       const hora = diasParts.length > 1 ? diasParts[1] : '';
   
@@ -92,7 +90,6 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
     }
   }, [student]);
   
-  
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -105,7 +102,6 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
     fetchData()
   }, [])
 
-  
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
@@ -136,6 +132,25 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
       console.error("Error en la solicitud:", error)
     }
   }
+
+  // Agregamos el efecto para interceptar el evento "popstate" (botón atrás)
+  useEffect(() => {
+    if (open) {
+      // Inserta un estado en el historial para que el botón "atrás" dispare el evento
+      history.pushState(null, "", location.href)
+      
+      const handlePopState = () => {
+        onOpenChange(false)
+      }
+      
+      window.addEventListener("popstate", handlePopState)
+      
+      // Limpieza del listener cuando se cierra el modal
+      return () => {
+        window.removeEventListener("popstate", handlePopState)
+      }
+    }
+  }, [open, onOpenChange])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

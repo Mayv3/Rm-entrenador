@@ -75,7 +75,6 @@ export function StudentsTable() {
     try {
       const response = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/getallstudents`);
       setStudents(response.data);
-      console.log(`Estudiantes:`, response.data);
     } catch (error) {
       console.error("Error obteniendo los estudiantes:", error);
     } finally {
