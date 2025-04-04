@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,13 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Verificar si ya está autenticado y redirigir
+  useEffect(() => {
+    if (localStorage.getItem("isAuthenticated") === "true") {
+      router.push("/dashboard");
+    }
+  }, [router]);
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
@@ -24,7 +31,7 @@ export default function LoginPage() {
 
     if (username === "RM.ENTRENADOR" && password === "40518231") {
       localStorage.setItem("isAuthenticated", "true");
-      router.push("/dashboard");
+      router.replace("/dashboard");
     } else {
       setError("Usuario o contraseña incorrectos");
     }
@@ -35,15 +42,15 @@ export default function LoginPage() {
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center items-center p-4">
       <Card className="w-full max-w-md">
         <div className="flex justify-center">
-        <CardHeader className="flex justify-center pb-2">
-          <Image
-            src={logoRodrigoEntrenador}
-            alt="Logo"
-            width={200}
-            className="mb-4"
-            priority
-          />
-        </CardHeader>
+          <CardHeader className="flex justify-center pb-2">
+            <Image
+              src={logoRodrigoEntrenador}
+              alt="Logo"
+              width={200}
+              className="mb-4"
+              priority
+            />
+          </CardHeader>
         </div>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
