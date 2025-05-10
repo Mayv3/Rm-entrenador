@@ -18,7 +18,8 @@ import { MessageSquare } from "lucide-react"
 import { EditStudentDialog } from "@/components/edit-student-dialog"
 import { DeleteStudentDialog } from "@/components/delete-student-dialog"
 import { Loader } from "@/components/ui/loader"
-
+import { determineSubscriptionStatus } from "./payments-table"
+import { Badge } from "@/components/ui/badge"
 import axios from "axios"
 
 export function StudentsTable() {
@@ -29,36 +30,37 @@ export function StudentsTable() {
   const [selectedStudent, setSelectedStudent] = useState<(typeof students)[0] | null>(null)
   const [students, setStudents] = useState([])
   const [isLoading, setIsLoading] = useState(true)
+  const [payments, setPayments] = useState([]);
+  const [rawStudents, setRawStudents] = useState([]);
 
   const filteredStudents = students.filter(
     (student) =>
       student?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       student?.modalidad?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student?.whatsapp?.includes(searchTerm),
-
+      student?.whatsapp?.includes(searchTerm) ||
+      student?.status?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const formatDate = (dateString: string) => {
     if (!dateString) return 'N/A';
-  
+
     let dateParts;
     if (dateString.includes('/')) {
-      dateParts = dateString.split('/').map(Number); 
+      dateParts = dateString.split('/').map(Number);
       dateString = `${dateParts[2]}-${String(dateParts[1]).padStart(2, '0')}-${String(dateParts[0]).padStart(2, '0')}`;
     }
-  
+
     const [year, month, day] = dateString.split('-').map(Number);
     const date = new Date(year, month - 1, day);
-  
+
     if (isNaN(date.getTime())) return 'Fecha inválida';
-  
+
     return date.toLocaleDateString('es-AR', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric'
     });
   };
-  
 
   const handleEdit = (student: (typeof students)[0]) => {
     setSelectedStudent(student)
@@ -71,21 +73,72 @@ export function StudentsTable() {
   }
 
   const fetchStudents = async () => {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
-      const response = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/getallstudents`);
-      setStudents(response.data);
-    } catch (error) {
-      console.error("Error obteniendo los estudiantes:", error);
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/getallstudents`);
+      setRawStudents(res.data);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
+  };
+
+  const fetchPayments = async () => {
+    const res = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/getAllPayments`);
+    const pagosConStatus = res.data.map(p => ({
+      ...p,
+      status: determineSubscriptionStatus(p),
+    }));
+    setPayments(pagosConStatus);
   };
 
   useEffect(() => {
     fetchStudents();
+    fetchPayments();
   }, []);
 
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "Pagado":
+        return "bg-green-500";
+      case "Vencido":
+        return "bg-red-500";
+      case "No renovado":
+        return "bg-black text-white";
+      default:
+        return "bg-gray-500";
+    }
+  };
+
+  useEffect(() => {
+    if (rawStudents.length === 0 || payments.length === 0) return;
+
+    const merged = rawStudents.map(student => {
+      const pago = payments.find(p => Number(p.id_estudiante) === Number(student.id));
+
+      return {
+        ...student,
+        status: pago ? pago.status : 'Indefinido'
+      };
+    });
+
+    setStudents(merged);
+  }, [rawStudents, payments]);
+
+
+  const statusRank: Record<string, number> = {
+    Pagado: 1,
+    Vencido: 2,
+    'No renovado': 2,
+    Pendiente: 3,
+    Indefinido: 4,
+  };
+
+  const sortedStudents = filteredStudents.sort((a, b) => {
+    const ra = statusRank[a.status] ?? 99;
+    const rb = statusRank[b.status] ?? 99;
+    return ra - rb;
+  });
   return (
     <>
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -115,10 +168,15 @@ export function StudentsTable() {
         <>
           {/* Vista mobile */}
           <div className="grid gap-4 md:hidden">
-            {filteredStudents.map((student) => (
+            {sortedStudents.map((student) => (
               <Card key={student.id} className="p-3 py-4">
                 <CardHeader className="pb-4">
-                  <CardTitle>{student.nombre}</CardTitle>
+                  <div className="flex justify-between">
+                    <CardTitle>{student.nombre}</CardTitle>
+                    <Badge className={getStatusColor(student.status)}>
+                      {student.status}
+                    </Badge>
+                  </div>
                   <CardDescription className="text-lg">{student.modalidad}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-5">
@@ -177,7 +235,7 @@ export function StudentsTable() {
               <CardDescription>Gestiona la información de tus alumnos.</CardDescription>
             </CardHeader>
             <CardContent>
-              {filteredStudents.length > 0 ? (
+              {sortedStudents.length > 0 ? (
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
@@ -188,13 +246,14 @@ export function StudentsTable() {
                         <TableHead className="hidden md:table-cell">Fecha de Nacimiento</TableHead>
                         <TableHead className="hidden lg:table-cell">Fecha de Inicio</TableHead>
                         <TableHead className="hidden lg:table-cell">Última antropometria</TableHead>
+                        <TableHead>Estado</TableHead>
                         <TableHead>WhatsApp</TableHead>
                         <TableHead>Plan</TableHead>
                         <TableHead>Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredStudents.map((student) => (
+                      {sortedStudents.map((student) => (
                         <TableRow key={student.id}>
                           <TableCell className="font-medium">{student.nombre}</TableCell>
                           <TableCell>
@@ -217,6 +276,11 @@ export function StudentsTable() {
                           </TableCell>
                           <TableCell className="hidden lg:table-cell">
                             {formatDate(student.ultima_antro)}
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={getStatusColor(student.status)}>
+                              {student.status}
+                            </Badge>
                           </TableCell>
                           <TableCell>
                             <a

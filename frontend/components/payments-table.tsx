@@ -15,7 +15,7 @@ import axios from "axios";
 import { Loader } from "@/components/ui/loader";
 
 
-const determineSubscriptionStatus = (pago) => {
+export const determineSubscriptionStatus = (pago) => {
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
 
@@ -45,7 +45,7 @@ const determineSubscriptionStatus = (pago) => {
   return "Pendiente";
 };
 
-const parseLocalDate = (dateString) => {
+export const parseLocalDate = (dateString) => {
   if (!dateString) return null;
   if (dateString instanceof Date) return dateString;
   
@@ -85,10 +85,8 @@ export function PaymentsTable() {
   const [isLoading, setIsLoading] = useState(true);
 
   const activePayments = payments.filter(p => p.status !== "No renovado");
-
   const totalPaid = activePayments.reduce((sum, p) => p.status === "Pagado" ? sum + Number(p.monto) : sum, 0);
   const totalOverdue = activePayments.reduce((sum, p) => p.status === "Vencido" ? sum + Number(p.monto) : sum, 0);
-
   const totalPaidStudents = activePayments.filter(p => p.status === "Pagado").length;
   const totalOverdueStudents = activePayments.filter(p => p.status === "Vencido").length;
   const totalActiveStudents = activePayments.length;
@@ -114,6 +112,7 @@ export function PaymentsTable() {
       setIsLoading(false);
     }
   };
+
 
   useEffect(() => {
     fetchPayments();
@@ -188,6 +187,7 @@ export function PaymentsTable() {
         totalPaidStudents={totalPaidStudents}
         totalOverdueStudents={totalOverdueStudents}
         loyaltyPercentage={loyaltyPercentage}
+        totalStudents={payments.length}
       />
 
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">

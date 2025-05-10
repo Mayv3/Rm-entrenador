@@ -13,7 +13,6 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Verificar si ya está autenticado y redirigir
   useEffect(() => {
     if (localStorage.getItem("isAuthenticated") === "true") {
       router.push("/dashboard");

@@ -7,6 +7,7 @@ interface PaymentStatsProps {
   totalPaidStudents: number
   totalOverdueStudents: number
   loyaltyPercentage: number
+  totalStudents: number
 }
 
 export function PaymentStats({ 
@@ -14,7 +15,8 @@ export function PaymentStats({
   totalOverdue, 
   totalPaidStudents, 
   totalOverdueStudents, 
-  loyaltyPercentage 
+  loyaltyPercentage,
+  totalStudents
 }: PaymentStatsProps) {
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -61,7 +63,7 @@ export function PaymentStats({
             ></div>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Tasa de retención de alumnos
+            Tasa de retención de alumnos: {totalPaidStudents} de {totalStudents}
           </p>
         </CardContent>
       </Card>
