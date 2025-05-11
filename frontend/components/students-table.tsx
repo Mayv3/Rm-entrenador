@@ -174,7 +174,12 @@ export function StudentsTable() {
                   <div className="flex justify-between">
                     <CardTitle>{student.nombre}</CardTitle>
                     <Badge className={getStatusColor(student.status)}>
-                      {student.status}
+                      {student.status === "Pagado"
+                        ? "Activo"
+                        : student.status === "Indefinido"
+                          ? "Indefinido"
+                          : "Inactivo"
+                      }
                     </Badge>
                   </div>
                   <CardDescription className="text-lg">{student.modalidad}</CardDescription>
@@ -279,7 +284,12 @@ export function StudentsTable() {
                           </TableCell>
                           <TableCell>
                             <Badge className={getStatusColor(student.status)}>
-                              {student.status}
+                              {student.status === "Pagado"
+                                ? "Activo"
+                                : student.status === "Indefinido"
+                                  ? "Indefinido"
+                                  : "Inactivo"
+                              }
                             </Badge>
                           </TableCell>
                           <TableCell>
