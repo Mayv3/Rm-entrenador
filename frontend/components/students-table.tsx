@@ -114,16 +114,32 @@ export function StudentsTable() {
     if (rawStudents.length === 0 || payments.length === 0) return;
 
     const merged = rawStudents.map(student => {
-      const pago = payments.find(p => Number(p.id_estudiante) === Number(student.id));
+      // Filtra los pagos del alumno
+      const pagosAlumno = payments.filter(p => Number(p.id_estudiante) === Number(student.ID));
+
+      // Ordena por fecha_de_pago descendente (más reciente primero)
+      pagosAlumno.sort((a, b) => {
+        const fechaA = new Date(a.fecha_de_pago);
+        const fechaB = new Date(b.fecha_de_pago);
+        return fechaB - fechaA; // fecha más reciente primero
+      });
+
+      // Toma el pago más reciente
+      const ultimoPago = pagosAlumno[0];
+
+      // Asegúrate de usar el estado calculado (status) que viene de determineSubscriptionStatus
+      const statusAlumno = ultimoPago ? ultimoPago.status : 'Indefinido';
 
       return {
         ...student,
-        status: pago ? pago.status : 'Indefinido'
+        status: statusAlumno,
+        ultimoPago // para info adicional si quieres
       };
     });
 
     setStudents(merged);
   }, [rawStudents, payments]);
+
 
 
   const statusRank: Record<string, number> = {
@@ -169,7 +185,7 @@ export function StudentsTable() {
           {/* Vista mobile */}
           <div className="grid gap-4 md:hidden">
             {sortedStudents.map((student) => (
-              <Card key={student.id} className="p-3 py-4">
+              <Card key={student.ID} className="p-3 py-4">
                 <CardHeader className="pb-4">
                   <div className="flex justify-between">
                     <CardTitle>{student.nombre}</CardTitle>
@@ -178,7 +194,9 @@ export function StudentsTable() {
                         ? "Activo"
                         : student.status === "Indefinido"
                           ? "Indefinido"
-                          : "Inactivo"
+                          : student.status === "No renovado"
+                            ? "No renovado"
+                            : "Inactivo"
                       }
                     </Badge>
                   </div>
@@ -258,8 +276,8 @@ export function StudentsTable() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {sortedStudents.map((student) => (
-                        <TableRow key={student.id}>
+                      {sortedStudents.map((student, index) => (
+                        <TableRow key={student.ID}>
                           <TableCell className="font-medium">{student.nombre}</TableCell>
                           <TableCell>
                             <div className="flex items-center">
@@ -283,12 +301,14 @@ export function StudentsTable() {
                             {formatDate(student.ultima_antro)}
                           </TableCell>
                           <TableCell>
-                            <Badge className={getStatusColor(student.status)}>
+                            <Badge className={`${getStatusColor(student.status)} h-8 w-[120px] flex justify-center items-center`}>
                               {student.status === "Pagado"
                                 ? "Activo"
                                 : student.status === "Indefinido"
                                   ? "Indefinido"
-                                  : "Inactivo"
+                                  : student.status === "No renovado"
+                                    ? "No renovado"
+                                    : "Inactivo"
                               }
                             </Badge>
                           </TableCell>

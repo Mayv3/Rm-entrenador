@@ -310,12 +310,12 @@ export function PaymentsTable() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredPayments.map((payment) => {
+                      {filteredPayments.map((payment, index) => {
                         const isOverdue = payment.status === "Vencido";
                         const daysOverdue = isOverdue ? getDaysOverdue(payment.fecha_de_vencimiento) : 0;
 
                         return (
-                          <TableRow key={payment.id}>
+                          <TableRow key={index}>
                             <TableCell className="font-medium">{payment.nombre}</TableCell>
                             <TableCell>
                               <div className="flex items-center">
@@ -337,7 +337,7 @@ export function PaymentsTable() {
                               {formatDate(payment.fecha_de_vencimiento)}
                             </TableCell>
                             <TableCell>
-                              <Badge className={getStatusColor(payment.status)}>
+                              <Badge className={`${getStatusColor(payment.status)} h-8 w-[120px] flex justify-center items-center`}>
                                 {payment.status}
                               </Badge>
                             </TableCell>

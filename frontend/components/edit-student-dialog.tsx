@@ -120,7 +120,7 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      const response = await axios.put(`${process.env.NEXT_PUBLIC_URL_BACKEND}/clients/${student.id}`, formData)
+      const response = await axios.put(`${process.env.NEXT_PUBLIC_URL_BACKEND}/clients/${student.ID}`, formData)
       
       if (response.status === 200) {
         onStudentUpdated()

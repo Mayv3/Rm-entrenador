@@ -48,11 +48,11 @@ export function AddPaymentDialog({ open, onOpenChange, onPaymentUpdated }: AddPa
         const studentsData = response.data
         
         const students = studentsData.map(student => ({
-          id: String(student.id),
+          id: String(student.ID),
           name: student.nombre,
           whatsapp: student.telefono
         }))
-
+        console.log(students)
         setStudents(students)
       } catch (error) {
         console.error("Error al obtener los nombres:", error)

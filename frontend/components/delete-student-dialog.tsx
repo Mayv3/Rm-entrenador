@@ -34,7 +34,7 @@ export function DeleteStudentDialog({ open, onOpenChange, student, onStudentDele
   const handleDelete = async () => {
     setIsDeleting(true)
     try {
-      await axios.delete(`${process.env.NEXT_PUBLIC_URL_BACKEND}/clients/${student.id}`)
+      await axios.delete(`${process.env.NEXT_PUBLIC_URL_BACKEND}/clients/${student.ID}`)
       
       if (onStudentDeleted) {
         onStudentDeleted()
