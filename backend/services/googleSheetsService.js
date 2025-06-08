@@ -28,7 +28,7 @@ export const getClientsFromSheet = async (req, res) => {
   try {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
-      range: `${SHEET_NAME}!A1:H`,
+      range: `${SHEET_NAME}!A1:I`,
     });
 
     let rows = response.data.values;
@@ -39,18 +39,14 @@ export const getClientsFromSheet = async (req, res) => {
 
     const headers = rows[0];
 
-    const data = rows.slice(1)
+    const data = response.data.values.slice(1)
       .filter(row => row.some(cell => cell && cell.trim() !== ""))
-      .map((row, index) => {
+      .map((row) => {
         const client = {};
         headers.forEach((header, i) => {
           client[header] = row[i] || "";
         });
-        return {
-          id: index + 1, 
-          rowNumber: index + 2,
-          ...client
-        };
+        return client;
       });
 
     data.sort((a, b) => {
@@ -80,6 +76,7 @@ export const addClientToSheet = async (clientData) => {
       sunday: "Dom",
     };
 
+    // Crear el string con días y hora
     const selectedDays = Object.entries(schedule)
       .filter(([_, value]) => value)
       .map(([day]) => daysMap[day])
@@ -87,26 +84,53 @@ export const addClientToSheet = async (clientData) => {
 
     const scheduleString = selectedDays ? `${selectedDays} - ${time}` : "No definido";
 
-    const values = [[name, modality, birthDate, whatsapp, planUrl, scheduleString, startService, lastAntro]];
-    
+    // Obtener IDs existentes para calcular el máximo
+    const responseIds = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${SHEET_NAME}!I2:I`, // IDs sin encabezado
+    });
+
+    const ids = responseIds.data.values?.flat()
+      .map(id => parseInt(id))
+      .filter(n => !isNaN(n)) || [];
+
+    const maxId = ids.length > 0 ? Math.max(...ids) : 0;
+    const newID = maxId + 1;
+
+    // Preparar valores para insertar (9 columnas, columna I = ID)
+    const values = [[
+      name,          // A
+      modality,      // B
+      birthDate,     // C
+      whatsapp,      // D
+      planUrl,       // E
+      scheduleString,// F
+      startService,  // G
+      lastAntro,     // H
+      newID          // I
+    ]];
+
     const response = await sheets.spreadsheets.values.append({
       spreadsheetId: SPREADSHEET_ID,
-      range: `${SHEET_NAME}!A:H`, 
+      range: `${SHEET_NAME}!A:I`,
       valueInputOption: "USER_ENTERED",
-      insertDataOption: "INSERT_ROWS", 
+      insertDataOption: "INSERT_ROWS",
       requestBody: { values },
     });
 
+    // Extraer número de fila insertada para devolver
     const updatedRange = response.data.updates.updatedRange;
-    const rowId = parseInt(updatedRange.match(/A(\d+)/)[1]);
+    const rowNumber = parseInt(updatedRange.match(/[A-Z]+(\d+)/)[1]);
+    console.log(values)
 
     return {
       success: true,
       status: 200,
       message: "Cliente agregado con éxito",
-      id: rowId - 1, 
-      rowNumber: rowId 
+      id: newID,
+      rowNumber
     };
+
   } catch (error) {
     console.error("Error al agregar cliente:", error);
     throw new Error("No se pudo agregar el cliente a la hoja");
@@ -119,11 +143,11 @@ export const deleteClientFromSheet = async (req, res) => {
   try {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
-      range: `${SHEET_NAME}!A2:H`,
+      range: `${SHEET_NAME}!A2:I`,
     });
 
     const rows = response.data.values;
-    
+
     if (!rows || rows.length === 0) {
       return res.status(404).json({ message: "No se encontraron clientes" });
     }
@@ -134,7 +158,7 @@ export const deleteClientFromSheet = async (req, res) => {
     }
 
     const rowToDelete = rows[numericId - 1];
-    const rowNumber = numericId + 1; 
+    const rowNumber = numericId + 1;
 
     await sheets.spreadsheets.batchUpdate({
       spreadsheetId: SPREADSHEET_ID,
@@ -144,7 +168,7 @@ export const deleteClientFromSheet = async (req, res) => {
             range: {
               sheetId: 0,
               dimension: "ROWS",
-              startIndex: rowNumber - 1, 
+              startIndex: rowNumber - 1,
               endIndex: rowNumber,
             },
           },
@@ -176,7 +200,7 @@ export const updateClientInSheet = async (req, res) => {
   try {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
-      range: `${SHEET_NAME}!A2:H`,
+      range: `${SHEET_NAME}!A2:I`,
     });
 
     const rows = response.data.values;
