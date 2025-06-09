@@ -48,7 +48,7 @@ export function EditPaymentDialog({ open, onOpenChange, payment, onPaymentUpdate
       const dueDate = payment.fecha_de_vencimiento ? new Date(payment.fecha_de_vencimiento).toISOString().split("T")[0] : calculateDueDate(paymentDate, 1)
 
       setFormData({
-        id: payment.payment.id_estudiante,
+        id: payment.id_estudiante,
         studentId: payment.id_estudiante || "",
         name: payment.nombre || "",
         amount: payment.monto?.toString() || "",
