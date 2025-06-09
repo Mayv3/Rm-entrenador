@@ -157,6 +157,7 @@ export const deletePaymentFromSheet = async (req, res) => {
 export const updatePaymentInSheet = async (req, res) => {
   const { id } = req.params;
   const paymentData = req.body;
+  console.log("Datos recibidos para actualizar:", paymentData);
 
   try {
     const response = await sheets.spreadsheets.values.get({
@@ -165,17 +166,18 @@ export const updatePaymentInSheet = async (req, res) => {
     });
 
     const rows = response.data.values;
-    const rowIndex = parseInt(id) - 1;
 
-    if (rowIndex < 0 || rowIndex >= rows.length) {
+    const rowIndex = rows.findIndex(row => row[0] === id.toString());
+
+    if (rowIndex === -1) {
       return res.status(404).json({ message: "Pago no encontrado" });
     }
 
-    const { studentId, name, modality,  amount, date, dueDate, status, phone} = paymentData;
+    const { studentId, name, modality, amount, date, dueDate, status, phone } = paymentData;
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: SPREADSHEET_ID,
-      range: `${SHEET_NAME}!A${rowIndex + 2}:h${rowIndex + 2}`,
+      range: `${SHEET_NAME}!A${rowIndex + 2}:H${rowIndex + 2}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values: [[studentId, name, amount, date, dueDate, modality, phone, status]],
@@ -187,7 +189,6 @@ export const updatePaymentInSheet = async (req, res) => {
       message: "Pago actualizado con éxito",
       updatedData: paymentData,
     });
-
   } catch (error) {
     console.error("Error al actualizar:", error);
     res.status(500).json({ message: "Error al editar el pago" });
