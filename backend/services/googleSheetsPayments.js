@@ -155,7 +155,7 @@ export const deletePaymentFromSheet = async (req, res) => {
 };
   
 export const updatePaymentInSheet = async (req, res) => {
-  const { id } = req.params;
+  const { studentId } = req.params;
   const paymentData = req.body;
   console.log("Datos recibidos para actualizar:", paymentData);
 
@@ -166,21 +166,20 @@ export const updatePaymentInSheet = async (req, res) => {
     });
 
     const rows = response.data.values;
-
-    const rowIndex = rows.findIndex(row => row[0] === id.toString());
+    const rowIndex = rows.findIndex(row => row[0] === studentId.toString());
 
     if (rowIndex === -1) {
-      return res.status(404).json({ message: "Pago no encontrado" });
+      return res.status(404).json({ message: "Pago no encontrado por studentId" });
     }
 
-    const { studentId, name, modality, amount, date, dueDate, status, phone } = paymentData;
+    const { studentId: sid, name, modality, amount, date, dueDate, status, phone } = paymentData;
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: SPREADSHEET_ID,
       range: `${SHEET_NAME}!A${rowIndex + 2}:H${rowIndex + 2}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
-        values: [[studentId, name, amount, date, dueDate, modality, phone, status]],
+        values: [[sid, name, amount, date, dueDate, modality, phone, status]],
       },
     });
 

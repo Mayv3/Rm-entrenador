@@ -9,7 +9,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogFooter 
+  DialogFooter
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -46,10 +46,10 @@ export function EditPaymentDialog({ open, onOpenChange, payment, onPaymentUpdate
     if (payment) {
       const paymentDate = payment.fecha_de_pago ? new Date(payment.fecha_de_pago).toISOString().split("T")[0] : new Date().toISOString().split("T")[0]
       const dueDate = payment.fecha_de_vencimiento ? new Date(payment.fecha_de_vencimiento).toISOString().split("T")[0] : calculateDueDate(paymentDate, 1)
-      
+
       setFormData({
         id: payment.id,
-        studentId: payment.student_id || "",
+        studentId: payment.id_estudiante || "",
         name: payment.nombre || "",
         amount: payment.monto?.toString() || "",
         date: paymentDate,
@@ -65,15 +65,16 @@ export function EditPaymentDialog({ open, onOpenChange, payment, onPaymentUpdate
   }, [formData.date])
 
   useEffect(() => {
+  
     if (open) {
       history.pushState(null, "", location.href)
-      
+      console.log(payment)
       const handlePopState = () => {
         onOpenChange(false)
       }
-      
+
       window.addEventListener("popstate", handlePopState)
-      
+
       return () => {
         window.removeEventListener("popstate", handlePopState)
       }
@@ -95,15 +96,18 @@ export function EditPaymentDialog({ open, onOpenChange, payment, onPaymentUpdate
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     try {
       const paymentData = {
         ...formData,
-        phone: formData.whatsapp
+        phone: formData.whatsapp,
+        studentId: formData.studentId || payment?.id_estudiante || ""
       }
 
+      console.log("Datos que se van a enviar:", paymentData);
+
       const response = await axios.put(
-        `${process.env.NEXT_PUBLIC_URL_BACKEND}/payment/${formData.id}`, 
+        `${process.env.NEXT_PUBLIC_URL_BACKEND}/payment/${formData.id}`,
         paymentData
       )
 
@@ -138,58 +142,58 @@ export function EditPaymentDialog({ open, onOpenChange, payment, onPaymentUpdate
 
             <div className="grid gap-2">
               <Label htmlFor="amount">Monto</Label>
-              <Input 
-                id="amount" 
-                name="amount" 
-                type="number" 
-                value={formData.amount} 
-                onChange={handleChange} 
-                placeholder="0.00" 
-                required 
+              <Input
+                id="amount"
+                name="amount"
+                type="number"
+                value={formData.amount}
+                onChange={handleChange}
+                placeholder="0.00"
+                required
               />
             </div>
 
             <div className="grid gap-2">
               <Label htmlFor="date">Fecha de Pago</Label>
-              <Input 
-                id="date" 
-                name="date" 
-                type="date" 
-                value={formData.date} 
-                onChange={handleChange} 
-                required 
+              <Input
+                id="date"
+                name="date"
+                type="date"
+                value={formData.date}
+                onChange={handleChange}
+                required
               />
             </div>
 
             <div className="grid gap-2">
               <Label htmlFor="dueDate">Fecha de Vencimiento</Label>
-              <Input 
-                id="dueDate" 
-                name="dueDate" 
-                type="date" 
-                value={formData.dueDate} 
-                readOnly 
+              <Input
+                id="dueDate"
+                name="dueDate"
+                type="date"
+                value={formData.dueDate}
+                readOnly
               />
             </div>
 
             <div className="grid grid-cols-3 gap-2">
-              <Button 
-                className="bg-[var(--primary-color)] hover:bg-[var(--primary-color)]" 
-                type="button" 
+              <Button
+                className="bg-[var(--primary-color)] hover:bg-[var(--primary-color)]"
+                type="button"
                 onClick={() => handleDueDateChange(1)}
               >
                 Pagar 1 Mes
               </Button>
-              <Button 
-                className="bg-[var(--primary-color)] hover:bg-[var(--primary-color)]" 
-                type="button" 
+              <Button
+                className="bg-[var(--primary-color)] hover:bg-[var(--primary-color)]"
+                type="button"
                 onClick={() => handleDueDateChange(3)}
               >
                 Pagar 3 Meses
               </Button>
-              <Button 
-                className="bg-[var(--primary-color)] hover:bg-[var(--primary-color)]" 
-                type="button" 
+              <Button
+                className="bg-[var(--primary-color)] hover:bg-[var(--primary-color)]"
+                type="button"
                 onClick={() => handleDueDateChange(6)}
               >
                 Pagar 6 Meses
@@ -197,8 +201,8 @@ export function EditPaymentDialog({ open, onOpenChange, payment, onPaymentUpdate
             </div>
             <div className="grid gap-2">
               <Label htmlFor="modality">Modalidad</Label>
-              <Select 
-                value={formData.modality} 
+              <Select
+                value={formData.modality}
                 onValueChange={(value) => handleSelectChange("modality", value)}
               >
                 <SelectTrigger>
