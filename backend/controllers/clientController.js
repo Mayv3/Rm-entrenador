@@ -20,7 +20,7 @@ export const addClient = async (req, res) => {
 
 export const deleteClient = async (req, res) => {
   try {
-    const result = await deleteClientFromSheet(req, res); // Pasa res aquí
+    const result = await deleteClientFromSheet(req, res);
     res.json(result);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -29,9 +29,10 @@ export const deleteClient = async (req, res) => {
 
 export const editClient = async (req, res) => {
   try {
-    const result = await updateClientInSheet(req, res); // Pasa res aquí
+    const result = await updateClientInSheet(req);
     res.json(result);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Error en editClient:", error.message);
+    res.status(400).json({ message: error.message });
   }
 };

@@ -188,61 +188,56 @@ export const deleteClientFromSheet = async (req) => {
   };
 };
 
-export const updateClientInSheet = async (req, res) => {
+export const updateClientInSheet = async (req) => {
   const { id } = req.params;
   const clientData = req.body;
 
-  try {
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `${SHEET_NAME}!A2:I`,
-    });
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${SHEET_NAME}!A2:I`,
+  });
 
-    const rows = response.data.values;
-    const rowIndex = parseInt(id) - 1;
+  const rows = response.data.values;
+  const rowIndex = parseInt(id) - 1;
 
-    if (rowIndex < 0 || rowIndex >= rows.length) {
-      return res.status(404).json({ message: "Cliente no encontrado" });
-    }
-
-    const { name, modality, birthDate, whatsapp, planUrl, schedule, time, startService, lastAntro } = clientData;
-
-    const daysMap = {
-      monday: "Lun",
-      tuesday: "Mar",
-      wednesday: "Mié",
-      thursday: "Jue",
-      friday: "Vie",
-      saturday: "Sáb",
-      sunday: "Dom",
-    };
-
-    const selectedDays = Object.entries(schedule)
-      .filter(([_, value]) => value)
-      .map(([day]) => daysMap[day])
-      .join(", ");
-
-    const scheduleString = `${selectedDays} - ${time}`;
-
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `${SHEET_NAME}!A${rowIndex + 2}:h${rowIndex + 2}`,
-      valueInputOption: "USER_ENTERED",
-      requestBody: {
-        values: [[name, modality, birthDate, whatsapp, planUrl, scheduleString, startService, lastAntro]],
-      },
-    });
-
-    res.json({
-      success: true,
-      message: "Cliente actualizado con éxito",
-      updatedData: clientData,
-    });
-
-  } catch (error) {
-    console.error("Error al actualizar:", error);
-    res.status(500).json({ message: "Error al editar el cliente" });
+  if (rowIndex < 0 || rowIndex >= rows.length) {
+    throw new Error("Cliente no encontrado");
   }
+
+  const { name, modality, birthDate, whatsapp, planUrl, schedule, time, startService, lastAntro } = clientData;
+
+  const daysMap = {
+    monday: "Lun",
+    tuesday: "Mar",
+    wednesday: "Mié",
+    thursday: "Jue",
+    friday: "Vie",
+    saturday: "Sáb",
+    sunday: "Dom",
+  };
+
+  const selectedDays = Object.entries(schedule)
+    .filter(([_, value]) => value)
+    .map(([day]) => daysMap[day])
+    .join(", ");
+
+  const scheduleString = `${selectedDays} - ${time}`;
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${SHEET_NAME}!A${rowIndex + 2}:H${rowIndex + 2}`,
+    valueInputOption: "USER_ENTERED",
+    requestBody: {
+      values: [[name, modality, birthDate, whatsapp, planUrl, scheduleString, startService, lastAntro]],
+    },
+  });
+
+  return {
+    success: true,
+    message: "Cliente actualizado con éxito",
+    updatedData: clientData,
+  };
 };
+
 
 
