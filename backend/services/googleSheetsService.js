@@ -137,60 +137,55 @@ export const addClientToSheet = async (clientData) => {
   }
 };
 
-export const deleteClientFromSheet = async (req, res) => {
+export const deleteClientFromSheet = async (req) => {
   const { id } = req.params;
 
-  try {
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `${SHEET_NAME}!A2:I`,
-    });
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${SHEET_NAME}!A2:I`,
+  });
 
-    const rows = response.data.values;
+  const rows = response.data.values;
 
-    if (!rows || rows.length === 0) {
-      return res.status(404).json({ message: "No se encontraron clientes" });
-    }
-
-    const numericId = parseInt(id);
-    if (isNaN(numericId) || numericId < 1 || numericId > rows.length) {
-      return res.status(400).json({ message: "ID de cliente inválido" });
-    }
-
-    const rowToDelete = rows[numericId - 1];
-    const rowNumber = numericId + 1;
-
-    await sheets.spreadsheets.batchUpdate({
-      spreadsheetId: SPREADSHEET_ID,
-      requestBody: {
-        requests: [{
-          deleteDimension: {
-            range: {
-              sheetId: 0,
-              dimension: "ROWS",
-              startIndex: rowNumber - 1,
-              endIndex: rowNumber,
-            },
-          },
-        }],
-      },
-    });
-
-    res.json({
-      success: true,
-      message: "Cliente eliminado con éxito",
-      deletedClient: {
-        id: numericId,
-        ...Object.fromEntries(
-          ['name', 'modality', 'birthDate', 'whatsapp', 'planUrl', 'schedule', 'lastTraining']
-            .map((key, i) => [key, rowToDelete[i]])
-        )
-      }
-    });
-  } catch (error) {
-    console.error("Error al eliminar cliente:", error);
-    res.status(500).json({ message: "Error al eliminar el cliente" });
+  if (!rows || rows.length === 0) {
+    throw new Error("No se encontraron clientes");
   }
+
+  const numericId = parseInt(id);
+  if (isNaN(numericId) || numericId < 1 || numericId > rows.length) {
+    throw new Error("ID de cliente inválido");
+  }
+
+  const rowToDelete = rows[numericId - 1];
+  const rowNumber = numericId + 1;
+
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: SPREADSHEET_ID,
+    requestBody: {
+      requests: [{
+        deleteDimension: {
+          range: {
+            sheetId: 0,
+            dimension: "ROWS",
+            startIndex: rowNumber - 1,
+            endIndex: rowNumber,
+          },
+        },
+      }],
+    },
+  });
+
+  return {
+    success: true,
+    message: "Cliente eliminado con éxito",
+    deletedClient: {
+      id: numericId,
+      ...Object.fromEntries(
+        ['name', 'modality', 'birthDate', 'whatsapp', 'planUrl', 'schedule', 'lastTraining']
+          .map((key, i) => [key, rowToDelete[i]])
+      )
+    }
+  };
 };
 
 export const updateClientInSheet = async (req, res) => {
