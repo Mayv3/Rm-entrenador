@@ -28,12 +28,6 @@ export const determineSubscriptionStatus = (pago) => {
 
   fechaVencimiento.setHours(0, 0, 0, 0);
 
-  const diasVencido = Math.floor((hoy - fechaVencimiento) / (1000 * 60 * 60 * 24));
-
-  if (diasVencido > 31) {
-    return "No renovado";
-  }
-
   if (hoy > fechaVencimiento) {
     return "Vencido";
   }
@@ -84,7 +78,7 @@ export function PaymentsTable() {
   const [refreshPayments, setRefreshPayments] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  const activePayments = payments.filter(p => p.status !== "No renovado");
+  const activePayments = payments.filter(p => p.status !== "Vencidos");
   const totalPaid = activePayments.reduce((sum, p) => p.status === "Pagado" ? sum + Number(p.monto) : sum, 0);
   const totalOverdue = activePayments.reduce((sum, p) => p.status === "Vencido" ? sum + Number(p.monto) : sum, 0);
   const totalPaidStudents = activePayments.filter(p => p.status === "Pagado").length;
@@ -172,8 +166,6 @@ export function PaymentsTable() {
         return "bg-green-500";
       case "Vencido":
         return "bg-red-500";
-      case "No renovado":
-        return "bg-black text-white";
       default:
         return "bg-gray-500";
     }

@@ -103,8 +103,6 @@ export function StudentsTable() {
         return "bg-green-500";
       case "Vencido":
         return "bg-red-500";
-      case "No renovado":
-        return "bg-black text-white";
       default:
         return "bg-gray-500";
     }
@@ -145,7 +143,6 @@ export function StudentsTable() {
   const statusRank: Record<string, number> = {
     Pagado: 1,
     Vencido: 2,
-    'No renovado': 2,
     Pendiente: 3,
     Indefinido: 4,
   };
@@ -194,8 +191,6 @@ export function StudentsTable() {
                         ? "Activo"
                         : student.status === "Indefinido"
                           ? "Indefinido"
-                          : student.status === "No renovado"
-                            ? "No renovado"
                             : "Inactivo"
                       }
                     </Badge>
@@ -306,8 +301,6 @@ export function StudentsTable() {
                                 ? "Activo"
                                 : student.status === "Indefinido"
                                   ? "Indefinido"
-                                  : student.status === "No renovado"
-                                    ? "No renovado"
                                     : "Inactivo"
                               }
                             </Badge>

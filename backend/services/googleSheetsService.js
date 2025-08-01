@@ -139,6 +139,7 @@ export const addClientToSheet = async (clientData) => {
 
 export const deleteClientFromSheet = async (req) => {
   const { id } = req.params;
+  console.log("ID recibido:", id);
 
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
@@ -151,13 +152,16 @@ export const deleteClientFromSheet = async (req) => {
     throw new Error("No se encontraron clientes");
   }
 
-  const numericId = parseInt(id);
-  if (isNaN(numericId) || numericId < 1 || numericId > rows.length) {
-    throw new Error("ID de cliente inválido");
+  // Buscar en columna I (índice 8) la fila con ese ID
+  const rowIndex = rows.findIndex(row => row[8] === id);
+  console.log("rowIndex encontrado:", rowIndex);
+
+  if (rowIndex === -1) {
+    throw new Error("Cliente no encontrado");
   }
 
-  const rowToDelete = rows[numericId - 1];
-  const rowNumber = numericId + 1;
+  const rowToDelete = rows[rowIndex];
+  const rowNumber = rowIndex + 2; // A2 es la primera fila de datos
 
   await sheets.spreadsheets.batchUpdate({
     spreadsheetId: SPREADSHEET_ID,
@@ -179,7 +183,7 @@ export const deleteClientFromSheet = async (req) => {
     success: true,
     message: "Cliente eliminado con éxito",
     deletedClient: {
-      id: numericId,
+      id,
       ...Object.fromEntries(
         ['name', 'modality', 'birthDate', 'whatsapp', 'planUrl', 'schedule', 'lastTraining']
           .map((key, i) => [key, rowToDelete[i]])
@@ -198,9 +202,11 @@ export const updateClientInSheet = async (req) => {
   });
 
   const rows = response.data.values;
-  const rowIndex = parseInt(id) - 1;
 
-  if (rowIndex < 0 || rowIndex >= rows.length) {
+  const rowIndex = rows.findIndex(row => row[8] === id);
+  console.log("rowIndex encontrado para update:", rowIndex);
+
+  if (rowIndex === -1) {
     throw new Error("Cliente no encontrado");
   }
 
@@ -216,16 +222,18 @@ export const updateClientInSheet = async (req) => {
     sunday: "Dom",
   };
 
-  const selectedDays = Object.entries(schedule)
+  const selectedDays = Object.entries(schedule || {})
     .filter(([_, value]) => value)
     .map(([day]) => daysMap[day])
     .join(", ");
 
   const scheduleString = `${selectedDays} - ${time}`;
 
+  const rowNumber = rowIndex + 2;
+
   await sheets.spreadsheets.values.update({
     spreadsheetId: SPREADSHEET_ID,
-    range: `${SHEET_NAME}!A${rowIndex + 2}:H${rowIndex + 2}`,
+    range: `${SHEET_NAME}!A${rowNumber}:H${rowNumber}`,
     valueInputOption: "USER_ENTERED",
     requestBody: {
       values: [[name, modality, birthDate, whatsapp, planUrl, scheduleString, startService, lastAntro]],
@@ -238,6 +246,7 @@ export const updateClientInSheet = async (req) => {
     updatedData: clientData,
   };
 };
+
 
 
 
