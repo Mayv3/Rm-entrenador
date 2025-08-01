@@ -24,6 +24,7 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
 
+    console.log('Hola! Que vas a ver en la consola?')
     const formData = new FormData(e.currentTarget);
     const username = formData.get("username");
     const password = formData.get("password");
