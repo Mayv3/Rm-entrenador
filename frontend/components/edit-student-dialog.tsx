@@ -17,10 +17,28 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 
+// Interfaces de TypeScript
+interface File {
+  nameFile: string;
+  url: string;
+}
+
+interface Student {
+  ID: number;
+  nombre: string;
+  modalidad: string;
+  fecha_de_nacimiento: string;
+  telefono: string;
+  plan: string;
+  dias: string;
+  fecha_de_inicio: string;
+  ultima_antro: string;
+}
+
 interface EditStudentDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  student: any
+  student: Student
   onStudentUpdated: () => void
 }
 
@@ -46,7 +64,7 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
     lastAntro: "",
   })
 
-  const [files, setFiles] = useState([])
+  const [files, setFiles] = useState<File[]>([])
   const [searchTerm, setSearchTerm] = useState("")
 
   const filteredFiles = files.filter((file) =>
@@ -54,19 +72,19 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
   )
 
   useEffect(() => {
-    if (student) {  
+    if (student) {
       const diasParts = student.dias.split(' - ');
       const hora = diasParts.length > 1 ? diasParts[1] : '';
-  
+
       const formatDate = (dateString: string) => {
         const parts = dateString.split("/");
         if (parts.length === 3) {
           const [day, month, year] = parts;
           return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
         }
-        return dateString; 
+        return dateString;
       };
-  
+
       setFormData({
         name: student.nombre || "",
         modality: student.modalidad || "",
@@ -89,7 +107,7 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
       });
     }
   }, [student]);
-  
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -121,7 +139,7 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
     e.preventDefault()
     try {
       const response = await axios.put(`${process.env.NEXT_PUBLIC_URL_BACKEND}/clients/${student.ID}`, formData)
-      
+
       if (response.status === 200) {
         onStudentUpdated()
         onOpenChange(false)
@@ -138,13 +156,13 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
     if (open) {
       // Inserta un estado en el historial para que el botón "atrás" dispare el evento
       history.pushState(null, "", location.href)
-      
+
       const handlePopState = () => {
         onOpenChange(false)
       }
-      
+
       window.addEventListener("popstate", handlePopState)
-      
+
       // Limpieza del listener cuando se cierra el modal
       return () => {
         window.removeEventListener("popstate", handlePopState)
@@ -172,18 +190,18 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
 
             {/* Modalidad */}
             <div className="grid gap-2">
-              <Label htmlFor="modality">Modalidad</Label>
+              <Label htmlFor="modality">Tipo de plan</Label>
               <Select
                 value={formData.modality}
                 onValueChange={(value) => setFormData((prev) => ({ ...prev, modality: value }))}
               >
                 <SelectTrigger className="w-full sm:w-[180px]">
-                  <SelectValue placeholder="Seleccionar modalidad" />
+                  <SelectValue placeholder="Seleccionar tipo de plan" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Presencial">Presencial</SelectItem>
-                  <SelectItem value="Online">Online</SelectItem>
-                  <SelectItem value="Híbrido">Híbrido</SelectItem>
+                  <SelectItem value="Básico">Básico</SelectItem>
+                  <SelectItem value="Estándar">Estándar</SelectItem>
+                  <SelectItem value="Premium">Premium</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -191,7 +209,7 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
             {/* Fecha de Nacimiento */}
             <div className="grid gap-2">
               <Label htmlFor="birthDate">Fecha de Nacimiento</Label>
-              <Input id="birthDate" name="birthDate" type="date" value={formData.birthDate} onChange={handleChange}/>
+              <Input id="birthDate" name="birthDate" type="date" value={formData.birthDate} onChange={handleChange} />
             </div>
 
             {/* WhatsApp */}
@@ -203,10 +221,10 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
             {/* Plan de Entrenamiento */}
             <div className="grid gap-2">
               <Label>Plan de Entrenamiento</Label>
-              <Select 
-                name="planUrl" 
-                value={formData.planUrl} 
-                onValueChange={(value) => setFormData((prev) => ({ ...prev, planUrl: value }))} 
+              <Select
+                name="planUrl"
+                value={formData.planUrl}
+                onValueChange={(value) => setFormData((prev) => ({ ...prev, planUrl: value }))}
                 required
               >
                 <SelectTrigger className="w-full">
@@ -238,8 +256,8 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
                   <div key={index} className="flex items-center space-x-2">
                     <Checkbox
                       id={key}
-                      checked={formData.schedule[key]}
-                      onCheckedChange={(checked) => handleScheduleChange(key, checked)}
+                      checked={formData.schedule[key as keyof typeof formData.schedule]}
+                      onCheckedChange={(checked) => handleScheduleChange(key as keyof typeof formData.schedule, checked as boolean)}
                     />
                     <Label htmlFor={key}>{label}</Label>
                   </div>
@@ -256,7 +274,7 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
             {/* Fecha de inicio */}
             <div className="grid gap-2">
               <Label htmlFor="startService">Fecha de inicio</Label>
-              <Input id="startService" name="startService" type="date" value={formData.startService} onChange={handleChange}  />
+              <Input id="startService" name="startService" type="date" value={formData.startService} onChange={handleChange} />
             </div>
 
             {/* Última antropometría */}

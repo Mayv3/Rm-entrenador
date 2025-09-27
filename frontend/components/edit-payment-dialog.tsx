@@ -65,7 +65,7 @@ export function EditPaymentDialog({ open, onOpenChange, payment, onPaymentUpdate
   }, [formData.date])
 
   useEffect(() => {
-  
+
     if (open) {
       history.pushState(null, "", location.href)
       console.log(payment)
@@ -200,18 +200,18 @@ export function EditPaymentDialog({ open, onOpenChange, payment, onPaymentUpdate
               </Button>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="modality">Modalidad</Label>
+              <Label htmlFor="modality">Tipo de plan</Label>
               <Select
                 value={formData.modality}
                 onValueChange={(value) => handleSelectChange("modality", value)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar modalidad" />
+                  <SelectValue placeholder="Seleccionar tipo de plan" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Presencial">Presencial</SelectItem>
-                  <SelectItem value="Online">Online</SelectItem>
-                  <SelectItem value="Híbrido">Híbrido</SelectItem>
+                  <SelectItem value="Básico">Básico</SelectItem>
+                  <SelectItem value="Estándar">Estándar</SelectItem>
+                  <SelectItem value="Premium">Premium</SelectItem>
                 </SelectContent>
               </Select>
             </div>

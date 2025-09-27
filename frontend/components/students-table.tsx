@@ -22,22 +22,45 @@ import { determineSubscriptionStatus } from "./payments-table"
 import { Badge } from "@/components/ui/badge"
 import axios from "axios"
 
+// Interfaces de TypeScript
+interface Student {
+  ID: number;
+  nombre: string;
+  modalidad: string;
+  dias: string;
+  fecha_de_nacimiento: string;
+  fecha_de_inicio: string;
+  ultima_antro: string;
+  telefono: string;
+  whatsapp?: string;
+  plan: string;
+  status?: string;
+  ultimoPago?: Payment;
+}
+
+interface Payment {
+  id_estudiante: number;
+  fecha_de_pago: string;
+  status: string;
+  [key: string]: any; // Para otras propiedades que puedan existir
+}
+
 export function StudentsTable() {
   const [searchTerm, setSearchTerm] = useState("")
   const [isAddStudentOpen, setIsAddStudentOpen] = useState(false)
   const [isEditStudentOpen, setIsEditStudentOpen] = useState(false)
   const [isDeleteStudentOpen, setIsDeleteStudentOpen] = useState(false)
-  const [selectedStudent, setSelectedStudent] = useState<(typeof students)[0] | null>(null)
-  const [students, setStudents] = useState([])
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
+  const [students, setStudents] = useState<Student[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [payments, setPayments] = useState([]);
-  const [rawStudents, setRawStudents] = useState([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [rawStudents, setRawStudents] = useState<Student[]>([]);
 
   const filteredStudents = students.filter(
     (student) =>
       student?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       student?.modalidad?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student?.whatsapp?.includes(searchTerm) ||
+      (student?.whatsapp && student.whatsapp.includes(searchTerm)) ||
       student?.status?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -62,12 +85,12 @@ export function StudentsTable() {
     });
   };
 
-  const handleEdit = (student: (typeof students)[0]) => {
+  const handleEdit = (student: Student) => {
     setSelectedStudent(student)
     setIsEditStudentOpen(true)
   }
 
-  const handleDelete = (student: (typeof students)[0]) => {
+  const handleDelete = (student: Student) => {
     setSelectedStudent(student)
     setIsDeleteStudentOpen(true)
   }
@@ -75,7 +98,7 @@ export function StudentsTable() {
   const fetchStudents = async () => {
     setIsLoading(true);
     try {
-      const res = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/getallstudents`);
+      const res = await axios.get<Student[]>(`${process.env.NEXT_PUBLIC_URL_BACKEND}/getallstudents`);
       setRawStudents(res.data);
     } finally {
       setIsLoading(false);
@@ -83,8 +106,8 @@ export function StudentsTable() {
   };
 
   const fetchPayments = async () => {
-    const res = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/getAllPayments`);
-    const pagosConStatus = res.data.map(p => ({
+    const res = await axios.get<Payment[]>(`${process.env.NEXT_PUBLIC_URL_BACKEND}/getAllPayments`);
+    const pagosConStatus = res.data.map((p: Payment) => ({
       ...p,
       status: determineSubscriptionStatus(p),
     }));
@@ -97,7 +120,7 @@ export function StudentsTable() {
   }, []);
 
 
-  const getStatusColor = (status) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
       case "Pagado":
         return "bg-green-500";
@@ -111,7 +134,7 @@ export function StudentsTable() {
   useEffect(() => {
     if (rawStudents.length === 0 || payments.length === 0) return;
 
-    const merged = rawStudents.map(student => {
+    const merged: Student[] = rawStudents.map(student => {
       // Filtra los pagos del alumno
       const pagosAlumno = payments.filter(p => Number(p.id_estudiante) === Number(student.ID));
 
@@ -119,7 +142,7 @@ export function StudentsTable() {
       pagosAlumno.sort((a, b) => {
         const fechaA = new Date(a.fecha_de_pago);
         const fechaB = new Date(b.fecha_de_pago);
-        return fechaB - fechaA; // fecha más reciente primero
+        return fechaB.getTime() - fechaA.getTime(); // fecha más reciente primero
       });
 
       // Toma el pago más reciente
@@ -148,8 +171,8 @@ export function StudentsTable() {
   };
 
   const sortedStudents = filteredStudents.sort((a, b) => {
-    const ra = statusRank[a.status] ?? 99;
-    const rb = statusRank[b.status] ?? 99;
+    const ra = statusRank[a.status || 'Indefinido'] ?? 99;
+    const rb = statusRank[b.status || 'Indefinido'] ?? 99;
     return ra - rb;
   });
   return (
@@ -186,12 +209,12 @@ export function StudentsTable() {
                 <CardHeader className="pb-4">
                   <div className="flex justify-between">
                     <CardTitle>{student.nombre}</CardTitle>
-                    <Badge className={getStatusColor(student.status)}>
+                    <Badge className={getStatusColor(student.status || 'Indefinido')}>
                       {student.status === "Pagado"
                         ? "Activo"
                         : student.status === "Indefinido"
                           ? "Indefinido"
-                            : "Inactivo"
+                          : "Inactivo"
                       }
                     </Badge>
                   </div>
@@ -202,13 +225,13 @@ export function StudentsTable() {
                   <div className="flex items-center gap-2">
                     <div className="flex items-center justify-between w-full">
                       <span className="text-sm text-muted-foreground">Fecha de nacimiento:{" "}</span>
-                      <span>{formatDate(student.fecha_de_nacimiento)}</span>
+                      <span>{formatDate(student.fecha_de_nacimiento || '')}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="flex items-center justify-between w-full">
                       <span className="text-sm text-muted-foreground">Última antropometria:</span>
-                      <span>{formatDate((student.ultima_antro))}</span>
+                      <span>{formatDate(student.ultima_antro || '')}</span>
                     </div>
                   </div>
                   <div className="flex gap-2">
@@ -259,7 +282,7 @@ export function StudentsTable() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Nombre Completo</TableHead>
-                        <TableHead>Modalidad</TableHead>
+                        <TableHead>Tipo de plan</TableHead>
                         <TableHead className="hidden lg:table-cell">Días y Turnos</TableHead>
                         <TableHead className="hidden md:table-cell">Fecha de Nacimiento</TableHead>
                         <TableHead className="hidden lg:table-cell">Fecha de Inicio</TableHead>
@@ -276,9 +299,14 @@ export function StudentsTable() {
                           <TableCell className="font-medium">{student.nombre}</TableCell>
                           <TableCell>
                             <div className="flex items-center">
-                              <span className={`inline-block w-[10px] h-[10px] rounded-full mr-2 ${student.modalidad === 'Presencial' ? 'bg-green-500' :
-                                student.modalidad === 'Online' ? 'bg-blue-500' : 'bg-purple-500'
-                                }`} />
+                              <span
+                                className={`inline-block w-[10px] h-[10px] rounded-full mr-2 ${student.modalidad === "Básico"
+                                    ? "bg-[#f44336]"
+                                    : student.modalidad === "Estándar"
+                                      ? "bg-[#ff9800]"
+                                      : "bg-[#7cb342]"
+                                  }`}
+                              />
                               {student.modalidad}
                             </div>
                           </TableCell>
@@ -286,22 +314,22 @@ export function StudentsTable() {
                           <TableCell className="hidden md:table-cell">
                             <div className="flex items-center gap-2">
                               <Calendar className="h-4 w-4 text-muted-foreground" />
-                              {formatDate(student.fecha_de_nacimiento)}
+                              {formatDate(student.fecha_de_nacimiento || '')}
                             </div>
                           </TableCell>
                           <TableCell className="hidden lg:table-cell">
-                            {formatDate((student.fecha_de_inicio))}
+                            {formatDate(student.fecha_de_inicio || '')}
                           </TableCell>
                           <TableCell className="hidden lg:table-cell">
-                            {formatDate(student.ultima_antro)}
+                            {formatDate(student.ultima_antro || '')}
                           </TableCell>
                           <TableCell>
-                            <Badge className={`${getStatusColor(student.status)} h-8 w-[120px] flex justify-center items-center`}>
+                            <Badge className={`${getStatusColor(student.status || 'Indefinido')} h-8 w-[120px] flex justify-center items-center`}>
                               {student.status === "Pagado"
                                 ? "Activo"
                                 : student.status === "Indefinido"
                                   ? "Indefinido"
-                                    : "Inactivo"
+                                  : "Inactivo"
                               }
                             </Badge>
                           </TableCell>
@@ -374,14 +402,15 @@ export function StudentsTable() {
           <DeleteStudentDialog
             open={isDeleteStudentOpen}
             onOpenChange={setIsDeleteStudentOpen}
-            student={selectedStudent}
+            student={{
+              id: selectedStudent.ID.toString(),
+              name: selectedStudent.nombre
+            }}
             onStudentDeleted={fetchStudents}
           />
         </>
       )}
     </>
   );
-
-
 }
 

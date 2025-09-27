@@ -56,7 +56,7 @@ export function DeletePaymentDialog({ open, onOpenChange, payment, onPaymentDele
           </DialogTitle>
           <DialogDescription>
             Esta acción no se puede deshacer. Esto eliminará permanentemente el pago de{" "}
-            <strong>{payment.studentName}</strong> por <strong>${payment.monto.toLocaleString()}</strong>.
+            <strong>{payment.studentName}</strong> por <strong>${payment.amount.toLocaleString()}</strong>.
           </DialogDescription>
         </DialogHeader>
         <div className="py-4">

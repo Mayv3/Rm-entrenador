@@ -9,12 +9,19 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogFooter 
+  DialogFooter
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import axios from "axios"
+
+// Interfaces de TypeScript
+interface Student {
+  id: string;
+  name: string;
+  whatsapp: string;
+}
 
 interface AddPaymentDialogProps {
   open: boolean
@@ -39,15 +46,15 @@ export function AddPaymentDialog({ open, onOpenChange, onPaymentUpdated }: AddPa
     modality: "",
   })
 
-  const [students, setStudents] = useState([])
+  const [students, setStudents] = useState<Student[]>([])
 
   useEffect(() => {
     const getStudents = async () => {
       try {
         const response = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/getallstudents`)
         const studentsData = response.data
-        
-        const students = studentsData.map(student => ({
+
+        const students: Student[] = studentsData.map((student: any) => ({
           id: String(student.ID),
           name: student.nombre,
           whatsapp: student.telefono
@@ -90,26 +97,26 @@ export function AddPaymentDialog({ open, onOpenChange, onPaymentUpdated }: AddPa
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-  
+
     if (!formData.studentId || !formData.modality) {
       alert("Todos los campos son obligatorios")
       return
     }
-  
+
     try {
       const selectedStudent = students.find(student => student.id === formData.studentId)
       const whatsapp = selectedStudent?.whatsapp || ""
-  
+
       const paymentData = {
         ...formData,
         phone: whatsapp
       }
-  
+
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_URL_BACKEND}/addPayment`,
         paymentData
       )
-  
+
       if (response.status === 200 || response.status === 201) {
         onOpenChange(false)
         onPaymentUpdated()
@@ -127,19 +134,16 @@ export function AddPaymentDialog({ open, onOpenChange, onPaymentUpdated }: AddPa
     }
   }
 
-  // Efecto para manejar el botón "atrás" en el celular y cerrar el modal
   useEffect(() => {
     if (open) {
-      // Inserta un estado en el historial para capturar el evento de "volver atrás"
       history.pushState(null, "", location.href)
-      
+
       const handlePopState = () => {
         onOpenChange(false)
       }
-      
+
       window.addEventListener("popstate", handlePopState)
-      
-      // Remueve el listener al cerrar el modal o desmontar el componente
+
       return () => {
         window.removeEventListener("popstate", handlePopState)
       }
@@ -173,76 +177,76 @@ export function AddPaymentDialog({ open, onOpenChange, onPaymentUpdated }: AddPa
 
             <div className="grid gap-2">
               <Label htmlFor="amount">Monto</Label>
-              <Input 
-                id="amount" 
-                name="amount" 
-                type="number" 
-                value={formData.amount} 
-                onChange={handleChange} 
-                placeholder="0.00" 
-                required 
+              <Input
+                id="amount"
+                name="amount"
+                type="number"
+                value={formData.amount}
+                onChange={handleChange}
+                placeholder="0.00"
+                required
               />
             </div>
 
             <div className="grid gap-2">
               <Label htmlFor="date">Fecha de Pago</Label>
-              <Input 
-                id="date" 
-                name="date" 
-                type="date" 
-                value={formData.date} 
-                onChange={handleChange} 
-                required 
+              <Input
+                id="date"
+                name="date"
+                type="date"
+                value={formData.date}
+                onChange={handleChange}
+                required
               />
             </div>
 
             <div className="grid gap-2">
               <Label htmlFor="dueDate">Fecha de Vencimiento</Label>
-              <Input 
-                id="dueDate" 
-                name="dueDate" 
-                type="date" 
-                value={formData.dueDate} 
-                readOnly 
+              <Input
+                id="dueDate"
+                name="dueDate"
+                type="date"
+                value={formData.dueDate}
+                readOnly
               />
             </div>
 
             <div className="grid grid-cols-3 gap-2">
-              <Button 
-                className="bg-[var(--primary-color)] hover:bg-[var(--primary-color)]" 
-                type="button" 
+              <Button
+                className="bg-[var(--primary-color)] hover:bg-[var(--primary-color)]"
+                type="button"
                 onClick={() => handleDueDateChange(1)}
               >
                 Pagar 1 Mes
               </Button>
-              <Button 
-                className="bg-[var(--primary-color)] hover:bg-[var(--primary-color)]" 
-                type="button" 
+              <Button
+                className="bg-[var(--primary-color)] hover:bg-[var(--primary-color)]"
+                type="button"
                 onClick={() => handleDueDateChange(3)}
               >
                 Pagar 3 Meses
               </Button>
-              <Button 
-                className="bg-[var(--primary-color)] hover:bg-[var(--primary-color)]" 
-                type="button" 
+              <Button
+                className="bg-[var(--primary-color)] hover:bg-[var(--primary-color)]"
+                type="button"
                 onClick={() => handleDueDateChange(6)}
               >
                 Pagar 6 Meses
               </Button>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="modality">Modalidad</Label>
-              <Select 
-                value={formData.modality} 
+              <Label htmlFor="modality">Tipo de plan</Label>
+              <Select
+                value={formData.modality}
                 onValueChange={(value) => handleSelectChange("modality", value)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar modalidad" />
+                  <SelectValue placeholder="Seleccionar tipo de plan" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Presencial">Presencial</SelectItem>
-                  <SelectItem value="Online">Online</SelectItem>
-                  <SelectItem value="Híbrido">Híbrido</SelectItem>
+                  <SelectItem value="Básico">Básico</SelectItem>
+                  <SelectItem value="Estándar">Estándar</SelectItem>
+                  <SelectItem value="Premium">Premium</SelectItem>
                 </SelectContent>
               </Select>
             </div>

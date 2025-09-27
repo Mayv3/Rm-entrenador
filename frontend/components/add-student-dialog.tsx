@@ -17,6 +17,12 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 
+// Interfaces de TypeScript
+interface File {
+  nameFile: string;
+  url: string;
+}
+
 interface AddStudentDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -45,7 +51,7 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
     lastAntro: "",
   })
 
-  const [files, setFiles] = useState([])
+  const [files, setFiles] = useState<File[]>([])
   const [searchTerm, setSearchTerm] = useState("")
 
   const filteredFiles = files.filter((file) =>
@@ -99,13 +105,13 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
     if (open) {
       // Agrega un estado en el historial para que el botón "atrás" dispare el evento popstate
       history.pushState(null, "", location.href)
-      
+
       const handlePopState = () => {
         onOpenChange(false)
       }
-      
+
       window.addEventListener("popstate", handlePopState)
-      
+
       // Limpieza: remover el listener cuando el modal se cierre
       return () => {
         window.removeEventListener("popstate", handlePopState)
@@ -133,18 +139,18 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
 
             {/* Modalidad */}
             <div className="grid gap-2">
-              <Label htmlFor="modality">Modalidad</Label>
+              <Label htmlFor="modality">Tipo de plan</Label>
               <Select
                 value={formData.modality}
                 onValueChange={(value) => setFormData((prev) => ({ ...prev, modality: value }))}
               >
-                <SelectTrigger className="w-full sm:w-[180px]">
-                  <SelectValue placeholder="Seleccionar modalidad" />
+                <SelectTrigger className="w-full sm:w-[230px]">
+                  <SelectValue placeholder="Seleccionar tipo de plan" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Presencial">Presencial</SelectItem>
-                  <SelectItem value="Online">Online</SelectItem>
-                  <SelectItem value="Híbrido">Híbrido</SelectItem>
+                  <SelectItem value="Básico">Básico</SelectItem>
+                  <SelectItem value="Estándar">Estándar</SelectItem>
+                  <SelectItem value="Premium">Premium</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -174,7 +180,7 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Selecciona un plan" />
                 </SelectTrigger>
-                <SelectContent className="max-h-50 overflow-y-auto">
+                <SelectContent className="max-h-[300px] overflow-y-auto">
                   {filteredFiles.map((file, index) => (
                     <SelectItem key={index} value={file.url}>
                       {file.nameFile}
@@ -200,8 +206,8 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
                   <div key={index} className="flex items-center space-x-2">
                     <Checkbox
                       id={key}
-                      checked={formData.schedule[key]}
-                      onCheckedChange={(checked) => handleScheduleChange(key, checked)}
+                      checked={formData.schedule[key as keyof typeof formData.schedule]}
+                      onCheckedChange={(checked) => handleScheduleChange(key as keyof typeof formData.schedule, checked as boolean)}
                     />
                     <Label htmlFor={key}>{label}</Label>
                   </div>

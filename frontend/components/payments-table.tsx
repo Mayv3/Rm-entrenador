@@ -14,8 +14,19 @@ import { PaymentStats } from "./payment-stats";
 import axios from "axios";
 import { Loader } from "@/components/ui/loader";
 
+interface Payment {
+  id: number;
+  nombre: string;
+  modalidad: string;
+  monto: number;
+  fecha_de_pago: Date | null;
+  fecha_de_vencimiento: Date | null;
+  status: string;
+  whatsapp: string;
+  [key: string]: any;
+}
 
-export const determineSubscriptionStatus = (pago) => {
+export const determineSubscriptionStatus = (pago: any): string => {
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
 
@@ -39,13 +50,13 @@ export const determineSubscriptionStatus = (pago) => {
   return "Pendiente";
 };
 
-export const parseLocalDate = (dateString) => {
+export const parseLocalDate = (dateString: any): Date | null => {
   if (!dateString) return null;
   if (dateString instanceof Date) return dateString;
   
   if (typeof dateString === 'string' && dateString.includes('/')) {
     const [day, month, year] = dateString.split('/');
-    const parsedDate = new Date(year, month - 1, day);
+    const parsedDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
     return isNaN(parsedDate.getTime()) ? null : parsedDate;
   }
   
@@ -55,7 +66,7 @@ export const parseLocalDate = (dateString) => {
   return null;
 };
 
-const formatDate = (date) => {
+const formatDate = (date: any): string => {
   if (!date) return "No definido";
   
   const parsedDate = date instanceof Date ? date : parseLocalDate(date);
@@ -73,8 +84,8 @@ export function PaymentsTable() {
   const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(false);
   const [isEditPaymentOpen, setIsEditPaymentOpen] = useState(false);
   const [isDeletePaymentOpen, setIsDeletePaymentOpen] = useState(false);
-  const [selectedPayment, setSelectedPayment] = useState(null);
-  const [payments, setPayments] = useState([]);
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+  const [payments, setPayments] = useState<Payment[]>([]);
   const [refreshPayments, setRefreshPayments] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -91,8 +102,8 @@ export function PaymentsTable() {
   const fetchPayments = async () => {
     try {
       setIsLoading(true);
-      const response = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/getAllPayments`);
-      const normalizedPayments = response.data.map(payment => ({
+      const response = await axios.get<any[]>(`${process.env.NEXT_PUBLIC_URL_BACKEND}/getAllPayments`);
+      const normalizedPayments: Payment[] = response.data.map((payment: any) => ({
         ...payment,
         monto: Number(payment.monto.toString().replace(/[^\d.-]/g, '')),
         fecha_de_pago: parseLocalDate(payment.fecha_de_pago),
@@ -119,7 +130,7 @@ export function PaymentsTable() {
         now.getDate() + 1,
         0, 0, 0
       );
-      const timeToMidnight = midnight - now;
+      const timeToMidnight = midnight.getTime() - now.getTime();
 
       setTimeout(() => {
         setRefreshPayments(prev => !prev);
@@ -140,27 +151,31 @@ export function PaymentsTable() {
       payment.modalidad?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       payment.status?.toLowerCase().includes(searchTerm.toLowerCase())
     )
-    .sort((a, b) => (b.fecha_de_vencimiento || 0) - (a.fecha_de_vencimiento || 0));
+    .sort((a, b) => {
+      const dateA = a.fecha_de_vencimiento?.getTime() || 0;
+      const dateB = b.fecha_de_vencimiento?.getTime() || 0;
+      return dateB - dateA;
+    });
 
-  const handleEdit = (payment) => {
+  const handleEdit = (payment: Payment) => {
     setSelectedPayment(payment);
     setIsEditPaymentOpen(true);
   };
 
-  const handleDelete = (payment) => {
+  const handleDelete = (payment: Payment) => {
     setSelectedPayment(payment);
     setIsDeletePaymentOpen(true);
   };
 
-  const getDaysOverdue = (dueDate) => {
+  const getDaysOverdue = (dueDate: Date | null): number => {
     if (!dueDate) return 0;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     dueDate.setHours(0, 0, 0, 0);
-    return Math.floor((today - dueDate) / (1000 * 60 * 60 * 24));
+    return Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
   };
 
-  const getStatusColor = (status) => {
+  const getStatusColor = (status: string): string => {
     switch (status) {
       case "Pagado":
         return "bg-green-500";
@@ -292,7 +307,7 @@ export function PaymentsTable() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Alumno</TableHead>
-                        <TableHead>Modalidad</TableHead>
+                        <TableHead>Tipo de plan</TableHead>
                         <TableHead>Monto</TableHead>
                         <TableHead>Último Pago</TableHead>
                         <TableHead>Vencimiento</TableHead>
@@ -312,8 +327,8 @@ export function PaymentsTable() {
                             <TableCell>
                               <div className="flex items-center">
                                 <span className={`inline-block w-[10px] h-[10px] rounded-full mr-2 ${
-                                  payment.modalidad === 'Presencial' ? 'bg-green-500' :
-                                  payment.modalidad === 'Online' ? 'bg-blue-500' : 'bg-purple-500'
+                                  payment.modalidad === 'Básico' ? 'bg-[#f44336]' :
+                                  payment.modalidad === 'Estándar' ? 'bg-[#ff9800]' : 'bg-[#7cb342]'
                                 }`} />
                                 {payment.modalidad}
                               </div>
@@ -395,7 +410,11 @@ export function PaymentsTable() {
           <DeletePaymentDialog
             open={isDeletePaymentOpen}
             onOpenChange={setIsDeletePaymentOpen}
-            payment={selectedPayment}
+            payment={{
+              id: selectedPayment.id.toString(),
+              studentName: selectedPayment.nombre,
+              amount: selectedPayment.monto
+            }}
             onPaymentDeleted={() => setRefreshPayments(prev => !prev)}
           />
         </>
