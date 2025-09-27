@@ -53,29 +53,29 @@ export const determineSubscriptionStatus = (pago: any): string => {
 export const parseLocalDate = (dateString: any): Date | null => {
   if (!dateString) return null;
   if (dateString instanceof Date) return dateString;
-  
+
   if (typeof dateString === 'string' && dateString.includes('/')) {
     const [day, month, year] = dateString.split('/');
     const parsedDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
     return isNaN(parsedDate.getTime()) ? null : parsedDate;
   }
-  
+
   const isoDate = new Date(dateString);
   if (!isNaN(isoDate.getTime())) return isoDate;
-  
+
   return null;
 };
 
 const formatDate = (date: any): string => {
   if (!date) return "No definido";
-  
+
   const parsedDate = date instanceof Date ? date : parseLocalDate(date);
   if (!parsedDate || isNaN(parsedDate.getTime())) return "Fecha inválida";
 
   const day = String(parsedDate.getDate()).padStart(2, '0');
   const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
   const year = parsedDate.getFullYear();
-  
+
   return `${day}-${month}-${year}`;
 };
 
@@ -88,6 +88,7 @@ export function PaymentsTable() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [refreshPayments, setRefreshPayments] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [sortByPlan, setSortByPlan] = useState<null | "asc" | "desc">(null);
 
   const activePayments = payments.filter(p => p.status !== "Vencidos");
   const totalPaid = activePayments.reduce((sum, p) => p.status === "Pagado" ? sum + Number(p.monto) : sum, 0);
@@ -98,6 +99,12 @@ export function PaymentsTable() {
   const loyaltyPercentage = totalActiveStudents > 0
     ? Math.round((totalPaidStudents / totalActiveStudents) * 100)
     : 0;
+
+  const planCounts = {
+    Basico: payments.filter(p => p.modalidad === "Básico").length,
+    Estandar: payments.filter(p => p.modalidad === "Estándar").length,
+    Premium: payments.filter(p => p.modalidad === "Premium").length,
+  };
 
   const fetchPayments = async () => {
     try {
@@ -152,6 +159,13 @@ export function PaymentsTable() {
       payment.status?.toLowerCase().includes(searchTerm.toLowerCase())
     )
     .sort((a, b) => {
+      if (sortByPlan === "asc") {
+        return a.modalidad.localeCompare(b.modalidad);
+      }
+      if (sortByPlan === "desc") {
+        return b.modalidad.localeCompare(a.modalidad);
+      }
+
       const dateA = a.fecha_de_vencimiento?.getTime() || 0;
       const dateB = b.fecha_de_vencimiento?.getTime() || 0;
       return dateB - dateA;
@@ -186,6 +200,7 @@ export function PaymentsTable() {
     }
   };
 
+
   return (
     <>
       <PaymentStats
@@ -195,6 +210,7 @@ export function PaymentsTable() {
         totalOverdueStudents={totalOverdueStudents}
         loyaltyPercentage={loyaltyPercentage}
         totalStudents={payments.length}
+        planCounts={planCounts}
       />
 
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -307,7 +323,17 @@ export function PaymentsTable() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Alumno</TableHead>
-                        <TableHead>Tipo de plan</TableHead>
+                        <TableHead
+                          className="cursor-pointer select-none"
+                          onClick={() =>
+                            setSortByPlan(prev =>
+                              prev === "asc" ? "desc" : prev === "desc" ? null : "asc"
+                            )
+                          }
+                        >
+                          Tipo de plan{" "}
+                          {sortByPlan === "asc" ? "▲" : sortByPlan === "desc" ? "▼" : ""}
+                        </TableHead>
                         <TableHead>Monto</TableHead>
                         <TableHead>Último Pago</TableHead>
                         <TableHead>Vencimiento</TableHead>
@@ -326,10 +352,9 @@ export function PaymentsTable() {
                             <TableCell className="font-medium">{payment.nombre}</TableCell>
                             <TableCell>
                               <div className="flex items-center">
-                                <span className={`inline-block w-[10px] h-[10px] rounded-full mr-2 ${
-                                  payment.modalidad === 'Básico' ? 'bg-[#f44336]' :
+                                <span className={`inline-block w-[10px] h-[10px] rounded-full mr-2 ${payment.modalidad === 'Básico' ? 'bg-[#f44336]' :
                                   payment.modalidad === 'Estándar' ? 'bg-[#ff9800]' : 'bg-[#7cb342]'
-                                }`} />
+                                  }`} />
                                 {payment.modalidad}
                               </div>
                             </TableCell>
