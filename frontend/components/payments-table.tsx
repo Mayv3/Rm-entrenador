@@ -101,9 +101,9 @@ export function PaymentsTable() {
     : 0;
 
   const planCounts = {
-    Basico: payments.filter(p => p.modalidad === "Básico").length,
-    Estandar: payments.filter(p => p.modalidad === "Estándar").length,
-    Premium: payments.filter(p => p.modalidad === "Premium").length,
+    Basico: payments.filter(p => p.modalidad === "Básico" && p.status === "Pagado").length,
+    Estandar: payments.filter(p => p.modalidad === "Estándar" && p.status === "Pagado").length,
+    Premium: payments.filter(p => p.modalidad === "Premium" && p.status === "Pagado").length,
   };
 
   const fetchPayments = async () => {

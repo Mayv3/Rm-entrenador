@@ -10,9 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import axios from "axios"
-import { promises } from "dns"
 import { AlertTriangle } from "lucide-react"
-import { useRouter } from "next/router"
 import { useState } from "react"
 
 interface Student {
