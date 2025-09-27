@@ -34,7 +34,7 @@ export function DeleteStudentDialog({ open, onOpenChange, student, onStudentDele
   const handleDelete = async () => {
     setIsDeleting(true)
     try {
-      await axios.delete(`${process.env.NEXT_PUBLIC_URL_BACKEND}/clients/${student.ID}`)
+      await axios.delete(`${process.env.NEXT_PUBLIC_URL_BACKEND}/clients/${student.id}`)
       
       if (onStudentDeleted) {
         onStudentDeleted()
@@ -48,8 +48,6 @@ export function DeleteStudentDialog({ open, onOpenChange, student, onStudentDele
       setIsDeleting(false)
     }
   }
-
-
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -82,4 +80,3 @@ export function DeleteStudentDialog({ open, onOpenChange, student, onStudentDele
     </Dialog>
   )
 }
-
