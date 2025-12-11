@@ -24,7 +24,7 @@ import axios from "axios"
 
 // Interfaces de TypeScript
 interface Student {
-  ID: number;
+  id: number;
   nombre: string;
   modalidad: string;
   dias: string;
@@ -39,7 +39,7 @@ interface Student {
 }
 
 interface Payment {
-  id_estudiante: number;
+  alumno_id: number;
   fecha_de_pago: string;
   status: string;
   [key: string]: any; // Para otras propiedades que puedan existir
@@ -136,7 +136,7 @@ export function StudentsTable() {
 
     const merged: Student[] = rawStudents.map(student => {
       // Filtra los pagos del alumno
-      const pagosAlumno = payments.filter(p => Number(p.id_estudiante) === Number(student.ID));
+      const pagosAlumno = payments.filter(p => Number(p.alumno_id) === Number(student.id));
 
       // Ordena por fecha_de_pago descendente (más reciente primero)
       pagosAlumno.sort((a, b) => {
@@ -205,7 +205,7 @@ export function StudentsTable() {
           {/* Vista mobile */}
           <div className="grid gap-4 md:hidden">
             {sortedStudents.map((student) => (
-              <Card key={student.ID} className="p-3 py-4">
+              <Card key={student.id} className="p-3 py-4">
                 <CardHeader className="pb-4">
                   <div className="flex justify-between">
                     <CardTitle>{student.nombre}</CardTitle>
@@ -295,7 +295,7 @@ export function StudentsTable() {
                     </TableHeader>
                     <TableBody>
                       {sortedStudents.map((student, index) => (
-                        <TableRow key={student.ID}>
+                        <TableRow key={student.id}>
                           <TableCell className="font-medium">{student.nombre}</TableCell>
                           <TableCell>
                             <div className="flex items-center">
@@ -403,7 +403,7 @@ export function StudentsTable() {
             open={isDeleteStudentOpen}
             onOpenChange={setIsDeleteStudentOpen}
             student={{
-              id: selectedStudent.ID.toString(),
+              id: selectedStudent.id.toString(),
               name: selectedStudent.nombre
             }}
             onStudentDeleted={fetchStudents}

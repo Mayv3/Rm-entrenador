@@ -246,7 +246,3 @@ export const updateClientInSheet = async (req) => {
     updatedData: clientData,
   };
 };
-
-
-
-

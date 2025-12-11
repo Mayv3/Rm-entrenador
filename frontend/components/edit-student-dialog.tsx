@@ -24,7 +24,8 @@ interface File {
 }
 
 interface Student {
-  ID: number;
+  id: number;
+  alumno_id: number;
   nombre: string;
   modalidad: string;
   fecha_de_nacimiento: string;
@@ -44,6 +45,8 @@ interface EditStudentDialogProps {
 
 export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdated }: EditStudentDialogProps) {
   const [formData, setFormData] = useState({
+    id: "",
+    studentId: "",
     name: "",
     modality: "",
     birthDate: "",
@@ -76,16 +79,24 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
       const diasParts = student.dias.split(' - ');
       const hora = diasParts.length > 1 ? diasParts[1] : '';
 
-      const formatDate = (dateString: string) => {
-        const parts = dateString.split("/");
-        if (parts.length === 3) {
-          const [day, month, year] = parts;
-          return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+      const formatDate = (dateString: string | null) => {
+        if (!dateString) return "";
+
+        // Caso DD/MM/YYYY
+        if (dateString.includes("/")) {
+          const parts = dateString.split("/");
+          if (parts.length === 3) {
+            const [day, month, year] = parts;
+            return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+          }
         }
+
         return dateString;
       };
 
       setFormData({
+        id: String(student.id),
+        studentId: String(student.alumno_id),
         name: student.nombre || "",
         modality: student.modalidad || "",
         birthDate: formatDate(student.fecha_de_nacimiento) || "",
@@ -138,7 +149,7 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      const response = await axios.put(`${process.env.NEXT_PUBLIC_URL_BACKEND}/clients/${student.ID}`, formData)
+      const response = await axios.put(`${process.env.NEXT_PUBLIC_URL_BACKEND}/clients/${student.id}`, formData)
 
       if (response.status === 200) {
         onStudentUpdated()

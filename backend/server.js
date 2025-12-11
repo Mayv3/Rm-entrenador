@@ -2,8 +2,8 @@ import express from "express";
 import { google } from "googleapis";
 import dotenv from "dotenv";
 import cors from "cors";
-import { addClient, deleteClient, editClient, getClients } from "./controllers/clientController.js";
-import { addPayment, deletePayment, editPayment, getPayments } from "./controllers/paymentsController.js";
+import { addClientSupabase, deleteClientSupabase, getMembersSupabase, updateClientSupabase } from "./controllers/clientController.js";
+import { addPaymentSupabase, deletePayment, deletePaymentSupabase, editPayment, getPaymentsSupabase, updatePaymentInSupabase } from "./controllers/paymentsController.js";
 
 dotenv.config();
 
@@ -49,17 +49,17 @@ app.get("/files", async (req, res) => {
 
 // Estudiantes
 
-app.post("/add-student", addClient);
-app.get("/getAllStudents", getClients);
-app.delete("/clients/:id", deleteClient);
-app.put("/clients/:id", editClient);
+app.post("/add-student", addClientSupabase);
+app.get("/getAllStudents", getMembersSupabase);
+app.delete("/clients/:id", deleteClientSupabase);
+app.put("/clients/:id", updateClientSupabase);
 
 // Pagos
 
-app.get("/getAllPayments", getPayments);
-app.post("/addPayment", addPayment);
-app.delete("/payment/:id", deletePayment);
-app.put("/payment/:id", editPayment)
+app.get("/getAllPayments", getPaymentsSupabase);
+app.post("/addPayment", addPaymentSupabase);
+app.delete("/payment/:id", deletePaymentSupabase);
+app.put("/payment/:id", updatePaymentInSupabase)
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {

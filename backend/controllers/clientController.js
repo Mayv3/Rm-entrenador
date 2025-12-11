@@ -1,38 +1,215 @@
-import { addClientToSheet, getClientsFromSheet, deleteClientFromSheet, updateClientInSheet } from "../services/googleSheetsService.js"; // Importa con nombres distintos
+import { supabase } from "../lib/supabase.js";
 
-export const getClients = async (req, res) => {
+export const getMembersSupabase = async (req, res) => {
+
+  let { data: alumnos, error } = await supabase
+    .from('alumnos')
+    .select('*')
+    .order("nombre", { ascending: true });
+
+if (error) {
+  console.error("Error al obtener miembros de Supabase:", error);
+  return res.status(500).json({ message: "Error al obtener los miembros" });
+}
+
+let response = res.json(alumnos);
+
+return response;
+}
+
+export const addClientSupabase = async (req, res) => {
+
   try {
-    await getClientsFromSheet(req, res);
+    const addClientToSupabase = async (clientData) => {
+      const {
+        birthDate,
+        modality,
+        name,
+        planUrl,
+        schedule,
+        time,
+        whatsapp,
+        startService,
+        lastAntro
+      } = clientData;
+
+      const daysMap = {
+        monday: "Lun",
+        tuesday: "Mar",
+        wednesday: "Mié",
+        thursday: "Jue",
+        friday: "Vie",
+        saturday: "Sáb",
+        sunday: "Dom",
+      };
+
+      const selectedDays = Object.entries(schedule)
+        .filter(([_, value]) => value)
+        .map(([day]) => daysMap[day])
+        .join(", ");
+
+      const scheduleString = selectedDays ? `${selectedDays} - ${time}` : "No definido";
+
+      const newClient = {
+        nombre: name,
+        modalidad: modality,
+        fecha_de_nacimiento: birthDate || null,
+        telefono: whatsapp || null,
+        plan: planUrl || null,
+        dias: scheduleString,
+        fecha_de_inicio: startService || null,
+        ultima_antro: lastAntro || null,
+      };
+
+      const { data, error } = await supabase
+        .from("alumnos")
+        .insert([newClient])
+        .select()
+        .single();
+
+      if (error) {
+        console.error("❌ Error Supabase:", error);
+        throw new Error("No se pudo agregar el cliente a Supabase");
+      }
+
+      return {
+        success: true,
+        status: 200,
+        message: "Cliente agregado con éxito",
+        id: data.id, // ID generado automáticamente
+      };
+    };
+
+    const result = await addClientToSupabase(req.body);
+    return res.json(result);
+
   } catch (error) {
-    console.error("Error en el controlador al obtener los clientes:", error);
-    res.status(500).json({ message: "Error al obtener los clientes" });
+    console.error("❌ Error en el controller addClientSupabase:", error);
+    return res.status(500).json({ message: error.message });
   }
 };
 
-export const addClient = async (req, res) => {
+export const deleteClientSupabase = async (req, res) => {
+  const { id } = req.params;
+
   try {
-    const result = await addClientToSheet(req.body);
-    res.json(result);
+    console.log("ID recibido:", id);
+
+    const { data: clientToDelete, error: fetchError } = await supabase
+      .from("alumnos")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (fetchError || !clientToDelete) {
+      throw new Error("Cliente no encontrado");
+    }
+
+    const { error: deleteError } = await supabase
+      .from("alumnos")
+      .delete()
+      .eq("id", id);
+
+    if (deleteError) {
+      console.error("Error al eliminar:", deleteError);
+      throw new Error("No se pudo eliminar el cliente");
+    }
+
+    const deletedClient = {
+      id,
+      name: clientToDelete.nombre,
+      modality: clientToDelete.modalidad,
+      birthDate: clientToDelete.fecha_de_nacimiento,
+      whatsapp: clientToDelete.telefono,
+      planUrl: clientToDelete.plan,
+      schedule: clientToDelete.dias,
+      startService: clientToDelete.fecha_de_inicio,
+      lastAntro: clientToDelete.ultima_antro,
+    };
+
+    return res.json({
+      success: true,
+      message: "Cliente eliminado con éxito",
+      deletedClient,
+    });
+
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("❌ Error en deleteClient:", error);
+    return res.status(500).json({ message: error.message });
   }
 };
 
-export const deleteClient = async (req, res) => {
-  try {
-    const result = await deleteClientFromSheet(req, res);
-    res.json(result);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
+export const updateClientSupabase = async (req, res) => {
+  const { id } = req.params;
+  const clientData = req.body;
 
-export const editClient = async (req, res) => {
   try {
-    const result = await updateClientInSheet(req);
-    res.json(result);
+    const { data: existingClient, error: fetchError } = await supabase
+      .from("alumnos")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (fetchError || !existingClient) {
+      throw new Error("Cliente no encontrado");
+    }
+
+    const {
+      name,
+      modality,
+      birthDate,
+      whatsapp,
+      planUrl,
+      schedule,
+      time,
+      startService,
+      lastAntro
+    } = clientData;
+
+    const daysMap = {
+      monday: "Lun",
+      tuesday: "Mar",
+      wednesday: "Mié",
+      thursday: "Jue",
+      friday: "Vie",
+      saturday: "Sáb",
+      sunday: "Dom",
+    };
+
+    const selectedDays = Object.entries(schedule || {})
+      .filter(([_, value]) => value)
+      .map(([day]) => daysMap[day])
+      .join(", ");
+
+    const scheduleString = `${selectedDays} - ${time}`;
+
+    const updatedClient = {
+      nombre: name,
+      modalidad: modality,
+      fecha_de_nacimiento: birthDate || null,
+      telefono: whatsapp,
+      plan: planUrl,
+      dias: scheduleString,
+      fecha_de_inicio: startService || null,
+      ultima_antro: lastAntro || null,
+    };
+
+    const { error: updateError } = await supabase
+      .from("alumnos")
+      .update(updatedClient)
+      .eq("id", id);
+
+    if (updateError) {
+      throw new Error("No se pudo actualizar el alumno");
+    }
+
+    return res.json({
+      success: true,
+      message: "Cliente actualizado con éxito",
+      updatedData: clientData,
+    });
+
   } catch (error) {
-    console.error("Error en editClient:", error.message);
-    res.status(400).json({ message: error.message });
+    return res.status(500).json({ message: error.message });
   }
 };

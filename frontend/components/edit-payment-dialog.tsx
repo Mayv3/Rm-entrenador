@@ -44,12 +44,13 @@ export function EditPaymentDialog({ open, onOpenChange, payment, onPaymentUpdate
 
   useEffect(() => {
     if (payment) {
+      console.log("Payment recibido:", payment)
       const paymentDate = payment.fecha_de_pago ? new Date(payment.fecha_de_pago).toISOString().split("T")[0] : new Date().toISOString().split("T")[0]
       const dueDate = payment.fecha_de_vencimiento ? new Date(payment.fecha_de_vencimiento).toISOString().split("T")[0] : calculateDueDate(paymentDate, 1)
 
       setFormData({
-        id: payment.id_estudiante,
-        studentId: payment.id_estudiante || "",
+        id: String(payment.id),
+        studentId: String(payment.alumno_id || payment.id_estudiante || ""),
         name: payment.nombre || "",
         amount: payment.monto?.toString() || "",
         date: paymentDate,
@@ -101,7 +102,7 @@ export function EditPaymentDialog({ open, onOpenChange, payment, onPaymentUpdate
       const paymentData = {
         ...formData,
         phone: formData.whatsapp,
-        studentId: formData.studentId || payment?.id_estudiante || ""
+        studentId: formData.studentId || String(payment?.alumno_id || "")
       }
 
       console.log("Datos que se van a enviar:", paymentData);

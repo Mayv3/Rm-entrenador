@@ -38,12 +38,12 @@ const calculateDueDate = (date: string, months: number): string => {
 
 export function AddPaymentDialog({ open, onOpenChange, onPaymentUpdated }: AddPaymentDialogProps) {
   const [formData, setFormData] = useState({
-    studentId: "",
+    alumno_id: "",
     name: "",
     amount: "",
     date: new Date().toISOString().split("T")[0],
     dueDate: calculateDueDate(new Date().toISOString().split("T")[0], 1),
-    modality: "",
+    modalidad: "",
   })
 
   const [students, setStudents] = useState<Student[]>([])
@@ -55,10 +55,11 @@ export function AddPaymentDialog({ open, onOpenChange, onPaymentUpdated }: AddPa
         const studentsData = response.data
 
         const students: Student[] = studentsData.map((student: any) => ({
-          id: String(student.ID),
+          id: String(student.id),
           name: student.nombre,
           whatsapp: student.telefono
-        }))
+        }));
+
         console.log(students)
         setStudents(students)
       } catch (error) {
@@ -79,17 +80,21 @@ export function AddPaymentDialog({ open, onOpenChange, onPaymentUpdated }: AddPa
   }
 
   const handleSelectChange = (name: string, value: string) => {
-    if (name === "studentId") {
-      const selectedStudent = students.find(student => student.id === value)
+    if (name === "alumno_id") {
+      console.log("Value seleccionado:", value, typeof value)
+      console.log("Students disponibles:", students)
+      const selectedStudent = students.find(student => String(student.id) === String(value))
+      console.log("Student encontrado:", selectedStudent)
       setFormData((prev) => ({
         ...prev,
-        studentId: value,
+        alumno_id: value,
         name: selectedStudent ? selectedStudent.name : "",
       }))
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }))
     }
   }
+
 
   const handleDueDateChange = (months: number) => {
     setFormData((prev) => ({ ...prev, dueDate: calculateDueDate(prev.date, months) }))
@@ -98,19 +103,26 @@ export function AddPaymentDialog({ open, onOpenChange, onPaymentUpdated }: AddPa
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!formData.studentId || !formData.modality) {
+    if (!formData.alumno_id || !formData.modalidad || !formData.name) {
       alert("Todos los campos son obligatorios")
       return
     }
 
     try {
-      const selectedStudent = students.find(student => student.id === formData.studentId)
+      const selectedStudent = students.find(student => student.id === formData.alumno_id)
       const whatsapp = selectedStudent?.whatsapp || ""
 
       const paymentData = {
-        ...formData,
-        phone: whatsapp
-      }
+        alumno_id: formData.alumno_id,
+        nombre: formData.name,
+        monto: Number(formData.amount),
+        fecha_de_pago: formData.date,
+        fecha_de_vencimiento: formData.dueDate,
+        modalidad: formData.modalidad,
+        whatsapp: whatsapp
+      };
+
+      console.log(paymentData)
 
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_URL_BACKEND}/addPayment`,
@@ -121,12 +133,12 @@ export function AddPaymentDialog({ open, onOpenChange, onPaymentUpdated }: AddPa
         onOpenChange(false)
         onPaymentUpdated()
         setFormData({
-          studentId: "",
+          alumno_id: "",
           name: "",
           amount: "",
           date: new Date().toISOString().split("T")[0],
           dueDate: calculateDueDate(new Date().toISOString().split("T")[0], 1),
-          modality: ""
+          modalidad: ""
         })
       }
     } catch (error) {
@@ -160,8 +172,8 @@ export function AddPaymentDialog({ open, onOpenChange, onPaymentUpdated }: AddPa
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="studentId">Alumno</Label>
-              <Select value={formData.studentId} onValueChange={(value) => handleSelectChange("studentId", value)}>
+              <Label htmlFor="alumno_id">Alumno</Label>
+              <Select value={formData.alumno_id} onValueChange={(value) => handleSelectChange("alumno_id", value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccionar alumno" />
                 </SelectTrigger>
@@ -235,10 +247,10 @@ export function AddPaymentDialog({ open, onOpenChange, onPaymentUpdated }: AddPa
               </Button>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="modality">Tipo de plan</Label>
+              <Label htmlFor="modalidad">Tipo de plan</Label>
               <Select
-                value={formData.modality}
-                onValueChange={(value) => handleSelectChange("modality", value)}
+                value={formData.modalidad}
+                onValueChange={(value) => handleSelectChange("modalidad", value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccionar tipo de plan" />

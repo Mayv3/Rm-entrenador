@@ -54,8 +54,16 @@ export const parseLocalDate = (dateString: any): Date | null => {
   if (!dateString) return null;
   if (dateString instanceof Date) return dateString;
 
+  // Caso DD/MM/YYYY
   if (typeof dateString === 'string' && dateString.includes('/')) {
     const [day, month, year] = dateString.split('/');
+    const parsedDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    return isNaN(parsedDate.getTime()) ? null : parsedDate;
+  }
+
+  // Caso YYYY-MM-DD (ISO sin hora) - parsear como fecha local
+  if (typeof dateString === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+    const [year, month, day] = dateString.split('-');
     const parsedDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
     return isNaN(parsedDate.getTime()) ? null : parsedDate;
   }
