@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Loader2 } from "lucide-react"
 
 // Interfaces de TypeScript
 interface File {
@@ -35,6 +36,7 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
     modality: "",
     birthDate: "",
     whatsapp: "",
+    email: "",
     planUrl: "",
     planType: "google",
     schedule: {
@@ -53,6 +55,7 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
 
   const [files, setFiles] = useState<File[]>([])
   const [searchTerm, setSearchTerm] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
 
   const filteredFiles = files.filter((file) =>
     file.nameFile.toLowerCase().includes(searchTerm.toLowerCase())
@@ -76,16 +79,41 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    setIsLoading(true)
+
     try {
       const response = await axios.post(`${process.env.NEXT_PUBLIC_URL_BACKEND}/add-student`, formData);
       if (response.status === 200) {
         onStudentAdded();
         onOpenChange(false);
+        setFormData({
+          name: "",
+          modality: "",
+          birthDate: "",
+          whatsapp: "",
+          email: "",
+          planUrl: "",
+          planType: "google",
+          schedule: {
+            monday: false,
+            tuesday: false,
+            wednesday: false,
+            thursday: false,
+            friday: false,
+            saturday: false,
+            sunday: false,
+          },
+          time: "",
+          startService: "",
+          lastAntro: "",
+        })
       } else {
         console.error("Error al agregar alumno:", response.data);
       }
     } catch (error) {
       console.error("Error en la solicitud:", error);
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -173,6 +201,12 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
               <Input id="whatsapp" name="whatsapp" value={formData.whatsapp} onChange={handleChange} placeholder="+54 9 11 1234-5678" required />
             </div>
 
+            {/* Email */}
+            <div className="grid gap-2">
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" name="email" type="email" value={formData.email} onChange={handleChange} placeholder="ejemplo@correo.com" />
+            </div>
+
             {/* Plan de Entrenamiento */}
             <div className="grid gap-2">
               <Label>Plan de Entrenamiento</Label>
@@ -235,12 +269,25 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
           </div>
 
           <DialogFooter className="mt-5">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancelar
-            </Button>
-            <Button type="submit" className="bg-[var(--primary-color)] hover:bg-[var(--primary-color)] text-white">
-              Guardar
-            </Button>
+            <div className="flex gap-2">
+              <Button type="button" className="w-[50%]" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                className="bg-[var(--primary-color)] hover:bg-[var(--primary-color)] text-white w-[50%]"
+                disabled={isLoading || !formData.name || !formData.modality || !formData.whatsapp || !formData.planUrl || !formData.time || !formData.startService}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  </>
+                ) : (
+                  "Guardar"
+                )}
+              </Button>
+            </div>
+
           </DialogFooter>
         </form>
       </DialogContent>

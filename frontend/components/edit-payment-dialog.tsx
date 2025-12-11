@@ -3,6 +3,7 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
+import { Loader2 } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -41,6 +42,7 @@ export function EditPaymentDialog({ open, onOpenChange, payment, onPaymentUpdate
     modality: "",
     whatsapp: ""
   })
+  const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
     if (payment) {
@@ -97,12 +99,12 @@ export function EditPaymentDialog({ open, onOpenChange, payment, onPaymentUpdate
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
+    setIsLoading(true)
     try {
       const paymentData = {
         ...formData,
         phone: formData.whatsapp,
-        studentId: formData.studentId || String(payment?.alumno_id || "")
+        studentId: formData.studentId || payment?.id_estudiante || ""
       }
 
       console.log("Datos que se van a enviar:", paymentData);
@@ -118,6 +120,8 @@ export function EditPaymentDialog({ open, onOpenChange, payment, onPaymentUpdate
       }
     } catch (error) {
       console.error("Error al actualizar el pago:", error)
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -219,11 +223,17 @@ export function EditPaymentDialog({ open, onOpenChange, payment, onPaymentUpdate
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
               Cancelar
             </Button>
-            <Button type="submit" className="bg-[var(--primary-color)] hover:bg-[var(--primary-color)]">
-              Guardar Cambios
+            <Button type="submit" className="bg-[var(--primary-color)] hover:bg-[var(--primary-color)]" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                </>
+              ) : (
+                "Guardar Cambios"
+              )}
             </Button>
           </DialogFooter>
         </form>

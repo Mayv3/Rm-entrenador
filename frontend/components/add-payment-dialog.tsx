@@ -14,6 +14,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Loader2 } from "lucide-react"
 import axios from "axios"
 
 // Interfaces de TypeScript
@@ -47,6 +48,7 @@ export function AddPaymentDialog({ open, onOpenChange, onPaymentUpdated }: AddPa
   })
 
   const [students, setStudents] = useState<Student[]>([])
+  const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
     const getStudents = async () => {
@@ -108,6 +110,8 @@ export function AddPaymentDialog({ open, onOpenChange, onPaymentUpdated }: AddPa
       return
     }
 
+    setIsLoading(true)
+
     try {
       const selectedStudent = students.find(student => student.id === formData.alumno_id)
       const whatsapp = selectedStudent?.whatsapp || ""
@@ -143,6 +147,8 @@ export function AddPaymentDialog({ open, onOpenChange, onPaymentUpdated }: AddPa
       }
     } catch (error) {
       console.error("Error al registrar el pago:", error)
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -265,12 +271,26 @@ export function AddPaymentDialog({ open, onOpenChange, onPaymentUpdated }: AddPa
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancelar
-            </Button>
-            <Button type="submit" className="bg-[var(--primary-color)] hover:bg-[var(--primary-color)]">
-              Guardar
-            </Button>
+
+            <div className="flex gap-2">
+              <Button type="button" className="w-[50%]" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                className="bg-[var(--primary-color)] hover:bg-[var(--primary-color)] w-[50%]"
+                disabled={isLoading || !formData.alumno_id || !formData.amount || !formData.modalidad}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  </>
+                ) : (
+                  "Guardar"
+                )}
+              </Button>
+            </div>
+
           </DialogFooter>
         </form>
       </DialogContent>

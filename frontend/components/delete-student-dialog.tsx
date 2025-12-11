@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog"
 import axios from "axios"
 import { AlertTriangle } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import { useState } from "react"
 
 interface Student {
@@ -25,7 +26,6 @@ interface DeleteStudentDialogProps {
   onStudentDeleted?: () => Promise<void> | void
 }
 
-
 export function DeleteStudentDialog({ open, onOpenChange, student, onStudentDeleted }: DeleteStudentDialogProps) {
   const [isDeleting, setIsDeleting] = useState(false)
 
@@ -33,12 +33,11 @@ export function DeleteStudentDialog({ open, onOpenChange, student, onStudentDele
     setIsDeleting(true)
     try {
       await axios.delete(`${process.env.NEXT_PUBLIC_URL_BACKEND}/clients/${student.id}`)
-      
+
       if (onStudentDeleted) {
         onStudentDeleted()
       }
 
-      
       onOpenChange(false)
     } catch (error) {
       console.error("Error eliminando estudiante:", error)
@@ -67,11 +66,17 @@ export function DeleteStudentDialog({ open, onOpenChange, student, onStudentDele
           </p>
         </div>
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isDeleting}>
             Cancelar
           </Button>
-          <Button type="button" variant="destructive" onClick={handleDelete}>
-            Eliminar
+          <Button type="button" variant="destructive" onClick={handleDelete} disabled={isDeleting}>
+            {isDeleting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              </>
+            ) : (
+              "Eliminar"
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

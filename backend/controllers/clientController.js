@@ -29,6 +29,7 @@ export const addClientSupabase = async (req, res) => {
         schedule,
         time,
         whatsapp,
+        email,
         startService,
         lastAntro
       } = clientData;
@@ -55,6 +56,7 @@ export const addClientSupabase = async (req, res) => {
         modalidad: modality,
         fecha_de_nacimiento: birthDate || null,
         telefono: whatsapp || null,
+        email: email || null,
         plan: planUrl || null,
         dias: scheduleString,
         fecha_de_inicio: startService || null,
@@ -159,6 +161,7 @@ export const updateClientSupabase = async (req, res) => {
       modality,
       birthDate,
       whatsapp,
+      email,
       planUrl,
       schedule,
       time,
@@ -188,6 +191,7 @@ export const updateClientSupabase = async (req, res) => {
       modalidad: modality,
       fecha_de_nacimiento: birthDate || null,
       telefono: whatsapp,
+      email: email || null,
       plan: planUrl,
       dias: scheduleString,
       fecha_de_inicio: startService || null,

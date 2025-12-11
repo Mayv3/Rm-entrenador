@@ -22,7 +22,6 @@ import { determineSubscriptionStatus } from "./payments-table"
 import { Badge } from "@/components/ui/badge"
 import axios from "axios"
 
-// Interfaces de TypeScript
 interface Student {
   id: number;
   nombre: string;
@@ -31,6 +30,7 @@ interface Student {
   fecha_de_nacimiento: string;
   fecha_de_inicio: string;
   ultima_antro: string;
+  email?: string;
   telefono: string;
   whatsapp?: string;
   plan: string;
@@ -42,7 +42,7 @@ interface Payment {
   alumno_id: number;
   fecha_de_pago: string;
   status: string;
-  [key: string]: any; // Para otras propiedades que puedan existir
+  [key: string]: any;
 }
 
 export function StudentsTable() {
@@ -135,20 +135,16 @@ export function StudentsTable() {
     if (rawStudents.length === 0 || payments.length === 0) return;
 
     const merged: Student[] = rawStudents.map(student => {
-      // Filtra los pagos del alumno
       const pagosAlumno = payments.filter(p => Number(p.alumno_id) === Number(student.id));
 
-      // Ordena por fecha_de_pago descendente (más reciente primero)
       pagosAlumno.sort((a, b) => {
         const fechaA = new Date(a.fecha_de_pago);
         const fechaB = new Date(b.fecha_de_pago);
-        return fechaB.getTime() - fechaA.getTime(); // fecha más reciente primero
+        return fechaB.getTime() - fechaA.getTime();
       });
 
-      // Toma el pago más reciente
       const ultimoPago = pagosAlumno[0];
 
-      // Asegúrate de usar el estado calculado (status) que viene de determineSubscriptionStatus
       const statusAlumno = ultimoPago ? ultimoPago.status : 'Indefinido';
 
       return {
@@ -219,6 +215,7 @@ export function StudentsTable() {
                     </Badge>
                   </div>
                   <CardDescription className="text-lg">{student.modalidad}</CardDescription>
+
                 </CardHeader>
                 <CardContent className="space-y-5">
                   <div className="text-sm text-muted-foreground">{student.dias}</div>
@@ -234,6 +231,10 @@ export function StudentsTable() {
                       <span>{formatDate(student.ultima_antro || '')}</span>
                     </div>
                   </div>
+                  <div>
+                    <span className="text-sm text-muted-foreground">{student.email || 'N/A'}</span>
+                  </div>
+
                   <div className="flex gap-2">
                     <a
                       href={`https://wa.me/${student.telefono.replace(/\D/g, "")}`}
@@ -254,6 +255,7 @@ export function StudentsTable() {
                       <span className="ml-2">Plan</span>
                     </a>
                   </div>
+
                   <div className="flex gap-2">
                     <Button size="sm" onClick={() => handleEdit(student)} variant="outline" className="flex-1 w-full">
                       <Edit className="h-4 w-4" />
@@ -287,6 +289,7 @@ export function StudentsTable() {
                         <TableHead className="hidden md:table-cell">Fecha de Nacimiento</TableHead>
                         <TableHead className="hidden lg:table-cell">Fecha de Inicio</TableHead>
                         <TableHead className="hidden lg:table-cell">Última antropometria</TableHead>
+                        <TableHead className="hidden lg:table-cell">Email</TableHead>
                         <TableHead>Estado</TableHead>
                         <TableHead>WhatsApp</TableHead>
                         <TableHead>Plan</TableHead>
@@ -301,10 +304,10 @@ export function StudentsTable() {
                             <div className="flex items-center">
                               <span
                                 className={`inline-block w-[10px] h-[10px] rounded-full mr-2 ${student.modalidad === "Básico"
-                                    ? "bg-[#f44336]"
-                                    : student.modalidad === "Estándar"
-                                      ? "bg-[#ff9800]"
-                                      : "bg-[#7cb342]"
+                                  ? "bg-[#f44336]"
+                                  : student.modalidad === "Estándar"
+                                    ? "bg-[#ff9800]"
+                                    : "bg-[#7cb342]"
                                   }`}
                               />
                               {student.modalidad}
@@ -322,6 +325,9 @@ export function StudentsTable() {
                           </TableCell>
                           <TableCell className="hidden lg:table-cell">
                             {formatDate(student.ultima_antro || '')}
+                          </TableCell>
+                          <TableCell className="hidden lg:table-cell max-w-[150px] truncate">
+                            {student.email || "N/A"}
                           </TableCell>
                           <TableCell>
                             <Badge className={`${getStatusColor(student.status || 'Indefinido')} h-8 w-[120px] flex justify-center items-center`}>

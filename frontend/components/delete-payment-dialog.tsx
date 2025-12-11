@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/dialog"
 import axios from "axios"
 import { AlertTriangle } from "lucide-react"
+import { Loader2 } from "lucide-react"
+import { useState } from "react"
 
 interface Payment {
   id: string
@@ -26,8 +28,10 @@ interface DeletePaymentDialogProps {
 }
 
 export function DeletePaymentDialog({ open, onOpenChange, payment, onPaymentDeleted }: DeletePaymentDialogProps) {
-  const handleDelete = () => {
+  const [isLoading, setIsLoading] = useState(false)
 
+  const handleDelete = () => {
+    setIsLoading(true)
     const deletePayment = async ()=>{
       try {
         const response = await axios.delete(
@@ -40,9 +44,10 @@ export function DeletePaymentDialog({ open, onOpenChange, payment, onPaymentDele
         }
       } catch (error) {
         console.error("Error al eliminar el pago:", error)
+      } finally {
+        setIsLoading(false)
       }
     }
-    
     deletePayment()
   }
 
@@ -65,11 +70,17 @@ export function DeletePaymentDialog({ open, onOpenChange, payment, onPaymentDele
           </p>
         </div>
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
             Cancelar
           </Button>
-          <Button type="button" variant="destructive" onClick={handleDelete}>
-            Eliminar
+          <Button type="button" variant="destructive" onClick={handleDelete} disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              </>
+            ) : (
+              "Eliminar"
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

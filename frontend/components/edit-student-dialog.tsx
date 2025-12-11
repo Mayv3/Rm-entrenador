@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Loader2 } from "lucide-react"
 
 // Interfaces de TypeScript
 interface File {
@@ -30,6 +31,7 @@ interface Student {
   modalidad: string;
   fecha_de_nacimiento: string;
   telefono: string;
+  email: string;
   plan: string;
   dias: string;
   fecha_de_inicio: string;
@@ -51,6 +53,7 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
     modality: "",
     birthDate: "",
     whatsapp: "",
+    email: "",
     planUrl: "",
     planType: "google",
     schedule: {
@@ -66,9 +69,9 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
     startService: "",
     lastAntro: "",
   })
-
   const [files, setFiles] = useState<File[]>([])
   const [searchTerm, setSearchTerm] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
 
   const filteredFiles = files.filter((file) =>
     file.nameFile.toLowerCase().includes(searchTerm.toLowerCase())
@@ -101,6 +104,7 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
         modality: student.modalidad || "",
         birthDate: formatDate(student.fecha_de_nacimiento) || "",
         whatsapp: student.telefono || "",
+        email: student.email || "",
         planUrl: student.plan || "",
         planType: "google",
         schedule: {
@@ -148,6 +152,7 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setIsLoading(true)
     try {
       const response = await axios.put(`${process.env.NEXT_PUBLIC_URL_BACKEND}/clients/${student.id}`, formData)
 
@@ -159,6 +164,8 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
       }
     } catch (error) {
       console.error("Error en la solicitud:", error)
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -192,45 +199,44 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-4 py-4">
-            {/* Nombre */}
-            <div className="grid gap-2">
-              <Label htmlFor="name">Nombre Completo</Label>
-              <Input id="name" name="name" value={formData.name} onChange={handleChange} required />
+          <div>
+            <div className="flex gap-4 py-4">
+              <div className="grid gap-2 w-[70%]">
+                <Label htmlFor="name">Nombre Completo</Label>
+                <Input id="name" name="name" value={formData.name} onChange={handleChange} required />
+              </div>
+
+              <div className="grid gap-2 w-[30%]">
+                <Label htmlFor="modality">Tipo de plan</Label>
+                <Select
+                  value={formData.modality}
+                  onValueChange={(value) => setFormData((prev) => ({ ...prev, modality: value }))}
+                >
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectValue placeholder="Seleccionar tipo de plan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Básico">Básico</SelectItem>
+                    <SelectItem value="Estándar">Estándar</SelectItem>
+                    <SelectItem value="Premium">Premium</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
-            {/* Modalidad */}
-            <div className="grid gap-2">
-              <Label htmlFor="modality">Tipo de plan</Label>
-              <Select
-                value={formData.modality}
-                onValueChange={(value) => setFormData((prev) => ({ ...prev, modality: value }))}
-              >
-                <SelectTrigger className="w-full sm:w-[180px]">
-                  <SelectValue placeholder="Seleccionar tipo de plan" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Básico">Básico</SelectItem>
-                  <SelectItem value="Estándar">Estándar</SelectItem>
-                  <SelectItem value="Premium">Premium</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="flex gap-3 my-2">
+              <div className="grid gap-2 w-full my-2">
+                <Label htmlFor="whatsapp">Contacto WhatsApp</Label>
+                <Input id="whatsapp" name="whatsapp" value={formData.whatsapp} onChange={handleChange} placeholder="+54 9 11 1234-5678" required />
+              </div>
+
+              <div className="grid gap-2 w-full my-2">
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" name="email" type="email" value={formData.email} onChange={handleChange} placeholder="ejemplo@correo.com" />
+              </div>
             </div>
 
-            {/* Fecha de Nacimiento */}
-            <div className="grid gap-2">
-              <Label htmlFor="birthDate">Fecha de Nacimiento</Label>
-              <Input id="birthDate" name="birthDate" type="date" value={formData.birthDate} onChange={handleChange} />
-            </div>
-
-            {/* WhatsApp */}
-            <div className="grid gap-2">
-              <Label htmlFor="whatsapp">Contacto WhatsApp</Label>
-              <Input id="whatsapp" name="whatsapp" value={formData.whatsapp} onChange={handleChange} placeholder="+54 9 11 1234-5678" required />
-            </div>
-
-            {/* Plan de Entrenamiento */}
-            <div className="grid gap-2">
+            <div className="grid gap-2 my-2">
               <Label>Plan de Entrenamiento</Label>
               <Select
                 name="planUrl"
@@ -251,8 +257,7 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
               </Select>
             </div>
 
-            {/* Días de Entrenamiento */}
-            <div className="grid gap-2">
+            <div className="grid gap-2 my-5">
               <Label>Días de Entrenamiento</Label>
               <div className="flex flex-wrap gap-4">
                 {[
@@ -276,19 +281,16 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
               </div>
             </div>
 
-            {/* Horario */}
-            <div className="grid gap-2">
+            <div className="grid gap-2 my-4">
               <Label htmlFor="time">Horario</Label>
               <Input id="time" name="time" type="time" value={formData.time} onChange={handleChange} required />
             </div>
 
-            {/* Fecha de inicio */}
-            <div className="grid gap-2">
+            <div className="grid gap-2 my-4">
               <Label htmlFor="startService">Fecha de inicio</Label>
               <Input id="startService" name="startService" type="date" value={formData.startService} onChange={handleChange} />
             </div>
-
-            {/* Última antropometría */}
+                
             <div className="grid gap-2 mt-3">
               <Label htmlFor="lastAntro">Última antropometría</Label>
               <Input id="lastAntro" name="lastAntro" type="date" value={formData.lastAntro} onChange={handleChange} />
@@ -296,11 +298,17 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
           </div>
 
           <DialogFooter className="mt-5">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
               Cancelar
             </Button>
-            <Button type="submit" className="bg-[var(--primary-color)] hover:bg-[var(--primary-color)] text-white">
-              Guardar Cambios
+            <Button type="submit" className="bg-[var(--primary-color)] hover:bg-[var(--primary-color)] text-white" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                </>
+              ) : (
+                "Guardar Cambios"
+              )}
             </Button>
           </DialogFooter>
         </form>
