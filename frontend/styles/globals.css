@@ -1,8 +1,9 @@
+@import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@401&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@401&display=swap');
 
 :root {
   --primary-color: #22b567;
