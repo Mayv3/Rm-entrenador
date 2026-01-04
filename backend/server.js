@@ -3,7 +3,8 @@ import { google } from "googleapis";
 import dotenv from "dotenv";
 import cors from "cors";
 import { addClientSupabase, deleteClientSupabase, getMembersSupabase, updateClientSupabase } from "./controllers/clientController.js";
-import { addPaymentSupabase, deletePayment, deletePaymentSupabase, editPayment, getPaymentsSupabase, updatePaymentInSupabase } from "./controllers/paymentsController.js";
+import { addPaymentSupabase, deletePaymentSupabase, getPaymentsSupabase, updatePaymentInSupabase } from "./controllers/paymentsController.js";
+import { enviarRecordatoriosVencidos, sendTestSMTPMail } from "./controllers/mailingController.js";
 
 dotenv.config();
 
@@ -60,6 +61,24 @@ app.get("/getAllPayments", getPaymentsSupabase);
 app.post("/addPayment", addPaymentSupabase);
 app.delete("/payment/:id", deletePaymentSupabase);
 app.put("/payment/:id", updatePaymentInSupabase)
+
+// Mailing
+
+app.post("/send-reminders", enviarRecordatoriosVencidos);
+app.post("/test-smtp", async (req, res) => {
+  try {
+    await sendTestSMTPMail();
+    res.json({ ok: true, message: "SMTP funcionando" })
+  } catch (err) {
+    console.error("❌ Error SMTP:", err)
+    res.status(500).json({ error: "Falló SMTP" })
+  }
+})
+
+app.get("/ping",()=>{
+  return res.json({ok: true, message: "Pong"})
+})
+
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
