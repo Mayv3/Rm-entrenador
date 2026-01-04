@@ -75,8 +75,8 @@ app.post("/test-smtp", async (req, res) => {
   }
 })
 
-app.get("/ping",()=>{
-  return res.json({ok: true, message: "Pong"})
+app.get("/ping", (req, res) => {
+  return res.json({ ok: true, message: "Pong" })
 })
 
 
