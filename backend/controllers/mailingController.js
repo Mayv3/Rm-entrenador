@@ -1,37 +1,41 @@
 import { supabase } from "../lib/supabase.js"
 import nodemailer from "nodemailer"
 
+const ENVIAR_EMAILS = true
+const EMAIL_PRUEBA = "nicopereyra855@gmail.com"
+
+
 export const smtpTransporter = nodemailer.createTransport({
-    from: `"RM ENTRENADOR" <${process.env.BREVO_SENDER_EMAIL}>`,
-    host: process.env.BREVO_SMTP_HOST,
-    port: process.env.BREVO_SMTP_PORT,
-    secure: false, // puerto 587
-    auth: {
-        user: process.env.BREVO_SMTP_USER,
-        pass: process.env.BREVO_SMTP_PASS,
-    },
+  from: `"RM ENTRENADOR" <${process.env.BREVO_SENDER_EMAIL}>`,
+  host: process.env.BREVO_SMTP_HOST,
+  port: process.env.BREVO_SMTP_PORT,
+  secure: false, // puerto 587
+  auth: {
+    user: process.env.BREVO_SMTP_USER,
+    pass: process.env.BREVO_SMTP_PASS,
+  },
 })
 
 smtpTransporter.verify((err) => {
-    if (err) {
-        console.error("❌ SMTP NO OK:", err.message)
-    } else {
-        console.log("✅ SMTP listo para enviar mails")
-    }
+  if (err) {
+    console.error("❌ SMTP NO OK:", err.message)
+  } else {
+    console.log("✅ SMTP listo para enviar mails")
+  }
 })
 
 async function sendEmailVencidoSMTP({
-    to,
-    nombre,
-    estado,
-    fechaVencimiento,
-    modalidad,
+  to,
+  nombre,
+  estado,
+  fechaVencimiento,
+  modalidad,
 }) {
-    await smtpTransporter.sendMail({
-        from: `"RM ENTRENADOR" <${process.env.BREVO_SENDER_EMAIL}>`,
-        to,
-        subject: "⚠️ Tu plan venció – Regularizá para seguir entrenando",
-        html: `
+  await smtpTransporter.sendMail({
+    from: `"RM ENTRENADOR" <${process.env.BREVO_SENDER_EMAIL}>`,
+    to,
+    subject: "⚠️ Tu plan venció – Regularizá para seguir entrenando",
+    html: `
       <div style="margin:0; padding:0; background-color:#f4f4f5;">
   <table width="100%" cellpadding="0" cellspacing="0">
     <tr>
@@ -157,19 +161,19 @@ async function sendEmailVencidoSMTP({
 </div>
 
     `,
-    })
+  })
 
-    console.log(`📧 SMTP enviado → ${to} | ${nombre} | ${estado}`)
+  console.log(`📧 SMTP enviado → ${to} | ${nombre} | ${estado}`)
 }
 
 
 export const enviarRecordatoriosVencidos = async (req, res) => {
-    try {
-        const hoy = new Date()
+  try {
+    const hoy = new Date()
 
-        const { data: alumnos, error } = await supabase
-            .from("alumnos")
-            .select(`
+    const { data: alumnos, error } = await supabase
+      .from("alumnos")
+      .select(`
         id,
         nombre,
         email,
@@ -179,89 +183,124 @@ export const enviarRecordatoriosVencidos = async (req, res) => {
         )
       `)
 
-        if (error) throw error
+    if (error) throw error
 
-        const alumnosVencidos = []
+    const alumnosVencidos = []
 
-        for (const alumno of alumnos) {
-            if (!alumno.email || !alumno.pagos?.length) continue
+    for (const alumno of alumnos) {
+      if (!alumno.email || !alumno.pagos?.length) continue
 
-            const ultimoVencimiento = alumno.pagos
-                .map(p => new Date(p.fecha_de_vencimiento))
-                .sort((a, b) => b - a)[0]
+      const ultimoVencimiento = alumno.pagos
+        .map(p => new Date(p.fecha_de_vencimiento + "T00:00:00"))
+        .sort((a, b) => b - a)[0]
 
-            if (ultimoVencimiento <= hoy) {
-                const diasVencido = Math.floor(
-                    (hoy - ultimoVencimiento) / (1000 * 60 * 60 * 24)
-                )
+      if (ultimoVencimiento <= hoy) {
+        const diasVencido = Math.floor(
+          (hoy - ultimoVencimiento) / (1000 * 60 * 60 * 24)
+        )
 
-                alumnosVencidos.push({
-                    nombre: alumno.nombre,
-                    email: alumno.email,
-                    modalidad: alumno.modalidad,
-                    fecha_vencimiento: ultimoVencimiento.toLocaleDateString("es-AR"),
-                    dias_vencido: diasVencido,
-                    estado: "VENCIDO",
-                })
-            }
-        }
-
-        /* ========== LOGS ========== */
-        console.log("==============================================")
-        console.log("📛 ALUMNOS CON PLAN VENCIDO")
-        console.log(`🔢 Cantidad total: ${alumnosVencidos.length}`)
-
-        if (alumnosVencidos.length) {
-            console.table(alumnosVencidos)
-        } else {
-            console.log("✅ No hay alumnos vencidos")
-        }
-
-        console.log("==============================================")
-
-        console.log("==============================================")
-        console.log("📤 INICIO ENVÍO DE EMAILS")
-        console.log("==============================================")
-
-        let enviados = 0
-
-
-        for (const alumno of alumnosVencidos) {
-            console.log(`Enviando email a: ${alumno}`)
-            await sendEmailVencidoSMTP({
-                to: alumno.email,
-                nombre: alumno.nombre,
-                estado: alumno.estado,
-                fechaVencimiento: alumno.fecha_vencimiento,
-                modalidad: alumno.modalidad,
-            })
-            enviados++
-        }
-
-        console.log("==============================================")
-        console.log(`✅ EMAILS ENVIADOS: ${enviados}`)
-        console.log("==============================================")
-
-        return res.json({
-            message: "Proceso finalizado",
-            vencidos: alumnosVencidos.length,
+        alumnosVencidos.push({
+          nombre: alumno.nombre,
+          email: alumno.email,
+          modalidad: alumno.modalidad,
+          fecha_vencimiento: ultimoVencimiento.toLocaleDateString("es-AR"),
+          dias_vencido: diasVencido,
+          estado: "VENCIDO",
         })
-    } catch (err) {
-        console.error("❌ Error enviando recordatorios:", err)
-        return res.status(500).json({ error: "Error enviando recordatorios" })
+      }
     }
+
+    /* ========== LOGS ========== */
+    console.log("==============================================")
+    console.log("📛 ALUMNOS CON PLAN VENCIDO")
+    console.log(`🔢 Cantidad total: ${alumnosVencidos.length}`)
+
+    if (alumnosVencidos.length) {
+      console.table(alumnosVencidos)
+    } else {
+      console.log("✅ No hay alumnos vencidos")
+    }
+
+    console.log("==============================================")
+
+    console.log("==============================================")
+    console.log("📤 INICIO ENVÍO DE EMAILS")
+    console.log("==============================================")
+
+    let enviados = 0
+
+
+    for (const alumno of alumnosVencidos) {
+      console.log("📌 MAIL DESTINATARIO (SIMULADO)")
+      console.log({
+        nombre: alumno.nombre,
+        email: alumno.email,
+        modalidad: alumno.modalidad,
+        estado: alumno.estado,
+        vencimiento: alumno.fecha_vencimiento,
+      })
+
+      if (!ENVIAR_EMAILS) {
+        const destinatarioFinal = ENVIAR_EMAILS
+          ? alumno.email
+          : EMAIL_PRUEBA
+
+        console.log(
+          ENVIAR_EMAILS
+            ? "📤 ENVÍO REAL"
+            : "🧪 ENVÍO DE PRUEBA → reenviado a email personal"
+        )
+
+        await sendEmailVencidoSMTP({
+          to: destinatarioFinal,
+          nombre: alumno.nombre,
+          estado: alumno.estado,
+          fechaVencimiento: alumno.fecha_vencimiento,
+          modalidad: alumno.modalidad,
+        })
+
+        enviados++
+      }
+
+      await sendEmailVencidoSMTP({
+        to: alumno.email,
+        nombre: alumno.nombre,
+        estado: alumno.estado,
+        fechaVencimiento: alumno.fecha_vencimiento,
+        modalidad: alumno.modalidad,
+      })
+
+      enviados++
+    }
+
+    console.log("==============================================")
+    if (ENVIAR_EMAILS) {
+      console.log(`✅ EMAILS ENVIADOS A ALUMNOS: ${enviados}`)
+    } else {
+      console.log(`🧪 MODO PRUEBA: ${enviados} emails enviados a ${EMAIL_PRUEBA}`)
+    }
+    console.log("==============================================")
+
+    return res.json({
+      message: "Proceso finalizado",
+      vencidos: alumnosVencidos.length,
+    })
+  } catch (err) {
+    console.error("❌ Error enviando recordatorios:", err)
+    return res.status(500).json({ error: "Error enviando recordatorios" })
+  }
 }
 
 export async function sendTestSMTPMail() {
-    await smtpTransporter.sendMail({
-        from: `"${process.env.BREVO_SENDER_NAME}" <${process.env.BREVO_SENDER_EMAIL}>`,
-        to: "rm.entrenador.planes@gmail.com",
-        subject: "✅ Test SMTP Brevo",
-        html: `
+  await smtpTransporter.sendMail({
+    from: `"${process.env.BREVO_SENDER_NAME}" <${process.env.BREVO_SENDER_EMAIL}>`,
+    to: "rm.entrenador.planes@gmail.com",
+    subject: "✅ Test SMTP Brevo",
+    html: `
       <h2>SMTP funcionando</h2>
       <p>Este mail fue enviado usando <strong>SMTP Brevo</strong>.</p>
     `,
-    })
+  })
 
-    console.log("📧 SMTP test enviado correctamente")
+  console.log("📧 SMTP test enviado correctamente")
 }
