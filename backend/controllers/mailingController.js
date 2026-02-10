@@ -4,6 +4,11 @@ import * as brevo from "@getbrevo/brevo"
 const ENVIAR_EMAILS = true
 const EMAIL_PRUEBA = "nicopereyra855@gmail.com"
 
+// Emails excluidos del envío de recordatorios
+const EMAILS_EXCLUIDOS = [
+  "magoldman17@gmail.com",
+]
+
 // Configurar API de Brevo (usa HTTPS, no bloqueado por Render)
 const apiInstance = new brevo.TransactionalEmailsApi()
 apiInstance.authentications["apiKey"].apiKey = process.env.BREVO_API_KEY
@@ -178,6 +183,7 @@ export const enviarRecordatoriosVencidos = async (req, res) => {
 
     for (const alumno of alumnos) {
       if (!alumno.email || !alumno.pagos?.length) continue
+      if (EMAILS_EXCLUIDOS.includes(alumno.email.toLowerCase())) continue
 
       const ultimoVencimiento = alumno.pagos
         .map(p => new Date(p.fecha_de_vencimiento + "T00:00:00"))
