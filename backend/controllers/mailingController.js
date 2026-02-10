@@ -1,41 +1,34 @@
 import { supabase } from "../lib/supabase.js"
-import nodemailer from "nodemailer"
+import * as brevo from "@getbrevo/brevo"
 
 const ENVIAR_EMAILS = true
 const EMAIL_PRUEBA = "nicopereyra855@gmail.com"
 
+// Configurar API de Brevo (usa HTTPS, no bloqueado por Render)
+const apiInstance = new brevo.TransactionalEmailsApi()
+apiInstance.setApiKey(
+  brevo.TransactionalEmailsApiApiKeys.apiKey,
+  process.env.BREVO_API_KEY
+)
 
-export const smtpTransporter = nodemailer.createTransport({
-  from: `"RM ENTRENADOR" <${process.env.BREVO_SENDER_EMAIL}>`,
-  host: process.env.BREVO_SMTP_HOST,
-  port: process.env.BREVO_SMTP_PORT,
-  secure: false, // puerto 587
-  auth: {
-    user: process.env.BREVO_SMTP_USER,
-    pass: process.env.BREVO_SMTP_PASS,
-  },
-})
+console.log("✅ Brevo API configurada (HTTPS)")
 
-smtpTransporter.verify((err) => {
-  if (err) {
-    console.error("❌ SMTP NO OK:", err.message)
-  } else {
-    console.log("✅ SMTP listo para enviar mails")
-  }
-})
-
-async function sendEmailVencidoSMTP({
+async function sendEmailVencidoAPI({
   to,
   nombre,
   estado,
   fechaVencimiento,
   modalidad,
 }) {
-  await smtpTransporter.sendMail({
-    from: `"RM ENTRENADOR" <${process.env.BREVO_SENDER_EMAIL}>`,
-    to,
-    subject: "⚠️ Tu plan venció – Regularizá para seguir entrenando",
-    html: `
+  const sendSmtpEmail = new brevo.SendSmtpEmail()
+  
+  sendSmtpEmail.subject = "⚠️ Tu plan venció – Regularizá para seguir entrenando"
+  sendSmtpEmail.sender = {
+    name: "RM ENTRENADOR",
+    email: process.env.BREVO_SENDER_EMAIL
+  }
+  sendSmtpEmail.to = [{ email: to, name: nombre }]
+  sendSmtpEmail.htmlContent = `
       <div style="margin:0; padding:0; background-color:#f4f4f5;">
   <table width="100%" cellpadding="0" cellspacing="0">
     <tr>
@@ -159,11 +152,10 @@ async function sendEmailVencidoSMTP({
     </tr>
   </table>
 </div>
+  `
 
-    `,
-  })
-
-  console.log(`📧 SMTP enviado → ${to} | ${nombre} | ${estado}`)
+  await apiInstance.sendTransacEmail(sendSmtpEmail)
+  console.log(`📧 Email enviado vía API → ${to} | ${nombre} | ${estado}`)
 }
 
 
@@ -257,7 +249,7 @@ export const enviarRecordatoriosVencidos = async (req, res) => {
             : "🧪 ENVÍO DE PRUEBA → reenviado a email personal"
         )
 
-        await sendEmailVencidoSMTP({
+        await sendEmailVencidoAPI({
           to: destinatarioFinal,
           nombre: alumno.nombre,
           estado: alumno.estado,
@@ -343,15 +335,19 @@ export const previewRecordatoriosVencidos = async (req, res) => {
 }
 
 export async function sendTestSMTPMail() {
-  await smtpTransporter.sendMail({
-    from: `"${process.env.BREVO_SENDER_NAME}" <${process.env.BREVO_SENDER_EMAIL}>`,
-    to: "rm.entrenador.planes@gmail.com",
-    subject: "✅ Test SMTP Brevo",
-    html: `
-      <h2>SMTP funcionando</h2>
-      <p>Este mail fue enviado usando <strong>SMTP Brevo</strong>.</p>
-    `,
-  })
+  const sendSmtpEmail = new brevo.SendSmtpEmail()
+  
+  sendSmtpEmail.subject = "✅ Test Brevo API"
+  sendSmtpEmail.sender = {
+    name: "RM ENTRENADOR",
+    email: process.env.BREVO_SENDER_EMAIL
+  }
+  sendSmtpEmail.to = [{ email: "rm.entrenador.planes@gmail.com" }]
+  sendSmtpEmail.htmlContent = `
+    <h2>Brevo API funcionando</h2>
+    <p>Este mail fue enviado usando <strong>Brevo API (HTTPS)</strong> en lugar de SMTP.</p>
+  `
 
-  console.log("📧 SMTP test enviado correctamente")
+  await apiInstance.sendTransacEmail(sendSmtpEmail)
+  console.log("📧 Test enviado correctamente vía API")
 }
