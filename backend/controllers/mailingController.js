@@ -5,9 +5,7 @@ const ENVIAR_EMAILS = true
 const EMAIL_PRUEBA = "nicopereyra855@gmail.com"
 
 // Emails excluidos del envío de recordatorios
-const EMAILS_EXCLUIDOS = [
-  "magoldman17@gmail.com",
-]
+const EMAILS_EXCLUIDOS = []
 
 // Configurar API de Brevo (usa HTTPS, no bloqueado por Render)
 const apiInstance = new brevo.TransactionalEmailsApi()
@@ -180,10 +178,30 @@ export const enviarRecordatoriosVencidos = async (req, res) => {
     if (error) throw error
 
     const alumnosVencidos = []
+    const alumnosExcluidos = {
+      sinEmail: [],
+      sinPagos: [],
+      enListaNegra: []
+    }
 
     for (const alumno of alumnos) {
-      if (!alumno.email || !alumno.pagos?.length) continue
-      if (EMAILS_EXCLUIDOS.includes(alumno.email.toLowerCase())) continue
+      // Filtrar sin email
+      if (!alumno.email) {
+        alumnosExcluidos.sinEmail.push(alumno.nombre)
+        continue
+      }
+      
+      // Filtrar sin pagos
+      if (!alumno.pagos?.length) {
+        alumnosExcluidos.sinPagos.push(alumno.nombre)
+        continue
+      }
+      
+      // Filtrar excluidos manualmente
+      if (EMAILS_EXCLUIDOS.includes(alumno.email.toLowerCase())) {
+        alumnosExcluidos.enListaNegra.push(alumno.nombre)
+        continue
+      }
 
       const ultimoVencimiento = alumno.pagos
         .map(p => new Date(p.fecha_de_vencimiento + "T00:00:00"))
@@ -206,6 +224,31 @@ export const enviarRecordatoriosVencidos = async (req, res) => {
     }
 
     /* ========== LOGS ========== */
+    console.log("==============================================")
+    console.log("⚠️  ALUMNOS EXCLUIDOS DEL ENVÍO")
+    console.log("==============================================")
+    
+    if (alumnosExcluidos.sinEmail.length) {
+      console.log(`❌ Sin email (${alumnosExcluidos.sinEmail.length}):`)
+      console.log(alumnosExcluidos.sinEmail.join(", "))
+    }
+    
+    if (alumnosExcluidos.sinPagos.length) {
+      console.log(`❌ Sin pagos registrados (${alumnosExcluidos.sinPagos.length}):`)
+      console.log(alumnosExcluidos.sinPagos.join(", "))
+    }
+    
+    if (alumnosExcluidos.enListaNegra.length) {
+      console.log(`🚫 En lista de exclusión (${alumnosExcluidos.enListaNegra.length}):`)
+      console.log(alumnosExcluidos.enListaNegra.join(", "))
+    }
+    
+    if (!alumnosExcluidos.sinEmail.length && 
+        !alumnosExcluidos.sinPagos.length && 
+        !alumnosExcluidos.enListaNegra.length) {
+      console.log("✅ No hay alumnos excluidos")
+    }
+    
     console.log("==============================================")
     console.log("📛 ALUMNOS CON PLAN VENCIDO")
     console.log(`🔢 Cantidad total: ${alumnosVencidos.length}`)
@@ -301,9 +344,30 @@ export const previewRecordatoriosVencidos = async (req, res) => {
     if (error) throw error
 
     const alumnosVencidos = []
+    const alumnosExcluidos = {
+      sinEmail: [],
+      sinPagos: [],
+      enListaNegra: []
+    }
 
     for (const alumno of alumnos) {
-      if (!alumno.email || !alumno.pagos?.length) continue
+      // Filtrar sin email
+      if (!alumno.email) {
+        alumnosExcluidos.sinEmail.push(alumno.nombre)
+        continue
+      }
+      
+      // Filtrar sin pagos
+      if (!alumno.pagos?.length) {
+        alumnosExcluidos.sinPagos.push(alumno.nombre)
+        continue
+      }
+      
+      // Filtrar excluidos manualmente
+      if (EMAILS_EXCLUIDOS.includes(alumno.email.toLowerCase())) {
+        alumnosExcluidos.enListaNegra.push(alumno.nombre)
+        continue
+      }
 
       const ultimoVencimiento = alumno.pagos
         .map(p => new Date(p.fecha_de_vencimiento + "T00:00:00"))
@@ -330,6 +394,12 @@ export const previewRecordatoriosVencidos = async (req, res) => {
       message: "Preview - No se enviaron emails",
       total: alumnosVencidos.length,
       alumnos: alumnosVencidos,
+      excluidos: {
+        total: alumnosExcluidos.sinEmail.length + alumnosExcluidos.sinPagos.length + alumnosExcluidos.enListaNegra.length,
+        sin_email: alumnosExcluidos.sinEmail,
+        sin_pagos: alumnosExcluidos.sinPagos,
+        en_lista_negra: alumnosExcluidos.enListaNegra
+      }
     })
   } catch (err) {
     console.error("❌ Error en preview de recordatorios:", err)
