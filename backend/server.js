@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import { addClientSupabase, deleteClientSupabase, getMembersSupabase, updateClientSupabase } from "./controllers/clientController.js";
 import { addPaymentSupabase, deletePaymentSupabase, getPaymentsSupabase, updatePaymentInSupabase } from "./controllers/paymentsController.js";
-import { enviarRecordatoriosVencidos, previewRecordatoriosVencidos, sendTestSMTPMail } from "./controllers/mailingController.js";
+import { enviarRecordatoriosVencidos, previewRecordatoriosVencidos, sendTestAPIMail } from "./controllers/mailingController.js";
 
 dotenv.config();
 
@@ -66,13 +66,13 @@ app.put("/payment/:id", updatePaymentInSupabase)
 
 app.get("/send-reminders/preview", previewRecordatoriosVencidos);
 app.post("/send-reminders", enviarRecordatoriosVencidos);
-app.post("/test-smtp", async (req, res) => {
+app.post("/test-api", async (req, res) => {
   try {
-    await sendTestSMTPMail();
-    res.json({ ok: true, message: "SMTP funcionando" })
+    await sendTestAPIMail();
+    res.json({ ok: true, message: "API funcionando" })
   } catch (err) {
-    console.error("❌ Error SMTP:", err)
-    res.status(500).json({ error: "Falló SMTP" })
+    console.error("❌ Error API:", err)
+    res.status(500).json({ error: "Falló API" })
   }
 })
 
@@ -81,7 +81,7 @@ app.get("/ping", (req, res) => {
 })
 
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3002;
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en el puerto: ${PORT}`);
 });

@@ -6,10 +6,7 @@ const EMAIL_PRUEBA = "nicopereyra855@gmail.com"
 
 // Configurar API de Brevo (usa HTTPS, no bloqueado por Render)
 const apiInstance = new brevo.TransactionalEmailsApi()
-apiInstance.setApiKey(
-  brevo.TransactionalEmailsApiApiKeys.apiKey,
-  process.env.BREVO_API_KEY
-)
+apiInstance.authentications["apiKey"].apiKey = process.env.BREVO_API_KEY
 
 console.log("✅ Brevo API configurada (HTTPS)")
 
@@ -334,7 +331,7 @@ export const previewRecordatoriosVencidos = async (req, res) => {
   }
 }
 
-export async function sendTestSMTPMail() {
+export async function sendTestAPIMail() {
   const sendSmtpEmail = new brevo.SendSmtpEmail()
   
   sendSmtpEmail.subject = "✅ Test Brevo API"
@@ -342,7 +339,7 @@ export async function sendTestSMTPMail() {
     name: "RM ENTRENADOR",
     email: process.env.BREVO_SENDER_EMAIL
   }
-  sendSmtpEmail.to = [{ email: "rm.entrenador.planes@gmail.com" }]
+  sendSmtpEmail.to = [{ email: "nicopereyra855@gmail.com" }]
   sendSmtpEmail.htmlContent = `
     <h2>Brevo API funcionando</h2>
     <p>Este mail fue enviado usando <strong>Brevo API (HTTPS)</strong> en lugar de SMTP.</p>
