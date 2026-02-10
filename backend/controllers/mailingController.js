@@ -223,24 +223,30 @@ export const enviarRecordatoriosVencidos = async (req, res) => {
 
     console.log("==============================================")
 
+    // Responder inmediatamente para evitar timeout en cronjobs
+    res.json({
+      message: "Proceso de envío iniciado en segundo plano",
+      vencidos: alumnosVencidos.length,
+    })
+
+    // Continuar el envío en segundo plano sin bloquear la respuesta
     console.log("==============================================")
     console.log("📤 INICIO ENVÍO DE EMAILS")
     console.log("==============================================")
 
     let enviados = 0
 
-
     for (const alumno of alumnosVencidos) {
-      console.log("📌 MAIL DESTINATARIO (SIMULADO)")
-      console.log({
-        nombre: alumno.nombre,
-        email: alumno.email,
-        modalidad: alumno.modalidad,
-        estado: alumno.estado,
-        vencimiento: alumno.fecha_vencimiento,
-      })
+      try {
+        console.log("📌 MAIL DESTINATARIO")
+        console.log({
+          nombre: alumno.nombre,
+          email: alumno.email,
+          modalidad: alumno.modalidad,
+          estado: alumno.estado,
+          vencimiento: alumno.fecha_vencimiento,
+        })
 
-      if (!ENVIAR_EMAILS) {
         const destinatarioFinal = ENVIAR_EMAILS
           ? alumno.email
           : EMAIL_PRUEBA
@@ -260,17 +266,9 @@ export const enviarRecordatoriosVencidos = async (req, res) => {
         })
 
         enviados++
+      } catch (emailError) {
+        console.error(`❌ Error enviando a ${alumno.email}:`, emailError.message)
       }
-
-      await sendEmailVencidoSMTP({
-        to: alumno.email,
-        nombre: alumno.nombre,
-        estado: alumno.estado,
-        fechaVencimiento: alumno.fecha_vencimiento,
-        modalidad: alumno.modalidad,
-      })
-
-      enviados++
     }
 
     console.log("==============================================")
@@ -280,14 +278,67 @@ export const enviarRecordatoriosVencidos = async (req, res) => {
       console.log(`🧪 MODO PRUEBA: ${enviados} emails enviados a ${EMAIL_PRUEBA}`)
     }
     console.log("==============================================")
-
-    return res.json({
-      message: "Proceso finalizado",
-      vencidos: alumnosVencidos.length,
-    })
   } catch (err) {
     console.error("❌ Error enviando recordatorios:", err)
-    return res.status(500).json({ error: "Error enviando recordatorios" })
+    // Si ya se envió la respuesta, solo logueamos
+    if (!res.headersSent) {
+      return res.status(500).json({ error: "Error enviando recordatorios" })
+    }
+  }
+}
+
+export const previewRecordatoriosVencidos = async (req, res) => {
+  try {
+    const hoy = new Date()
+
+    const { data: alumnos, error } = await supabase
+      .from("alumnos")
+      .select(`
+        id,
+        nombre,
+        email,
+        modalidad,
+        pagos (
+          fecha_de_vencimiento
+        )
+      `)
+
+    if (error) throw error
+
+    const alumnosVencidos = []
+
+    for (const alumno of alumnos) {
+      if (!alumno.email || !alumno.pagos?.length) continue
+
+      const ultimoVencimiento = alumno.pagos
+        .map(p => new Date(p.fecha_de_vencimiento + "T00:00:00"))
+        .sort((a, b) => b - a)[0]
+
+      if (ultimoVencimiento <= hoy) {
+        const diasVencido = Math.floor(
+          (hoy - ultimoVencimiento) / (1000 * 60 * 60 * 24)
+        )
+
+        alumnosVencidos.push({
+          id: alumno.id,
+          nombre: alumno.nombre,
+          email: alumno.email,
+          modalidad: alumno.modalidad,
+          fecha_vencimiento: ultimoVencimiento.toLocaleDateString("es-AR"),
+          dias_vencido: diasVencido,
+          estado: "VENCIDO",
+        })
+      }
+    }
+
+    return res.json({
+      message: "Preview - No se enviaron emails",
+      total: alumnosVencidos.length,
+      alumnos: alumnosVencidos,
+    })
+  } catch (err) {
+    console.error("❌ Error en preview de recordatorios:", err)
+    return res.status(500).json({ error: "Error obteniendo preview" })
   }
 }
 

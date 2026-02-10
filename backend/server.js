@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import { addClientSupabase, deleteClientSupabase, getMembersSupabase, updateClientSupabase } from "./controllers/clientController.js";
 import { addPaymentSupabase, deletePaymentSupabase, getPaymentsSupabase, updatePaymentInSupabase } from "./controllers/paymentsController.js";
-import { enviarRecordatoriosVencidos, sendTestSMTPMail } from "./controllers/mailingController.js";
+import { enviarRecordatoriosVencidos, previewRecordatoriosVencidos, sendTestSMTPMail } from "./controllers/mailingController.js";
 
 dotenv.config();
 
@@ -64,6 +64,7 @@ app.put("/payment/:id", updatePaymentInSupabase)
 
 // Mailing
 
+app.get("/send-reminders/preview", previewRecordatoriosVencidos);
 app.post("/send-reminders", enviarRecordatoriosVencidos);
 app.post("/test-smtp", async (req, res) => {
   try {
