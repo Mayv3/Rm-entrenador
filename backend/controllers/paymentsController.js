@@ -1,43 +1,4 @@
-import { getPaymentsFromSheet, addPaymentToSheet, deletePaymentFromSheet, updatePaymentInSheet } from "../services/googleSheetsPayments.js";
 import { supabase } from "../lib/supabase.js";
-
-export const getPayments = async (req, res) => {
-  try {
-    await getPaymentsFromSheet(req, res);
-  } catch (error) {
-    res.status(500).json({ message: "Error al obtener los pagos" });
-  }
-}
-
-export const addPayment = async (req, res) => {
-  try {
-    const result = await addPaymentToSheet(req.body);
-    res.json(result);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-export const deletePayment = async (req, res) => {
-  try {
-    const result = await deletePaymentFromSheet(req, res);
-    res.json(result);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-export const editPayment = async (req, res) => {
-  try {
-    const result = await updatePaymentInSheet(req, res);
-    res.json(result);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-
-// supabase
 
 export const getPaymentsSupabase = async (req, res) => {
   try {
@@ -149,6 +110,97 @@ export const deletePaymentSupabase = async (req, res) => {
   } catch (error) {
     console.error("Error al eliminar pago:", error);
     res.status(500).json({ message: "Error al eliminar el pago" });
+  }
+};
+
+export const deleteHistoryEntry = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const { error } = await supabase.from("historial_pagos").delete().eq("id", id);
+    if (error) return res.status(400).json({ error: error.message });
+    return res.json({ success: true });
+  } catch (error) {
+    return res.status(500).json({ message: "Error al eliminar el registro" });
+  }
+};
+
+export const updateHistoryEntry = async (req, res) => {
+  const { id } = req.params;
+  const { monto, fecha_de_pago, fecha_de_vencimiento, modalidad } = req.body;
+  try {
+    // Actualizar el registro en historial_pagos
+    const { data, error } = await supabase
+      .from("historial_pagos")
+      .update({ monto: Number(monto), fecha_de_pago, fecha_de_vencimiento, modalidad })
+      .eq("id", id)
+      .select()
+      .single();
+    if (error) return res.status(400).json({ error: error.message });
+
+    // Verificar si este es el registro más reciente para su pago_id
+    const { data: latest } = await supabase
+      .from("historial_pagos")
+      .select("id")
+      .eq("pago_id", data.pago_id)
+      .order("changed_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (latest?.id === data.id) {
+      await supabase
+        .from("pagos")
+        .update({ monto: Number(monto), modalidad, fecha_de_pago, fecha_de_vencimiento })
+        .eq("id", data.pago_id);
+    }
+
+    return res.json({ success: true, data });
+  } catch (error) {
+    return res.status(500).json({ message: "Error al actualizar el registro" });
+  }
+};
+
+export const getAllPaymentHistory = async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("historial_pagos")
+      .select("*")
+      .order("changed_at", { ascending: false });
+
+    if (error) {
+      console.error("SUPABASE ERROR:", error);
+      return res.status(400).json({ error: error.message });
+    }
+
+    return res.json(data || []);
+  } catch (error) {
+    console.error("Error al obtener historial global:", error);
+    return res.status(500).json({ message: "Error al obtener el historial" });
+  }
+};
+
+export const getPaymentHistory = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    if (!id || isNaN(Number(id))) {
+      return res.status(400).json({ message: "ID inválido" });
+    }
+
+    const { data, error } = await supabase
+      .from("historial_pagos")
+      .select("*")
+      .eq("pago_id", id)
+      .order("changed_at", { ascending: false });
+
+    if (error) {
+      console.error("SUPABASE ERROR:", error);
+      return res.status(400).json({ error: error.message });
+    }
+
+    return res.json(data || []);
+  } catch (error) {
+    console.error("Error al obtener historial:", error);
+    return res.status(500).json({ message: "Error al obtener el historial" });
   }
 };
 

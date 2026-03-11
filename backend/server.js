@@ -2,9 +2,10 @@ import express from "express";
 import { google } from "googleapis";
 import dotenv from "dotenv";
 import cors from "cors";
-import { addClientSupabase, deleteClientSupabase, getMembersSupabase, updateClientSupabase } from "./controllers/clientController.js";
-import { addPaymentSupabase, deletePaymentSupabase, getPaymentsSupabase, updatePaymentInSupabase } from "./controllers/paymentsController.js";
+import { addClientSupabase, deleteClientSupabase, getMembersSupabase, updateClientSupabase, getStudentByEmail } from "./controllers/clientController.js";
+import { addPaymentSupabase, deletePaymentSupabase, getPaymentsSupabase, updatePaymentInSupabase, getPaymentHistory, getAllPaymentHistory, deleteHistoryEntry, updateHistoryEntry } from "./controllers/paymentsController.js";
 import { enviarRecordatoriosVencidos, previewRecordatoriosVencidos, sendTestAPIMail } from "./controllers/mailingController.js";
+import { getPlanes, addPlan, updatePlan, deletePlan } from "./controllers/planesController.js";
 
 dotenv.config();
 
@@ -52,6 +53,7 @@ app.get("/files", async (req, res) => {
 
 app.post("/add-student", addClientSupabase);
 app.get("/getAllStudents", getMembersSupabase);
+app.get("/student/by-email", getStudentByEmail);
 app.delete("/clients/:id", deleteClientSupabase);
 app.put("/clients/:id", updateClientSupabase);
 
@@ -60,7 +62,18 @@ app.put("/clients/:id", updateClientSupabase);
 app.get("/getAllPayments", getPaymentsSupabase);
 app.post("/addPayment", addPaymentSupabase);
 app.delete("/payment/:id", deletePaymentSupabase);
-app.put("/payment/:id", updatePaymentInSupabase)
+app.put("/payment/:id", updatePaymentInSupabase);
+app.get("/payment/:id/history", getPaymentHistory);
+app.get("/payments/history", getAllPaymentHistory);
+app.delete("/payment/history/:id", deleteHistoryEntry);
+app.put("/payment/history/:id", updateHistoryEntry);
+
+// Planes
+
+app.get("/planes", getPlanes);
+app.post("/planes", addPlan);
+app.put("/planes/:id", updatePlan);
+app.delete("/planes/:id", deletePlan);
 
 // Mailing
 

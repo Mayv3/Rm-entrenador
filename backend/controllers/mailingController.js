@@ -13,15 +13,9 @@ apiInstance.authentications["apiKey"].apiKey = process.env.BREVO_API_KEY
 
 console.log("✅ Brevo API configurada (HTTPS)")
 
-async function sendEmailVencidoAPI({
-  to,
-  nombre,
-  estado,
-  fechaVencimiento,
-  modalidad,
-}) {
+async function sendEmailVencidoAPI({ to, nombre, estado, fechaVencimiento, modalidad }) {
   const sendSmtpEmail = new brevo.SendSmtpEmail()
-  
+
   sendSmtpEmail.subject = "⚠️ Tu plan venció – Regularizá para seguir entrenando"
   sendSmtpEmail.sender = {
     name: "RM ENTRENADOR",
@@ -158,151 +152,108 @@ async function sendEmailVencidoAPI({
   console.log(`📧 Email enviado vía API → ${to} | ${nombre} | ${estado}`)
 }
 
+// ─── Lógica compartida ────────────────────────────────────────────────────────
+
+async function getAlumnosVencidos() {
+  const hoy = new Date()
+
+  const { data: alumnos, error } = await supabase
+    .from("alumnos")
+    .select(`
+      id,
+      nombre,
+      email,
+      modalidad,
+      pagos (
+        fecha_de_vencimiento
+      )
+    `)
+
+  if (error) throw error
+
+  const alumnosVencidos = []
+  const alumnosExcluidos = { sinEmail: [], sinPagos: [], enListaNegra: [] }
+
+  for (const alumno of alumnos) {
+    if (!alumno.email) {
+      alumnosExcluidos.sinEmail.push(alumno.nombre)
+      continue
+    }
+    if (!alumno.pagos?.length) {
+      alumnosExcluidos.sinPagos.push(alumno.nombre)
+      continue
+    }
+    if (EMAILS_EXCLUIDOS.includes(alumno.email.toLowerCase())) {
+      alumnosExcluidos.enListaNegra.push(alumno.nombre)
+      continue
+    }
+
+    const ultimoVencimiento = alumno.pagos
+      .map(p => new Date(p.fecha_de_vencimiento + "T00:00:00"))
+      .sort((a, b) => b - a)[0]
+
+    if (ultimoVencimiento <= hoy) {
+      alumnosVencidos.push({
+        id: alumno.id,
+        nombre: alumno.nombre,
+        email: alumno.email,
+        modalidad: alumno.modalidad,
+        fecha_vencimiento: ultimoVencimiento.toLocaleDateString("es-AR"),
+        dias_vencido: Math.floor((hoy - ultimoVencimiento) / (1000 * 60 * 60 * 24)),
+        estado: "VENCIDO",
+      })
+    }
+  }
+
+  return { alumnosVencidos, alumnosExcluidos }
+}
+
+// ─── Endpoints ────────────────────────────────────────────────────────────────
 
 export const enviarRecordatoriosVencidos = async (req, res) => {
   try {
-    const hoy = new Date()
+    const { alumnosVencidos, alumnosExcluidos } = await getAlumnosVencidos()
 
-    const { data: alumnos, error } = await supabase
-      .from("alumnos")
-      .select(`
-        id,
-        nombre,
-        email,
-        modalidad,
-        pagos (
-          fecha_de_vencimiento
-        )
-      `)
-
-    if (error) throw error
-
-    const alumnosVencidos = []
-    const alumnosExcluidos = {
-      sinEmail: [],
-      sinPagos: [],
-      enListaNegra: []
-    }
-
-    for (const alumno of alumnos) {
-      // Filtrar sin email
-      if (!alumno.email) {
-        alumnosExcluidos.sinEmail.push(alumno.nombre)
-        continue
-      }
-      
-      // Filtrar sin pagos
-      if (!alumno.pagos?.length) {
-        alumnosExcluidos.sinPagos.push(alumno.nombre)
-        continue
-      }
-      
-      // Filtrar excluidos manualmente
-      if (EMAILS_EXCLUIDOS.includes(alumno.email.toLowerCase())) {
-        alumnosExcluidos.enListaNegra.push(alumno.nombre)
-        continue
-      }
-
-      const ultimoVencimiento = alumno.pagos
-        .map(p => new Date(p.fecha_de_vencimiento + "T00:00:00"))
-        .sort((a, b) => b - a)[0]
-
-      if (ultimoVencimiento <= hoy) {
-        const diasVencido = Math.floor(
-          (hoy - ultimoVencimiento) / (1000 * 60 * 60 * 24)
-        )
-
-        alumnosVencidos.push({
-          nombre: alumno.nombre,
-          email: alumno.email,
-          modalidad: alumno.modalidad,
-          fecha_vencimiento: ultimoVencimiento.toLocaleDateString("es-AR"),
-          dias_vencido: diasVencido,
-          estado: "VENCIDO",
-        })
-      }
-    }
-
-    /* ========== LOGS ========== */
     console.log("==============================================")
     console.log("⚠️  ALUMNOS EXCLUIDOS DEL ENVÍO")
     console.log("==============================================")
-    
-    if (alumnosExcluidos.sinEmail.length) {
-      console.log(`❌ Sin email (${alumnosExcluidos.sinEmail.length}):`)
-      console.log(alumnosExcluidos.sinEmail.join(", "))
-    }
-    
-    if (alumnosExcluidos.sinPagos.length) {
-      console.log(`❌ Sin pagos registrados (${alumnosExcluidos.sinPagos.length}):`)
-      console.log(alumnosExcluidos.sinPagos.join(", "))
-    }
-    
-    if (alumnosExcluidos.enListaNegra.length) {
-      console.log(`🚫 En lista de exclusión (${alumnosExcluidos.enListaNegra.length}):`)
-      console.log(alumnosExcluidos.enListaNegra.join(", "))
-    }
-    
-    if (!alumnosExcluidos.sinEmail.length && 
-        !alumnosExcluidos.sinPagos.length && 
-        !alumnosExcluidos.enListaNegra.length) {
+    if (alumnosExcluidos.sinEmail.length)
+      console.log(`❌ Sin email (${alumnosExcluidos.sinEmail.length}): ${alumnosExcluidos.sinEmail.join(", ")}`)
+    if (alumnosExcluidos.sinPagos.length)
+      console.log(`❌ Sin pagos (${alumnosExcluidos.sinPagos.length}): ${alumnosExcluidos.sinPagos.join(", ")}`)
+    if (alumnosExcluidos.enListaNegra.length)
+      console.log(`🚫 Lista negra (${alumnosExcluidos.enListaNegra.length}): ${alumnosExcluidos.enListaNegra.join(", ")}`)
+    if (!alumnosExcluidos.sinEmail.length && !alumnosExcluidos.sinPagos.length && !alumnosExcluidos.enListaNegra.length)
       console.log("✅ No hay alumnos excluidos")
-    }
-    
-    console.log("==============================================")
-    console.log("📛 ALUMNOS CON PLAN VENCIDO")
-    console.log(`🔢 Cantidad total: ${alumnosVencidos.length}`)
-
-    if (alumnosVencidos.length) {
-      console.table(alumnosVencidos)
-    } else {
-      console.log("✅ No hay alumnos vencidos")
-    }
 
     console.log("==============================================")
+    console.log(`📛 ALUMNOS VENCIDOS: ${alumnosVencidos.length}`)
+    if (alumnosVencidos.length) console.table(alumnosVencidos)
+    else console.log("✅ No hay alumnos vencidos")
+    console.log("==============================================")
 
-    // Responder inmediatamente para evitar timeout en cronjobs
+    // Responder inmediatamente para no bloquear cronjobs
     res.json({
       message: "Proceso de envío iniciado en segundo plano",
       vencidos: alumnosVencidos.length,
     })
 
-    // Continuar el envío en segundo plano sin bloquear la respuesta
-    console.log("==============================================")
+    // Envío en background
     console.log("📤 INICIO ENVÍO DE EMAILS")
-    console.log("==============================================")
-
     let enviados = 0
 
     for (const alumno of alumnosVencidos) {
       try {
-        console.log("📌 MAIL DESTINATARIO")
-        console.log({
-          nombre: alumno.nombre,
-          email: alumno.email,
-          modalidad: alumno.modalidad,
-          estado: alumno.estado,
-          vencimiento: alumno.fecha_vencimiento,
-        })
-
-        const destinatarioFinal = ENVIAR_EMAILS
-          ? alumno.email
-          : EMAIL_PRUEBA
-
-        console.log(
-          ENVIAR_EMAILS
-            ? "📤 ENVÍO REAL"
-            : "🧪 ENVÍO DE PRUEBA → reenviado a email personal"
-        )
+        const destinatario = ENVIAR_EMAILS ? alumno.email : EMAIL_PRUEBA
+        console.log(ENVIAR_EMAILS ? "📤 ENVÍO REAL" : "🧪 ENVÍO DE PRUEBA → email personal", alumno.nombre)
 
         await sendEmailVencidoAPI({
-          to: destinatarioFinal,
+          to: destinatario,
           nombre: alumno.nombre,
           estado: alumno.estado,
           fechaVencimiento: alumno.fecha_vencimiento,
           modalidad: alumno.modalidad,
         })
-
         enviados++
       } catch (emailError) {
         console.error(`❌ Error enviando a ${alumno.email}:`, emailError.message)
@@ -310,85 +261,22 @@ export const enviarRecordatoriosVencidos = async (req, res) => {
     }
 
     console.log("==============================================")
-    if (ENVIAR_EMAILS) {
-      console.log(`✅ EMAILS ENVIADOS A ALUMNOS: ${enviados}`)
-    } else {
-      console.log(`🧪 MODO PRUEBA: ${enviados} emails enviados a ${EMAIL_PRUEBA}`)
-    }
+    console.log(ENVIAR_EMAILS
+      ? `✅ EMAILS ENVIADOS: ${enviados}`
+      : `🧪 MODO PRUEBA: ${enviados} emails enviados a ${EMAIL_PRUEBA}`
+    )
     console.log("==============================================")
   } catch (err) {
     console.error("❌ Error enviando recordatorios:", err)
-    // Si ya se envió la respuesta, solo logueamos
     if (!res.headersSent) {
-      return res.status(500).json({ error: "Error enviando recordatorios" })
+      res.status(500).json({ error: "Error enviando recordatorios" })
     }
   }
 }
 
 export const previewRecordatoriosVencidos = async (req, res) => {
   try {
-    const hoy = new Date()
-
-    const { data: alumnos, error } = await supabase
-      .from("alumnos")
-      .select(`
-        id,
-        nombre,
-        email,
-        modalidad,
-        pagos (
-          fecha_de_vencimiento
-        )
-      `)
-
-    if (error) throw error
-
-    const alumnosVencidos = []
-    const alumnosExcluidos = {
-      sinEmail: [],
-      sinPagos: [],
-      enListaNegra: []
-    }
-
-    for (const alumno of alumnos) {
-      // Filtrar sin email
-      if (!alumno.email) {
-        alumnosExcluidos.sinEmail.push(alumno.nombre)
-        continue
-      }
-      
-      // Filtrar sin pagos
-      if (!alumno.pagos?.length) {
-        alumnosExcluidos.sinPagos.push(alumno.nombre)
-        continue
-      }
-      
-      // Filtrar excluidos manualmente
-      if (EMAILS_EXCLUIDOS.includes(alumno.email.toLowerCase())) {
-        alumnosExcluidos.enListaNegra.push(alumno.nombre)
-        continue
-      }
-
-      const ultimoVencimiento = alumno.pagos
-        .map(p => new Date(p.fecha_de_vencimiento + "T00:00:00"))
-        .sort((a, b) => b - a)[0]
-
-      if (ultimoVencimiento <= hoy) {
-        const diasVencido = Math.floor(
-          (hoy - ultimoVencimiento) / (1000 * 60 * 60 * 24)
-        )
-
-        alumnosVencidos.push({
-          id: alumno.id,
-          nombre: alumno.nombre,
-          email: alumno.email,
-          modalidad: alumno.modalidad,
-          fecha_vencimiento: ultimoVencimiento.toLocaleDateString("es-AR"),
-          dias_vencido: diasVencido,
-          estado: "VENCIDO",
-        })
-      }
-    }
+    const { alumnosVencidos, alumnosExcluidos } = await getAlumnosVencidos()
 
     return res.json({
       message: "Preview - No se enviaron emails",
@@ -398,7 +286,7 @@ export const previewRecordatoriosVencidos = async (req, res) => {
         total: alumnosExcluidos.sinEmail.length + alumnosExcluidos.sinPagos.length + alumnosExcluidos.enListaNegra.length,
         sin_email: alumnosExcluidos.sinEmail,
         sin_pagos: alumnosExcluidos.sinPagos,
-        en_lista_negra: alumnosExcluidos.enListaNegra
+        en_lista_negra: alumnosExcluidos.enListaNegra,
       }
     })
   } catch (err) {
@@ -409,7 +297,7 @@ export const previewRecordatoriosVencidos = async (req, res) => {
 
 export async function sendTestAPIMail() {
   const sendSmtpEmail = new brevo.SendSmtpEmail()
-  
+
   sendSmtpEmail.subject = "✅ Test Brevo API"
   sendSmtpEmail.sender = {
     name: "RM ENTRENADOR",

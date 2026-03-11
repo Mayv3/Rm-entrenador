@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "@/styles/globals.css";
 import { Comfortaa } from "next/font/google";
-import { ThemeProvider } from "@/components/theme-provider";
+import { Providers } from "./providers";
 
 const comfortaa = Comfortaa({ subsets: ["latin"], weight: "400" });
 
@@ -25,14 +25,9 @@ export default function RootLayout({
         <link rel="icon" href="/favicon.ico" type="image/x-icon" />
       </head>
       <body>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="light"
-          disableTransitionOnChange
-          forcedTheme="light"
-        >
+        <Providers>
           {children}
-        </ThemeProvider>
+        </Providers>
       </body>
     </html>
   );
