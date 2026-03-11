@@ -1,5 +1,29 @@
 import { supabase } from "../lib/supabase.js";
 
+const daysMap = {
+  monday: "Lun",
+  tuesday: "Mar",
+  wednesday: "Mié",
+  thursday: "Jue",
+  friday: "Vie",
+  saturday: "Sáb",
+  sunday: "Dom",
+};
+
+export const getStudentByEmail = async (req, res) => {
+  const { email } = req.query;
+  if (!email) return res.status(400).json({ message: "Email requerido" });
+
+  const { data, error } = await supabase
+    .from("alumnos")
+    .select("*")
+    .ilike("email", email)
+    .single();
+
+  if (error || !data) return res.status(404).json({ message: "Alumno no encontrado" });
+  return res.json(data);
+};
+
 export const getMembersSupabase = async (req, res) => {
 
   let { data: alumnos, error } = await supabase
@@ -33,16 +57,6 @@ export const addClientSupabase = async (req, res) => {
         startService,
         lastAntro
       } = clientData;
-
-      const daysMap = {
-        monday: "Lun",
-        tuesday: "Mar",
-        wednesday: "Mié",
-        thursday: "Jue",
-        friday: "Vie",
-        saturday: "Sáb",
-        sunday: "Dom",
-      };
 
       const selectedDays = Object.entries(schedule)
         .filter(([_, value]) => value)
@@ -168,16 +182,6 @@ export const updateClientSupabase = async (req, res) => {
       startService,
       lastAntro
     } = clientData;
-
-    const daysMap = {
-      monday: "Lun",
-      tuesday: "Mar",
-      wednesday: "Mié",
-      thursday: "Jue",
-      friday: "Vie",
-      saturday: "Sáb",
-      sunday: "Dom",
-    };
 
     const selectedDays = Object.entries(schedule || {})
       .filter(([_, value]) => value)
