@@ -262,10 +262,16 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
               </div>
             </div>
 
-            {/* Última antropometría — ancho completo */}
-            <div className="grid gap-1.5">
-              <Label htmlFor="lastAntro" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Última antropometría</Label>
-              <Input id="lastAntro" name="lastAntro" type="date" value={formData.lastAntro} onChange={handleChange} className="h-9" />
+            {/* Fecha de nacimiento + Antropometría */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="birthDate" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Fecha de nacimiento</Label>
+                <Input id="birthDate" name="birthDate" type="date" value={formData.birthDate} onChange={handleChange} className="h-9" />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="lastAntro" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Antropometría</Label>
+                <Input id="lastAntro" name="lastAntro" type="date" value={formData.lastAntro} onChange={handleChange} className="h-9" />
+              </div>
             </div>
 
           </div>
