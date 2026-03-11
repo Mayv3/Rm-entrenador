@@ -64,7 +64,7 @@ function StatusBadge({ status, fechaVencimiento, className, style }: { status?: 
   return (
     <Badge
       style={{ backgroundColor: getStatusColor(status || "Indefinido"), cursor: vencimiento ? "pointer" : "default", ...style }}
-      className={className}
+      className={`text-white ${className ?? ""}`}
       onMouseEnter={() => vencimiento && setShowDate(true)}
       onMouseLeave={() => setShowDate(false)}
       onClick={(e) => { e.stopPropagation(); vencimiento && setShowDate((v) => !v) }}
@@ -87,7 +87,7 @@ function StatusBadgeMobile({ status, fechaVencimiento }: { status?: string; fech
         <TooltipTrigger asChild>
           <Badge
             style={{ backgroundColor: getStatusColor(status || "Indefinido"), cursor: "pointer" }}
-            className="h-6"
+            className="h-6 text-white"
             onClick={(e) => { e.stopPropagation(); setOpen((v) => !v) }}
           >
             {label}
@@ -142,31 +142,31 @@ function StudentMobileCard({
         <div>
           <span className="text-sm text-muted-foreground">{student.email || "N/A"}</span>
         </div>
-        <div className="flex gap-1.5">
-          {[
-            { label: "L", match: "Lun" },
-            { label: "M", match: "Mar" },
-            { label: "X", match: "Mié" },
-            { label: "J", match: "Jue" },
-            { label: "V", match: "Vie" },
-            { label: "S", match: "Sáb" },
-            { label: "D", match: "Dom" },
-          ].map(({ label, match }) => {
-            const active = student.dias?.includes(match)
-            return (
-              <span
-                key={label}
-                className={`flex-1 flex items-center justify-center h-7 rounded-md text-xs font-semibold border ${
-                  active
-                    ? "bg-[var(--primary-color)] text-white border-[var(--primary-color)]"
-                    : "bg-muted text-muted-foreground border-border"
-                }`}
-              >
-                {label}
-              </span>
-            )
-          })}
-        </div>
+        {(() => {
+          const diasStr = (student.dias || "").split(" - ")[0]
+          const horario = (student.dias || "").split(" - ")[1] || ""
+          const countMatch = diasStr.match(/^(\d+)\s*días?/)
+          const count = countMatch ? parseInt(countMatch[1]) : diasStr.split(",").filter((d) => d.trim()).length
+          return (
+            <div className="flex flex-col gap-1.5">
+              <div className="flex gap-1.5">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <span
+                    key={n}
+                    className={`flex-1 h-7 rounded-md border ${
+                      n <= count
+                        ? "bg-[var(--primary-color)] border-[var(--primary-color)]"
+                        : "bg-muted border-border"
+                    }`}
+                  />
+                ))}
+              </div>
+              {horario && (
+                <span className="text-xs text-muted-foreground">{count} {count === 1 ? "día" : "días"} — {horario}</span>
+              )}
+            </div>
+          )
+        })()}
         <div className="grid grid-cols-2 gap-2">
           <div className="rounded-lg py-2 flex flex-col gap-0.5">
             <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Nacimiento</span>
@@ -287,7 +287,32 @@ export function StudentsTable() {
         </span>
       ),
     },
-    { field: "dias", headerName: "Días y Turnos", flex: 1.2, minWidth: 150 },
+    {
+      field: "dias", headerName: "Días y Turnos", flex: 1.2, minWidth: 160,
+      renderCell: ({ value }) => {
+        const diasStr = (value || "").split(" - ")[0]
+        const horario = (value || "").split(" - ")[1] || ""
+        const countMatch = diasStr.match(/^(\d+)\s*días?/)
+        const count = countMatch ? parseInt(countMatch[1]) : diasStr.split(",").filter((d: string) => d.trim()).length
+        return (
+          <span className="flex items-center gap-1.5 w-full">
+            <span className="flex gap-0.5">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <span
+                  key={n}
+                  className={`inline-block w-4 h-4 rounded-sm border ${
+                    n <= count
+                      ? "bg-[var(--primary-color)] border-[var(--primary-color)]"
+                      : "bg-muted border-border"
+                  }`}
+                />
+              ))}
+            </span>
+            {horario && <span className="text-xs text-muted-foreground">{horario}</span>}
+          </span>
+        )
+      },
+    },
     {
       field: "fecha_de_nacimiento", headerName: "Nacimiento", flex: 0.9, minWidth: 120,
       renderCell: ({ value }) => (

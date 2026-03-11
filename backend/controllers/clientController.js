@@ -50,6 +50,7 @@ export const addClientSupabase = async (req, res) => {
         modality,
         name,
         planUrl,
+        daysCount,
         schedule,
         time,
         whatsapp,
@@ -58,12 +59,16 @@ export const addClientSupabase = async (req, res) => {
         lastAntro
       } = clientData;
 
-      const selectedDays = Object.entries(schedule)
-        .filter(([_, value]) => value)
-        .map(([day]) => daysMap[day])
-        .join(", ");
-
-      const scheduleString = selectedDays ? `${selectedDays} - ${time}` : "No definido";
+      let scheduleString;
+      if (daysCount) {
+        scheduleString = `${daysCount} ${daysCount === 1 ? "día" : "días"} - ${time}`;
+      } else {
+        const selectedDays = Object.entries(schedule || {})
+          .filter(([_, value]) => value)
+          .map(([day]) => daysMap[day])
+          .join(", ");
+        scheduleString = selectedDays ? `${selectedDays} - ${time}` : "No definido";
+      }
 
       const newClient = {
         nombre: name,
@@ -177,18 +182,23 @@ export const updateClientSupabase = async (req, res) => {
       whatsapp,
       email,
       planUrl,
+      daysCount,
       schedule,
       time,
       startService,
       lastAntro
     } = clientData;
 
-    const selectedDays = Object.entries(schedule || {})
-      .filter(([_, value]) => value)
-      .map(([day]) => daysMap[day])
-      .join(", ");
-
-    const scheduleString = `${selectedDays} - ${time}`;
+    let scheduleString;
+    if (daysCount) {
+      scheduleString = `${daysCount} ${daysCount === 1 ? "día" : "días"} - ${time}`;
+    } else {
+      const selectedDays = Object.entries(schedule || {})
+        .filter(([_, value]) => value)
+        .map(([day]) => daysMap[day])
+        .join(", ");
+      scheduleString = selectedDays ? `${selectedDays} - ${time}` : "No definido";
+    }
 
     const updatedClient = {
       nombre: name,
