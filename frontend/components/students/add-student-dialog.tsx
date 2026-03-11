@@ -207,10 +207,10 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
               </div>
             </div>
 
-            {/* Fecha de nacimiento + Antropometría */}
+            {/* Nacimiento + Antropometría */}
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-1.5">
-                <Label htmlFor="birthDate" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Fecha de nacimiento</Label>
+                <Label htmlFor="birthDate" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Nacimiento</Label>
                 <Input id="birthDate" name="birthDate" type="date" value={formData.birthDate} onChange={handleChange} className="h-9" />
               </div>
               <div className="grid gap-1.5">
