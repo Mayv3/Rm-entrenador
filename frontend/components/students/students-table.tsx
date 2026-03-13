@@ -206,6 +206,7 @@ function StudentMobileCard({
 
 export function StudentsTable() {
   const [searchTerm, setSearchTerm] = useState("")
+  const [statusFilter, setStatusFilter] = useState<string | null>(null)
   const [isAddStudentOpen, setIsAddStudentOpen] = useState(false)
   const [isEditStudentOpen, setIsEditStudentOpen] = useState(false)
   const [isDeleteStudentOpen, setIsDeleteStudentOpen] = useState(false)
@@ -247,19 +248,25 @@ export function StudentsTable() {
   const sortedStudents = useMemo(
     () =>
       students
-        .filter(
-          (s) =>
+        .filter((s) => {
+          const matchesSearch =
             s.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             s.modalidad?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             s.telefono?.includes(searchTerm) ||
             s.status?.toLowerCase().includes(searchTerm.toLowerCase())
-        )
+          const matchesStatus =
+            !statusFilter ||
+            (statusFilter === "Activo" && s.status === "Pagado") ||
+            (statusFilter === "Vencido" && (s.status === "Vencido" || s.status === "Pendiente")) ||
+            (statusFilter === "Indefinido" && s.status === "Indefinido")
+          return matchesSearch && matchesStatus
+        })
         .sort((a, b) => {
           const ra = STATUS_RANK[a.status || "Indefinido"] ?? 99
           const rb = STATUS_RANK[b.status || "Indefinido"] ?? 99
           return ra - rb
         }),
-    [students, searchTerm]
+    [students, searchTerm, statusFilter]
   )
 
   const isLg = useMediaQuery("(min-width:1024px)")
@@ -391,15 +398,32 @@ export function StudentsTable() {
   return (
     <>
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="relative w-full md:w-96">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Buscar alumnos..."
-            className="w-full pl-8"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+        <div className="flex flex-col gap-2 w-full md:w-96">
+          <div className="relative w-full">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Buscar alumnos..."
+              className="w-full pl-8"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <div className="flex gap-2 md:hidden">
+            {[null, "Activo", "Vencido", "Indefinido"].map((f) => (
+              <button
+                key={f ?? "todos"}
+                onClick={() => setStatusFilter(f)}
+                className={`flex-1 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                  statusFilter === f
+                    ? "bg-[var(--primary-color)] text-white border-[var(--primary-color)]"
+                    : "bg-background text-muted-foreground border-border"
+                }`}
+              >
+                {f ?? "Todos"}
+              </button>
+            ))}
+          </div>
         </div>
         <Button
           size="sm"
