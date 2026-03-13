@@ -17,11 +17,10 @@ export const getStudentByEmail = async (req, res) => {
   const { data, error } = await supabase
     .from("alumnos")
     .select("*")
-    .ilike("email", email)
-    .single();
+    .ilike("email", email);
 
-  if (error || !data) return res.status(404).json({ message: "Alumno no encontrado" });
-  return res.json(data);
+  if (error || !data?.length) return res.status(404).json({ message: "Alumno no encontrado" });
+  return res.json(data[0]);
 };
 
 export const getMembersSupabase = async (req, res) => {

@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /c/Users/nicop/OneDrive/Desktop/Rm-entrenador/frontend/components -name \"*.tsx\" -o -name \"*.ts\" | xargs grep -l \"filter\" -i 2>/dev/null)",
+      "Bash(find /c/Users/nicop/OneDrive/Desktop/Rm-entrenador/frontend/components -type f -name \"*.tsx\" -o -name \"*.ts\" | xargs grep -l \"SearchInput\\\\|FilterButton\\\\|FilterSelect\\\\|StatusFilter\" 2>/dev/null)",
+      "Bash(find /c/Users/nicop/OneDrive/Desktop/Rm-entrenador -type f -name \"*.tsx\" -o -name \"*.ts\" | xargs grep -l \"portal\\\\|student\\\\|alumno\" | grep -v node_modules | head -15)",
+      "mcp__supabase__list_projects",
+      "mcp__supabase__execute_sql"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "supabase"
+  ]
+}
