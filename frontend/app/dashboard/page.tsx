@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Image from "next/image";
 import logoRodrigoEntrenador from "../../assets/LOGO-RODRIGO-VERDE.png";
-import { Users, CreditCard, Tag, LogOut, Moon, Sun, Globe, Copy, Check } from "lucide-react";
+import { Users, CreditCard, Tag, LogOut, Moon, Sun, Globe, Copy, Check, Ruler } from "lucide-react";
+import { AntropometriasSection } from "@/components/antropometrias/antropometrias-section";
 import { useTheme } from "next-themes";
 
 function PortalSection({ copied, setCopied }: { copied: boolean; setCopied: (v: boolean) => void }) {
@@ -73,7 +74,7 @@ function PortalSection({ copied, setCopied }: { copied: boolean; setCopied: (v: 
 export default function Dashboard() {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
-  const [activeTab, setActiveTab] = useState<"students" | "payments" | "planes" | "portal">("students");
+  const [activeTab, setActiveTab] = useState<"students" | "payments" | "planes" | "portal" | "antropometrias">("students");
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -93,6 +94,7 @@ export default function Dashboard() {
     { value: "payments", label: "Pagos", icon: CreditCard },
     { value: "planes", label: "Planes", icon: Tag },
     { value: "portal", label: "Portal", icon: Globe },
+    { value: "antropometrias", label: "Antropometría", icon: Ruler },
   ] as const;
 
   return (
@@ -152,9 +154,12 @@ export default function Dashboard() {
       <main className="flex-1 md:ml-52 p-4 sm:p-6 mt-16 md:mt-0 pb-20 md:pb-0 overflow-x-hidden">
         {/* Contenido */}
         <div className="space-y-4 w-full md:max-w-[85vw] md:mx-auto">
-          {activeTab === "students" ? <StudentsTable /> : activeTab === "payments" ? <PaymentsTable /> : activeTab === "planes" ? <PlanesTable /> : (
-            <PortalSection copied={copied} setCopied={setCopied} />
-          )}
+          {activeTab === "students" ? <StudentsTable />
+            : activeTab === "payments" ? <PaymentsTable />
+            : activeTab === "planes" ? <PlanesTable />
+            : activeTab === "antropometrias" ? <AntropometriasSection />
+            : <PortalSection copied={copied} setCopied={setCopied} />
+          }
         </div>
       </main>
 
