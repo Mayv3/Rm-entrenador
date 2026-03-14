@@ -139,9 +139,6 @@ function StudentMobileCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div>
-          <span className="text-sm text-muted-foreground">{student.email || "N/A"}</span>
-        </div>
         {(() => {
           const diasStr = (student.dias || "").split(" - ")[0]
           const horario = (student.dias || "").split(" - ")[1] || ""
@@ -167,15 +164,9 @@ function StudentMobileCard({
             </div>
           )
         })()}
-        <div className="grid grid-cols-2 gap-2">
-          <div className="rounded-lg py-2 flex flex-col gap-0.5">
-            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Nacimiento</span>
-            <span className="text-sm font-medium">{formatDate(student.fecha_de_nacimiento || "")}</span>
-          </div>
-          <div className="rounded-lg py-2 flex flex-col gap-0.5">
-            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Última antrop.</span>
-            <span className="text-sm font-medium">{formatDate(student.ultima_antro || "")}</span>
-          </div>
+        <div className="rounded-lg py-2 flex flex-col gap-0.5">
+          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Nacimiento</span>
+          <span className="text-sm font-medium">{formatDate(student.fecha_de_nacimiento || "")}</span>
         </div>
         <div className="flex gap-1">
           <a
@@ -279,8 +270,6 @@ export function StudentsTable() {
   const columnVisibilityModel = useMemo(() => ({
     fecha_de_nacimiento: isLg,
     fecha_de_inicio: isLg,
-    ultima_antro: isXl,
-    email: isXl,
   }), [isLg, isXl])
 
   const studentsColumns: GridColDef[] = [
@@ -332,14 +321,6 @@ export function StudentsTable() {
     {
       field: "fecha_de_inicio", headerName: "Inicio", flex: 0.8, minWidth: 110,
       renderCell: ({ value }) => formatDate(value || ""),
-    },
-    {
-      field: "ultima_antro", headerName: "Última Antrop.", flex: 0.9, minWidth: 120,
-      renderCell: ({ value }) => formatDate(value || ""),
-    },
-    {
-      field: "email", headerName: "Email", flex: 1.2, minWidth: 160,
-      renderCell: ({ value }) => value || "N/A",
     },
     {
       field: "status", headerName: "Estado", flex: 0.8, minWidth: 100,

@@ -159,6 +159,19 @@ export const deleteClientSupabase = async (req, res) => {
   }
 };
 
+export const updateAntroPdf = async (req, res) => {
+  const { id } = req.params;
+  const { antro_pdf_path } = req.body;
+
+  const { error } = await supabase
+    .from("alumnos")
+    .update({ antro_pdf_path: antro_pdf_path ?? null })
+    .eq("id", id);
+
+  if (error) return res.status(500).json({ message: "No se pudo actualizar el PDF" });
+  return res.json({ success: true });
+};
+
 export const updateClientSupabase = async (req, res) => {
   const { id } = req.params;
   const clientData = req.body;
