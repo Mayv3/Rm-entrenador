@@ -3,6 +3,7 @@
 import { useSession, signOut } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
+import { useTheme } from "next-themes"
 import { useQuery } from "@tanstack/react-query"
 import axios from "axios"
 import Image from "next/image"
@@ -11,12 +12,13 @@ import { Loader } from "@/components/ui/loader"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { FileText, LogOut, MessageSquare, ArrowLeft, Loader2, Download, Eye } from "lucide-react"
+import { FileText, LogOut, MessageSquare, ArrowLeft, Loader2, Download, Eye, TrendingUp } from "lucide-react"
 import { supabase } from "@/lib/supabase-client"
 import { determineSubscriptionStatus, formatDate, getStatusColor } from "@/lib/payment-utils"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { AntroView, ParsedAntro } from "@/components/antropometrias/antro-view"
+import { AntroAnualChart } from "@/components/antropometrias/antro-anual-chart"
 
 interface Student {
   id: number
@@ -132,9 +134,17 @@ function AntroViewDialog({ parsedData, antro, onClose }: { parsedData: ParsedAnt
 export default function PortalPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const { setTheme } = useTheme()
+
+  useEffect(() => {
+    setTheme("dark")
+    return () => setTheme("light")
+  }, [setTheme])
+
   const [parsedData, setParsedData] = useState<ParsedAntro | null>(null)
   const [selectedAntro, setSelectedAntro] = useState<AntroRecord | null>(null)
   const [parsing, setParsing] = useState(false)
+  const [showAnualChart, setShowAnualChart] = useState(false)
 
   async function handleSelectAntro(antro: AntroRecord) {
     setParsing(true)
@@ -307,9 +317,20 @@ export default function PortalPage() {
 
         {/* Antropometrías */}
         <div className="flex flex-col gap-2">
-          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            Mis antropometrías {antros.length > 0 && `(${antros.length})`}
-          </span>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Mis antropometrías {antros.length > 0 && `(${antros.length})`}
+            </span>
+            {antros.length >= 2 && (
+              <button
+                onClick={() => setShowAnualChart(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--primary-color)] text-white text-xs font-semibold shadow-md hover:brightness-110 active:scale-95 transition-all"
+              >
+                <TrendingUp className="h-4 w-4" />
+                Ver evolución
+              </button>
+            )}
+          </div>
 
           {antros.length === 0 ? (
             <div className="rounded-lg border px-4 py-6 flex items-center justify-center">
@@ -348,6 +369,14 @@ export default function PortalPage() {
         parsedData={parsedData}
         antro={selectedAntro}
         onClose={() => { setParsedData(null); setSelectedAntro(null) }}
+      />
+
+      <AntroAnualChart
+        open={showAnualChart}
+        onClose={() => setShowAnualChart(false)}
+        antros={antros}
+        onSelectAntro={handleSelectAntro}
+        parsing={parsing}
       />
     </div>
   )
