@@ -24,7 +24,8 @@
       "Bash(cd \"C:/Users/nicop/OneDrive/Desktop/Rm-entrenador/backend\" && node -e \"import\\('pdfjs-dist/legacy/build/pdf.mjs'\\).then\\(m => console.log\\('OK', Object.keys\\(m\\).slice\\(0,5\\)\\)\\).catch\\(e => console.error\\(e.message\\)\\)\")",
       "Bash(cd \"C:/Users/nicop/OneDrive/Desktop/Rm-entrenador/backend\" && node --input-type=module -e \"import\\('./controllers/pdfAntroParser.js'\\).then\\(\\(\\) => console.log\\('OK'\\)\\).catch\\(e => console.error\\(e.message\\)\\)\")",
       "Bash(cd \"C:/Users/nicop/OneDrive/Desktop/Rm-entrenador/backend\" && node --input-type=module -e \"\nimport * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';\nimport { readFileSync } from 'fs';\n\nconst buf = readFileSync\\('pdf-test/INFORME ISAK II NICO PEREYRA.pdf'\\);\nconst loadingTask = pdfjs.getDocument\\({ data: new Uint8Array\\(buf\\), verbosity: 0 }\\);\nconst pdf = await loadingTask.promise;\nconst items = [];\nfor \\(let p = 1; p <= pdf.numPages; p++\\) {\n  const page = await pdf.getPage\\(p\\);\n  const content = await page.getTextContent\\(\\);\n  for \\(const item of content.items\\) {\n    const str = item.str?.trim\\(\\);\n    if \\(str\\) items.push\\({ text: str, x: Math.round\\(item.transform[4]\\), y: Math.round\\(item.transform[5]\\) }\\);\n  }\n}\n// Sort by y desc then x asc\nitems.sort\\(\\(a,b\\) => b.y - a.y || a.x - b.x\\);\nconsole.log\\(JSON.stringify\\(items, null, 2\\)\\);\n\")",
-      "mcp__supabase__apply_migration"
+      "mcp__supabase__apply_migration",
+      "Bash(tree:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

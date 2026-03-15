@@ -277,7 +277,7 @@ export function AntroView({ data }: { data: ParsedAntro }) {
       {/* Encabezado */}
       <div className="rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
         <div className="bg-gradient-to-r from-green-600 to-green-500 px-5 py-4">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-green-100 mb-0.5">Paciente</p>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-green-100 mb-0.5">Alumno</p>
           <p className="text-lg font-bold text-white leading-tight">{data.nombre ?? "—"}</p>
         </div>
         <div className="grid grid-cols-3 divide-x divide-gray-100 dark:divide-gray-800">
