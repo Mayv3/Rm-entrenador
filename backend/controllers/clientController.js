@@ -17,11 +17,10 @@ export const getStudentByEmail = async (req, res) => {
   const { data, error } = await supabase
     .from("alumnos")
     .select("*")
-    .ilike("email", email)
-    .single();
+    .ilike("email", email);
 
-  if (error || !data) return res.status(404).json({ message: "Alumno no encontrado" });
-  return res.json(data);
+  if (error || !data?.length) return res.status(404).json({ message: "Alumno no encontrado" });
+  return res.json(data[0]);
 };
 
 export const getMembersSupabase = async (req, res) => {
@@ -50,6 +49,7 @@ export const addClientSupabase = async (req, res) => {
         modality,
         name,
         planUrl,
+        daysCount,
         schedule,
         time,
         whatsapp,
@@ -58,12 +58,16 @@ export const addClientSupabase = async (req, res) => {
         lastAntro
       } = clientData;
 
-      const selectedDays = Object.entries(schedule)
-        .filter(([_, value]) => value)
-        .map(([day]) => daysMap[day])
-        .join(", ");
-
-      const scheduleString = selectedDays ? `${selectedDays} - ${time}` : "No definido";
+      let scheduleString;
+      if (daysCount) {
+        scheduleString = `${daysCount} ${daysCount === 1 ? "día" : "días"} - ${time}`;
+      } else {
+        const selectedDays = Object.entries(schedule || {})
+          .filter(([_, value]) => value)
+          .map(([day]) => daysMap[day])
+          .join(", ");
+        scheduleString = selectedDays ? `${selectedDays} - ${time}` : "No definido";
+      }
 
       const newClient = {
         nombre: name,
@@ -155,6 +159,19 @@ export const deleteClientSupabase = async (req, res) => {
   }
 };
 
+export const updateAntroPdf = async (req, res) => {
+  const { id } = req.params;
+  const { antro_pdf_path } = req.body;
+
+  const { error } = await supabase
+    .from("alumnos")
+    .update({ antro_pdf_path: antro_pdf_path ?? null })
+    .eq("id", id);
+
+  if (error) return res.status(500).json({ message: "No se pudo actualizar el PDF" });
+  return res.json({ success: true });
+};
+
 export const updateClientSupabase = async (req, res) => {
   const { id } = req.params;
   const clientData = req.body;
@@ -177,18 +194,23 @@ export const updateClientSupabase = async (req, res) => {
       whatsapp,
       email,
       planUrl,
+      daysCount,
       schedule,
       time,
       startService,
       lastAntro
     } = clientData;
 
-    const selectedDays = Object.entries(schedule || {})
-      .filter(([_, value]) => value)
-      .map(([day]) => daysMap[day])
-      .join(", ");
-
-    const scheduleString = `${selectedDays} - ${time}`;
+    let scheduleString;
+    if (daysCount) {
+      scheduleString = `${daysCount} ${daysCount === 1 ? "día" : "días"} - ${time}`;
+    } else {
+      const selectedDays = Object.entries(schedule || {})
+        .filter(([_, value]) => value)
+        .map(([day]) => daysMap[day])
+        .join(", ");
+      scheduleString = selectedDays ? `${selectedDays} - ${time}` : "No definido";
+    }
 
     const updatedClient = {
       nombre: name,

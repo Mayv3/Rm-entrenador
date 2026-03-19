@@ -64,7 +64,7 @@ function StatusBadge({ status, fechaVencimiento, className, style }: { status?: 
   return (
     <Badge
       style={{ backgroundColor: getStatusColor(status || "Indefinido"), cursor: vencimiento ? "pointer" : "default", ...style }}
-      className={className}
+      className={`text-white ${className ?? ""}`}
       onMouseEnter={() => vencimiento && setShowDate(true)}
       onMouseLeave={() => setShowDate(false)}
       onClick={(e) => { e.stopPropagation(); vencimiento && setShowDate((v) => !v) }}
@@ -87,7 +87,7 @@ function StatusBadgeMobile({ status, fechaVencimiento }: { status?: string; fech
         <TooltipTrigger asChild>
           <Badge
             style={{ backgroundColor: getStatusColor(status || "Indefinido"), cursor: "pointer" }}
-            className="h-6"
+            className="h-6 text-white"
             onClick={(e) => { e.stopPropagation(); setOpen((v) => !v) }}
           >
             {label}
@@ -139,43 +139,34 @@ function StudentMobileCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div>
-          <span className="text-sm text-muted-foreground">{student.email || "N/A"}</span>
-        </div>
-        <div className="flex gap-1.5">
-          {[
-            { label: "L", match: "Lun" },
-            { label: "M", match: "Mar" },
-            { label: "X", match: "Mié" },
-            { label: "J", match: "Jue" },
-            { label: "V", match: "Vie" },
-            { label: "S", match: "Sáb" },
-            { label: "D", match: "Dom" },
-          ].map(({ label, match }) => {
-            const active = student.dias?.includes(match)
-            return (
-              <span
-                key={label}
-                className={`flex-1 flex items-center justify-center h-7 rounded-md text-xs font-semibold border ${
-                  active
-                    ? "bg-[var(--primary-color)] text-white border-[var(--primary-color)]"
-                    : "bg-muted text-muted-foreground border-border"
-                }`}
-              >
-                {label}
-              </span>
-            )
-          })}
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div className="rounded-lg py-2 flex flex-col gap-0.5">
-            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Nacimiento</span>
-            <span className="text-sm font-medium">{formatDate(student.fecha_de_nacimiento || "")}</span>
-          </div>
-          <div className="rounded-lg py-2 flex flex-col gap-0.5">
-            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Última antrop.</span>
-            <span className="text-sm font-medium">{formatDate(student.ultima_antro || "")}</span>
-          </div>
+        {(() => {
+          const diasStr = (student.dias || "").split(" - ")[0]
+          const horario = (student.dias || "").split(" - ")[1] || ""
+          const countMatch = diasStr.match(/^(\d+)\s*días?/)
+          const count = countMatch ? parseInt(countMatch[1]) : diasStr.split(",").filter((d) => d.trim()).length
+          return (
+            <div className="flex flex-col gap-1.5">
+              <div className="flex gap-1.5">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <span
+                    key={n}
+                    className={`flex-1 h-7 rounded-md border ${
+                      n <= count
+                        ? "bg-[var(--primary-color)] border-[var(--primary-color)]"
+                        : "bg-muted border-border"
+                    }`}
+                  />
+                ))}
+              </div>
+              {horario && (
+                <span className="text-xs text-muted-foreground">{count} {count === 1 ? "día" : "días"} — {horario}</span>
+              )}
+            </div>
+          )
+        })()}
+        <div className="rounded-lg py-2 flex flex-col gap-0.5">
+          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Nacimiento</span>
+          <span className="text-sm font-medium">{formatDate(student.fecha_de_nacimiento || "")}</span>
         </div>
         <div className="flex gap-1">
           <a
@@ -206,6 +197,7 @@ function StudentMobileCard({
 
 export function StudentsTable() {
   const [searchTerm, setSearchTerm] = useState("")
+  const [statusFilter, setStatusFilter] = useState<string | null>(null)
   const [isAddStudentOpen, setIsAddStudentOpen] = useState(false)
   const [isEditStudentOpen, setIsEditStudentOpen] = useState(false)
   const [isDeleteStudentOpen, setIsDeleteStudentOpen] = useState(false)
@@ -247,19 +239,25 @@ export function StudentsTable() {
   const sortedStudents = useMemo(
     () =>
       students
-        .filter(
-          (s) =>
+        .filter((s) => {
+          const matchesSearch =
             s.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             s.modalidad?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             s.telefono?.includes(searchTerm) ||
             s.status?.toLowerCase().includes(searchTerm.toLowerCase())
-        )
+          const matchesStatus =
+            !statusFilter ||
+            (statusFilter === "Activo" && s.status === "Pagado") ||
+            (statusFilter === "Vencido" && (s.status === "Vencido" || s.status === "Pendiente")) ||
+            (statusFilter === "Indefinido" && s.status === "Indefinido")
+          return matchesSearch && matchesStatus
+        })
         .sort((a, b) => {
           const ra = STATUS_RANK[a.status || "Indefinido"] ?? 99
           const rb = STATUS_RANK[b.status || "Indefinido"] ?? 99
           return ra - rb
         }),
-    [students, searchTerm]
+    [students, searchTerm, statusFilter]
   )
 
   const isLg = useMediaQuery("(min-width:1024px)")
@@ -272,8 +270,6 @@ export function StudentsTable() {
   const columnVisibilityModel = useMemo(() => ({
     fecha_de_nacimiento: isLg,
     fecha_de_inicio: isLg,
-    ultima_antro: isXl,
-    email: isXl,
   }), [isLg, isXl])
 
   const studentsColumns: GridColDef[] = [
@@ -287,7 +283,32 @@ export function StudentsTable() {
         </span>
       ),
     },
-    { field: "dias", headerName: "Días y Turnos", flex: 1.2, minWidth: 150 },
+    {
+      field: "dias", headerName: "Días y Turnos", flex: 1.2, minWidth: 160,
+      renderCell: ({ value }) => {
+        const diasStr = (value || "").split(" - ")[0]
+        const horario = (value || "").split(" - ")[1] || ""
+        const countMatch = diasStr.match(/^(\d+)\s*días?/)
+        const count = countMatch ? parseInt(countMatch[1]) : diasStr.split(",").filter((d: string) => d.trim()).length
+        return (
+          <span className="flex items-center gap-1.5 w-full">
+            <span className="flex gap-0.5">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <span
+                  key={n}
+                  className={`inline-block w-4 h-4 rounded-sm border ${
+                    n <= count
+                      ? "bg-[var(--primary-color)] border-[var(--primary-color)]"
+                      : "bg-muted border-border"
+                  }`}
+                />
+              ))}
+            </span>
+            {horario && <span className="text-xs text-muted-foreground">{horario}</span>}
+          </span>
+        )
+      },
+    },
     {
       field: "fecha_de_nacimiento", headerName: "Nacimiento", flex: 0.9, minWidth: 120,
       renderCell: ({ value }) => (
@@ -300,14 +321,6 @@ export function StudentsTable() {
     {
       field: "fecha_de_inicio", headerName: "Inicio", flex: 0.8, minWidth: 110,
       renderCell: ({ value }) => formatDate(value || ""),
-    },
-    {
-      field: "ultima_antro", headerName: "Última Antrop.", flex: 0.9, minWidth: 120,
-      renderCell: ({ value }) => formatDate(value || ""),
-    },
-    {
-      field: "email", headerName: "Email", flex: 1.2, minWidth: 160,
-      renderCell: ({ value }) => value || "N/A",
     },
     {
       field: "status", headerName: "Estado", flex: 0.8, minWidth: 100,
@@ -366,15 +379,32 @@ export function StudentsTable() {
   return (
     <>
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="relative w-full md:w-96">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Buscar alumnos..."
-            className="w-full pl-8"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+        <div className="flex flex-col gap-2 w-full md:w-96">
+          <div className="relative w-full">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Buscar alumnos..."
+              className="w-full pl-8"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <div className="flex gap-2 md:hidden">
+            {[null, "Activo", "Vencido", "Indefinido"].map((f) => (
+              <button
+                key={f ?? "todos"}
+                onClick={() => setStatusFilter(f)}
+                className={`flex-1 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                  statusFilter === f
+                    ? "bg-[var(--primary-color)] text-white border-[var(--primary-color)]"
+                    : "bg-background text-muted-foreground border-border"
+                }`}
+              >
+                {f ?? "Todos"}
+              </button>
+            ))}
+          </div>
         </div>
         <Button
           size="sm"

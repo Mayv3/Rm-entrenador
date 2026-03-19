@@ -2,10 +2,14 @@ import express from "express";
 import { google } from "googleapis";
 import dotenv from "dotenv";
 import cors from "cors";
-import { addClientSupabase, deleteClientSupabase, getMembersSupabase, updateClientSupabase, getStudentByEmail } from "./controllers/clientController.js";
+import { addClientSupabase, deleteClientSupabase, getMembersSupabase, updateClientSupabase, getStudentByEmail, updateAntroPdf } from "./controllers/clientController.js";
 import { addPaymentSupabase, deletePaymentSupabase, getPaymentsSupabase, updatePaymentInSupabase, getPaymentHistory, getAllPaymentHistory, deleteHistoryEntry, updateHistoryEntry } from "./controllers/paymentsController.js";
 import { enviarRecordatoriosVencidos, previewRecordatoriosVencidos, sendTestAPIMail } from "./controllers/mailingController.js";
 import { getPlanes, addPlan, updatePlan, deletePlan } from "./controllers/planesController.js";
+import { getAntrosByAlumno, getAllAntrosCounts, createAntro, deleteAntro, updateAntroNombre, getParsedAntro } from "./controllers/antropometriasController.js";
+
+import multer from "multer"
+import { parseAntropometriaPdf } from "./controllers/pdfAntroParser.js"
 
 dotenv.config();
 
@@ -56,6 +60,15 @@ app.get("/getAllStudents", getMembersSupabase);
 app.get("/student/by-email", getStudentByEmail);
 app.delete("/clients/:id", deleteClientSupabase);
 app.put("/clients/:id", updateClientSupabase);
+app.patch("/clients/:id/antro-pdf", updateAntroPdf);
+
+// Antropometrias
+app.get("/antropometrias/counts", getAllAntrosCounts);
+app.get("/clients/:id/antropometrias", getAntrosByAlumno);
+app.post("/clients/:id/antropometrias", createAntro);
+app.delete("/antropometrias/:id", deleteAntro);
+app.patch("/antropometrias/:id/nombre", updateAntroNombre);
+app.get("/antropometrias/:id/parsed", getParsedAntro);
 
 // Pagos
 
@@ -91,6 +104,18 @@ app.post("/test-api", async (req, res) => {
 
 app.get("/ping", (req, res) => {
   return res.json({ ok: true, message: "Pong" })
+})
+
+
+const upload = multer()
+app.post("/test-pdf", upload.single("file"), async (req, res) => {
+  try {
+    const data = await parseAntropometriaPdf(req.file.buffer)
+    res.json(data)
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: err.message })
+  }
 })
 
 

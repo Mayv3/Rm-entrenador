@@ -29,16 +29,6 @@ interface AddStudentDialogProps {
   onStudentAdded: () => void
 }
 
-const DAYS = [
-  { key: "monday",    label: "Lun" },
-  { key: "tuesday",   label: "Mar" },
-  { key: "wednesday", label: "Mié" },
-  { key: "thursday",  label: "Jue" },
-  { key: "friday",    label: "Vie" },
-  { key: "saturday",  label: "Sáb" },
-  { key: "sunday",    label: "Dom" },
-]
-
 const EMPTY_FORM = {
   name: "",
   modality: "",
@@ -47,15 +37,7 @@ const EMPTY_FORM = {
   email: "",
   planUrl: "",
   planType: "google",
-  schedule: {
-    monday: false,
-    tuesday: false,
-    wednesday: false,
-    thursday: false,
-    friday: false,
-    saturday: false,
-    sunday: false,
-  },
+  daysCount: 0,
   time: "",
   startService: "",
   lastAntro: "",
@@ -77,10 +59,6 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
-  }
-
-  const handleScheduleChange = (day: keyof typeof formData.schedule, checked: boolean) => {
-    setFormData((prev) => ({ ...prev, schedule: { ...prev.schedule, [day]: checked } }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -171,27 +149,24 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
               </Select>
             </div>
 
-            {/* Días de entrenamiento — ancho completo */}
+            {/* Días de entrenamiento */}
             <div className="grid gap-2">
-              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Días de entrenamiento</Label>
-              <div className="grid grid-cols-5 gap-1.5">
-                {DAYS.map(({ key, label }) => {
-                  const checked = formData.schedule[key as keyof typeof formData.schedule]
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => handleScheduleChange(key as keyof typeof formData.schedule, !checked)}
-                      className={`w-full py-1.5 rounded-md text-xs font-medium border transition-colors cursor-pointer select-none ${
-                        checked
-                          ? "bg-[var(--primary-color)] text-white border-[var(--primary-color)]"
-                          : "bg-background text-muted-foreground border-border hover:border-[var(--primary-color)] hover:text-[var(--primary-color)]"
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  )
-                })}
+              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Días de entrenamiento {formData.daysCount > 0 && <span className="text-[var(--primary-color)]">— {formData.daysCount} {formData.daysCount === 1 ? "día" : "días"}</span>}
+              </Label>
+              <div className="flex gap-2">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setFormData((p) => ({ ...p, daysCount: p.daysCount === n ? 0 : n }))}
+                    className={`flex-1 h-9 rounded-md border transition-colors cursor-pointer select-none ${
+                      n <= formData.daysCount
+                        ? "bg-[var(--primary-color)] border-[var(--primary-color)]"
+                        : "bg-muted border-border"
+                    }`}
+                  />
+                ))}
               </div>
             </div>
 
