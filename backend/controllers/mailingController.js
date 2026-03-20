@@ -298,8 +298,7 @@ export const previewRecordatoriosVencidos = async (req, res) => {
 export const recordatorioAntropometrias = async (req, res) => {
   try {
     const hoy = new Date()
-    const hacesTresMeses = new Date(hoy)
-    hacesTresMeses.setMonth(hacesTresMeses.getMonth() - 3)
+    const anioObjetivo = new Date(hoy.getFullYear(), hoy.getMonth() - 3, 1)
 
     const { data: alumnos, error } = await supabase
       .from("alumnos")
@@ -308,9 +307,12 @@ export const recordatorioAntropometrias = async (req, res) => {
     if (error) throw error
 
     const pendientes = alumnos.filter(a => {
-      if (!a.ultima_antro) return true // nunca tuvo antropometría
+      if (!a.ultima_antro) return false // sin registro no entra en este recordatorio
       const fecha = new Date(a.ultima_antro + "T00:00:00")
-      return fecha <= hacesTresMeses
+      return (
+        fecha.getMonth() === anioObjetivo.getMonth() &&
+        fecha.getFullYear() === anioObjetivo.getFullYear()
+      )
     })
 
     console.log(`📏 Alumnos con antropometría vencida (>3 meses): ${pendientes.length}`)
