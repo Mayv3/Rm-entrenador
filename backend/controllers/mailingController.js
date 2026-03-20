@@ -431,7 +431,7 @@ export const recordatorioAntropometrias = async (req, res) => {
 
 export const recordatorioCumpleanos = async (req, res) => {
   try {
-    const hoy = new Date()
+    const hoy = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Argentina/Buenos_Aires" }))
     const diaHoy = hoy.getDate()
     const mesHoy = hoy.getMonth() + 1 // 1-12
 
@@ -455,7 +455,7 @@ export const recordatorioCumpleanos = async (req, res) => {
 
     const filas = cumpleaneros.map(a => {
       const anio = new Date(a.fecha_de_nacimiento + "T00:00:00").getFullYear()
-      const edad = hoy.getFullYear() - anio
+      const edad = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Argentina/Buenos_Aires" })).getFullYear() - anio
       return `
         <tr>
           <td style="padding:10px 14px; border-bottom:1px solid #e5e7eb; font-size:14px;">${a.nombre}</td>
