@@ -338,7 +338,7 @@ export const recordatorioAntropometrias = async (req, res) => {
       name: "RM ENTRENADOR",
       email: process.env.BREVO_SENDER_EMAIL
     }
-    sendSmtpEmail.to = [{ email: "nicopereyra855@gmail.com", name: "Rodrigo Montenegro" }]
+    sendSmtpEmail.to = [{ email: "rm.entrenador.planes@gmail.com", name: "Rodrigo Montenegro" }]
     sendSmtpEmail.htmlContent = `
       <div style="margin:0; padding:0; background-color:#f4f4f5;">
         <table width="100%" cellpadding="0" cellspacing="0">
@@ -414,7 +414,7 @@ export const recordatorioAntropometrias = async (req, res) => {
     `
 
     await apiInstance.sendTransacEmail(sendSmtpEmail)
-    console.log(`📧 Recordatorio de antropometrías enviado → nicopereyra855@gmail.com`)
+    console.log(`📧 Recordatorio de antropometrías enviado → rm.entrenador.planes@gmail.com`)
 
     return res.json({
       message: "Recordatorio enviado",
@@ -471,7 +471,7 @@ export const recordatorioCumpleanos = async (req, res) => {
       name: "RM ENTRENADOR",
       email: process.env.BREVO_SENDER_EMAIL
     }
-    sendSmtpEmail.to = [{ email: "nicopereyra855@gmail.com", name: "Rodrigo Montenegro" }]
+    sendSmtpEmail.to = [{ email: "rm.entrenador.planes@gmail.com", name: "Rodrigo Montenegro" }]
     sendSmtpEmail.htmlContent = `
       <div style="margin:0; padding:0; background-color:#f4f4f5;">
         <table width="100%" cellpadding="0" cellspacing="0">
@@ -548,7 +548,7 @@ export const recordatorioCumpleanos = async (req, res) => {
     `
 
     await apiInstance.sendTransacEmail(sendSmtpEmail)
-    console.log(`📧 Recordatorio de cumpleaños enviado → nicopereyra855@gmail.com`)
+    console.log(`📧 Recordatorio de cumpleaños enviado → rm.entrenador.planes@gmail.com`)
 
     return res.json({
       message: "Recordatorio enviado",
