@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import { addClientSupabase, deleteClientSupabase, getMembersSupabase, updateClientSupabase, getStudentByEmail, updateAntroPdf } from "./controllers/clientController.js";
 import { addPaymentSupabase, deletePaymentSupabase, getPaymentsSupabase, updatePaymentInSupabase, getPaymentHistory, getAllPaymentHistory, deleteHistoryEntry, updateHistoryEntry } from "./controllers/paymentsController.js";
-import { enviarRecordatoriosVencidos, previewRecordatoriosVencidos, sendTestAPIMail, recordatorioAntropometrias } from "./controllers/mailingController.js";
+import { enviarRecordatoriosVencidos, previewRecordatoriosVencidos, sendTestAPIMail, recordatorioAntropometrias, recordatorioCumpleanos } from "./controllers/mailingController.js";
 import { getPlanes, addPlan, updatePlan, deletePlan } from "./controllers/planesController.js";
 import { getAntrosByAlumno, getAllAntrosCounts, createAntro, deleteAntro, updateAntroNombre, getParsedAntro } from "./controllers/antropometriasController.js";
 
@@ -93,6 +93,7 @@ app.delete("/planes/:id", deletePlan);
 app.get("/send-reminders/preview", previewRecordatoriosVencidos);
 app.post("/send-reminders", enviarRecordatoriosVencidos);
 app.post("/recordatorio-antropometrias", recordatorioAntropometrias);
+app.post("/recordatorio-cumpleanos", recordatorioCumpleanos);
 app.post("/test-api", async (req, res) => {
   try {
     await sendTestAPIMail();

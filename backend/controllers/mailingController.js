@@ -372,12 +372,8 @@ export const recordatorioAntropometrias = async (req, res) => {
                       />
                     </div>
 
-                    <p style="font-size:15px; margin:0 0 6px 0;">
-                      Hola <strong>Rodrigo</strong>,
-                    </p>
                     <p style="font-size:15px; margin:0 0 20px 0;">
-                      Los siguientes <strong>${pendientes.length} alumno${pendientes.length > 1 ? "s" : ""}</strong>
-                      no tienen antropometría registrada en los últimos <strong>3 meses</strong>:
+                      Estos son los alumnos que tienen que hacer antropometría este mes:
                     </p>
 
                     <!-- TABLA -->
@@ -429,6 +425,140 @@ export const recordatorioAntropometrias = async (req, res) => {
     console.error("❌ Error en recordatorio de antropometrías:", err)
     if (!res.headersSent) {
       res.status(500).json({ error: "Error enviando recordatorio de antropometrías" })
+    }
+  }
+}
+
+export const recordatorioCumpleanos = async (req, res) => {
+  try {
+    const hoy = new Date()
+    const diaHoy = hoy.getDate()
+    const mesHoy = hoy.getMonth() + 1 // 1-12
+
+    const { data: alumnos, error } = await supabase
+      .from("alumnos")
+      .select("id, nombre, fecha_de_nacimiento")
+
+    if (error) throw error
+
+    const cumpleaneros = alumnos.filter(a => {
+      if (!a.fecha_de_nacimiento) return false
+      const fecha = new Date(a.fecha_de_nacimiento + "T00:00:00")
+      return fecha.getDate() === diaHoy && (fecha.getMonth() + 1) === mesHoy
+    })
+
+    console.log(`🎂 Alumnos que cumplen hoy: ${cumpleaneros.length}`)
+
+    if (cumpleaneros.length === 0) {
+      return res.json({ message: "Ningún alumno cumple años hoy", total: 0 })
+    }
+
+    const filas = cumpleaneros.map(a => {
+      const anio = new Date(a.fecha_de_nacimiento + "T00:00:00").getFullYear()
+      const edad = hoy.getFullYear() - anio
+      return `
+        <tr>
+          <td style="padding:10px 14px; border-bottom:1px solid #e5e7eb; font-size:14px;">${a.nombre}</td>
+          <td style="padding:10px 14px; border-bottom:1px solid #e5e7eb; font-size:14px; color:#22b567; font-weight:600;">${edad} años</td>
+        </tr>`
+    }).join("")
+
+    const fechaFormateada = hoy.toLocaleDateString("es-AR", { day: "numeric", month: "long" })
+
+    const sendSmtpEmail = new brevo.SendSmtpEmail()
+    sendSmtpEmail.subject = `🎂 Cumpleaños de hoy – ${fechaFormateada}`
+    sendSmtpEmail.sender = {
+      name: "RM ENTRENADOR",
+      email: process.env.BREVO_SENDER_EMAIL
+    }
+    sendSmtpEmail.to = [{ email: "nicopereyra855@gmail.com", name: "Rodrigo Montenegro" }]
+    sendSmtpEmail.htmlContent = `
+      <div style="margin:0; padding:0; background-color:#f4f4f5;">
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td align="center">
+              <table width="560" cellpadding="0" cellspacing="0" style="
+                background-color:#ffffff;
+                font-family: Arial, Helvetica, sans-serif;
+                color:#111827;
+              ">
+
+                <!-- BANNER -->
+                <tr>
+                  <td style="background-color:#22b567; padding:16px; text-align:center;">
+                    <h1 style="margin:0; font-size:20px; font-weight:600; color:#ffffff;">
+                      🎂 Cumpleaños de hoy – ${fechaFormateada}
+                    </h1>
+                  </td>
+                </tr>
+
+                <!-- CONTENIDO -->
+                <tr>
+                  <td style="padding:26px 24px;">
+
+                    <!-- LOGO -->
+                    <div style="text-align:center; margin-bottom:20px;">
+                      <img
+                        src="https://rm-entrenador.vercel.app/_next/static/media/LOGO-RODRIGO-VERDE.ec2cf1d3.png"
+                        alt="Rodrigo Montenegro"
+                        style="max-width:150px; height:auto;"
+                      />
+                    </div>
+
+                    <p style="font-size:15px; margin:0 0 20px 0;">
+                      ${cumpleaneros.length === 1
+                        ? "El siguiente alumno cumple años hoy:"
+                        : `Los siguientes <strong>${cumpleaneros.length} alumnos</strong> cumplen años hoy:`}
+                    </p>
+
+                    <!-- TABLA -->
+                    <table width="100%" cellpadding="0" cellspacing="0" style="
+                      border:1px solid #e5e7eb;
+                      border-radius:10px;
+                      overflow:hidden;
+                    ">
+                      <thead>
+                        <tr style="background-color:#f6fffa;">
+                          <th style="padding:10px 14px; text-align:left; font-size:13px; color:#6b7280; font-weight:600; border-bottom:1px solid #e5e7eb;">Alumno</th>
+                          <th style="padding:10px 14px; text-align:left; font-size:13px; color:#6b7280; font-weight:600; border-bottom:1px solid #e5e7eb;">Edad</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${filas}
+                      </tbody>
+                    </table>
+
+                    <!-- DIVISOR -->
+                    <hr style="border:none; border-top:1px solid #e5e7eb; margin:26px 0;" />
+
+                    <!-- FIRMA -->
+                    <p style="font-size:13px; text-align:center; margin:0; color:#6b7280;">
+                      <strong style="color:#22b567;">Rodrigo Montenegro</strong><br />
+                      Entrenador Personal
+                    </p>
+
+                  </td>
+                </tr>
+
+              </table>
+            </td>
+          </tr>
+        </table>
+      </div>
+    `
+
+    await apiInstance.sendTransacEmail(sendSmtpEmail)
+    console.log(`📧 Recordatorio de cumpleaños enviado → nicopereyra855@gmail.com`)
+
+    return res.json({
+      message: "Recordatorio enviado",
+      total: cumpleaneros.length,
+      alumnos: cumpleaneros.map(a => ({ nombre: a.nombre, fecha_de_nacimiento: a.fecha_de_nacimiento }))
+    })
+  } catch (err) {
+    console.error("❌ Error en recordatorio de cumpleaños:", err)
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Error enviando recordatorio de cumpleaños" })
     }
   }
 }
