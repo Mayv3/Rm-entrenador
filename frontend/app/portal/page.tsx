@@ -267,7 +267,7 @@ export default function PortalPage() {
 
         {/* Info */}
         <div className="grid grid-cols-2 gap-3">
-          <InfoCard label="Plan" value={student.modalidad} />
+          <InfoCard label="Plan" value={student.modalidad} accent />
           <InfoCard label="Inicio" value={formatDate(student.fecha_de_inicio)} />
           <InfoCard label="Nacimiento" value={formatDate(student.fecha_de_nacimiento)} />
           <InfoCard label="Última antrop." value={formatDate(student.ultima_antro)} />
@@ -283,18 +283,34 @@ export default function PortalPage() {
         {latestPayment && (
           <div className="flex flex-col gap-2">
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Estado de pago</span>
-            <div className="rounded-lg border divide-y text-sm">
-              <div className="flex justify-between px-4 py-2.5">
-                <span className="text-muted-foreground">Plan</span>
-                <span className="font-medium">{latestPayment.modalidad}</span>
-              </div>
-              <div className="flex justify-between px-4 py-2.5">
-                <span className="text-muted-foreground">Monto</span>
-                <span className="font-medium">${Number(latestPayment.monto).toLocaleString("es-AR")}</span>
-              </div>
-              <div className="flex justify-between px-4 py-2.5">
-                <span className="text-muted-foreground">Vencimiento</span>
-                <span className="font-medium">{formatDate(latestPayment.fecha_de_vencimiento)}</span>
+            <div className="rounded-2xl border border-border bg-card overflow-hidden">
+              {/* status bar top */}
+              <div
+                className="h-1 w-full"
+                style={{ backgroundColor: getStatusColor(subscriptionStatus) }}
+              />
+              <div className="divide-y divide-border text-sm">
+                <div className="flex justify-between items-center px-4 py-3">
+                  <span className="text-muted-foreground text-xs uppercase tracking-wide font-medium">Plan</span>
+                  <span className="font-semibold">{latestPayment.modalidad}</span>
+                </div>
+                <div className="flex justify-between items-center px-4 py-3">
+                  <span className="text-muted-foreground text-xs uppercase tracking-wide font-medium">Monto</span>
+                  <span className="font-semibold text-[var(--primary-color)]">${Number(latestPayment.monto).toLocaleString("es-AR")}</span>
+                </div>
+                <div className="flex justify-between items-center px-4 py-3">
+                  <span className="text-muted-foreground text-xs uppercase tracking-wide font-medium">Vencimiento</span>
+                  <span className="font-semibold">{formatDate(latestPayment.fecha_de_vencimiento)}</span>
+                </div>
+                <div className="flex justify-between items-center px-4 py-3">
+                  <span className="text-muted-foreground text-xs uppercase tracking-wide font-medium">Estado</span>
+                  <span
+                    className="text-xs font-semibold px-2.5 py-1 rounded-full"
+                    style={{ color: getStatusColor(subscriptionStatus), backgroundColor: `${getStatusColor(subscriptionStatus)}18` }}
+                  >
+                    {subscriptionStatus === "Pagado" ? "Activo" : subscriptionStatus === "Indefinido" ? "Indefinido" : "Inactivo"}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -446,11 +462,16 @@ export default function PortalPage() {
   )
 }
 
-function InfoCard({ label, value }: { label: string; value: string }) {
+function InfoCard({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
   return (
-    <div className="rounded-lg border px-4 py-3 flex flex-col gap-0.5">
-      <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">{label}</span>
-      <span className="text-sm font-medium">{value || "No definido"}</span>
+    <div className="relative rounded-2xl border border-border bg-card px-4 py-3.5 flex flex-col gap-1 overflow-hidden">
+      {accent && (
+        <div className="absolute top-0 left-0 right-0 h-[2px] bg-[var(--primary-color)]" />
+      )}
+      <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest">{label}</span>
+      <span className={`text-sm font-semibold truncate ${accent ? "text-[var(--primary-color)]" : ""}`}>
+        {value || "No definido"}
+      </span>
     </div>
   )
 }
