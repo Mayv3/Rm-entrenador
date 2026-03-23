@@ -169,18 +169,18 @@ export default function Dashboard() {
       </main>
 
       {/* ── Bottom nav mobile ── */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-background border-t flex overflow-hidden">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-background border-t flex overflow-x-auto scrollbar-none">
         {navItems.map(({ value, label, icon: Icon }) => (
           <button
             key={value}
             onClick={() => setActiveTab(value)}
-            className={`flex-1 min-w-0 flex flex-col items-center justify-center py-3 gap-1 transition-colors ${activeTab === value
+            className={`flex-none flex flex-col items-center justify-center py-3 gap-1 px-4 min-w-[72px] transition-colors ${activeTab === value
                 ? "text-[var(--primary-color)]"
                 : "text-muted-foreground"
               }`}
           >
             <Icon className="h-5 w-5 shrink-0" />
-            <span className="text-[9px] font-medium truncate w-full text-center">{label}</span>
+            <span className="text-[9px] font-medium whitespace-nowrap">{label}</span>
           </button>
         ))}
       </nav>

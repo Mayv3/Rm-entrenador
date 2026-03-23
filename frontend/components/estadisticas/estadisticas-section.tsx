@@ -36,6 +36,7 @@ interface Payment {
 
 const MONTHS_SHORT = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"]
 const MONTHS_LONG  = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"]
+const YEARS        = [2026, 2027, 2028, 2029, 2030]
 
 const C = {
   activos:   "#22c55e",
@@ -608,7 +609,7 @@ export function EstadisticasSection() {
         {/* Global filters (year + month) apply to Facturación KPI, Altas, Plan comparison */}
         <div className="flex items-center gap-2">
           <StyledSelect value={selectedYear} onChange={setSelectedYear}>
-            {years.map(y => <option key={y} value={y}>{y}</option>)}
+            {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
           </StyledSelect>
           <StyledSelect value={selectedMonth} onChange={setSelectedMonth}>
             {MONTHS_LONG.map((m, i) => <option key={i} value={i}>{m}</option>)}
@@ -690,7 +691,7 @@ export function EstadisticasSection() {
           className="lg:col-span-3"
           action={
             <StyledSelect value={billingYear} onChange={setBillingYear}>
-              {years.map(y => <option key={y} value={y}>{y}</option>)}
+              {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
             </StyledSelect>
           }
         >
