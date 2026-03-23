@@ -12,13 +12,14 @@ import { Loader } from "@/components/ui/loader"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { FileText, LogOut, MessageSquare, ArrowLeft, Loader2, Download, Eye, TrendingUp } from "lucide-react"
+import { FileText, LogOut, MessageSquare, ArrowLeft, Loader2, Download, Eye, TrendingUp, GitCompareArrows } from "lucide-react"
 import { supabase } from "@/lib/supabase-client"
 import { determineSubscriptionStatus, formatDate, getStatusColor } from "@/lib/payment-utils"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { AntroView, ParsedAntro } from "@/components/antropometrias/antro-view"
 import { AntroAnualChart } from "@/components/antropometrias/antro-anual-chart"
+import { AntroCompareDialog } from "@/components/antropometrias/antro-compare-dialog"
 
 interface Student {
   id: number
@@ -145,6 +146,7 @@ export default function PortalPage() {
   const [selectedAntro, setSelectedAntro] = useState<AntroRecord | null>(null)
   const [parsing, setParsing] = useState(false)
   const [showAnualChart, setShowAnualChart] = useState(false)
+  const [showCompare, setShowCompare] = useState(false)
 
   async function handleSelectAntro(antro: AntroRecord) {
     setParsing(true)
@@ -186,6 +188,13 @@ export default function PortalPage() {
     queryKey: ["portalAntros", student?.id],
     queryFn: () =>
       axios.get<AntroRecord[]>(`${process.env.NEXT_PUBLIC_URL_BACKEND}/clients/${student!.id}/antropometrias`).then(r => r.data),
+    enabled: !!student?.id,
+  })
+
+  const { data: nutricionPdfs = [] } = useQuery<AntroRecord[]>({
+    queryKey: ["portalNutricion", student?.id],
+    queryFn: () =>
+      axios.get<AntroRecord[]>(`${process.env.NEXT_PUBLIC_URL_BACKEND}/clients/${student!.id}/nutricion`).then(r => r.data),
     enabled: !!student?.id,
   })
 
@@ -321,15 +330,25 @@ export default function PortalPage() {
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
               Mis antropometrías {antros.length > 0 && `(${antros.length})`}
             </span>
-            {antros.length >= 2 && (
+            <div className="flex items-center gap-2">
               <button
-                onClick={() => setShowAnualChart(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--primary-color)] text-white text-xs font-semibold shadow-md hover:brightness-110 active:scale-95 transition-all"
+                onClick={() => setShowCompare(true)}
+                disabled={antros.length < 2}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-purple-600 text-white text-xs font-semibold shadow-md hover:brightness-110 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                <TrendingUp className="h-4 w-4" />
-                Ver evolución
+                <GitCompareArrows className="h-3.5 w-3.5" />
+                Comparar
               </button>
-            )}
+              {antros.length >= 2 && (
+                <button
+                  onClick={() => setShowAnualChart(true)}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[var(--primary-color)] text-white text-xs font-semibold shadow-md hover:brightness-110 active:scale-95 transition-all"
+                >
+                  <TrendingUp className="h-3.5 w-3.5" />
+                  Ver evolución
+                </button>
+              )}
+            </div>
           </div>
 
           {antros.length === 0 ? (
@@ -363,6 +382,45 @@ export default function PortalPage() {
           )}
         </div>
 
+        {/* Nutrición */}
+        <div className="flex flex-col gap-2">
+          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            Nutrición {nutricionPdfs.length > 0 && `(${nutricionPdfs.length})`}
+          </span>
+
+          {nutricionPdfs.length === 0 ? (
+            <div className="rounded-lg border px-4 py-6 flex items-center justify-center">
+              <span className="text-sm text-muted-foreground">Sin PDFs de nutrición cargados</span>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {(() => {
+                const groups: AntroRecord[][] = []
+                for (let i = 0; i < nutricionPdfs.length; i += 4) groups.push(nutricionPdfs.slice(i, i + 4))
+                return groups.map((group, gi) => (
+                  <div key={gi} className="grid grid-cols-4 gap-2">
+                    {group.map((pdf) => (
+                      <button
+                        key={pdf.id}
+                        onClick={async () => {
+                          const { data } = await supabase.storage.from("nutricion").createSignedUrl(pdf.pdf_path, 3600)
+                          if (data?.signedUrl) window.open(data.signedUrl, "_blank")
+                        }}
+                        className="flex flex-col items-center justify-center gap-1 rounded-xl border bg-[var(--primary-color)]/5 border-[var(--primary-color)]/20 p-3 hover:bg-[var(--primary-color)]/10 hover:border-[var(--primary-color)]/40 transition-colors active:scale-95"
+                      >
+                        <FileText className="h-6 w-6 text-[var(--primary-color)]" />
+                        <span className="text-[10px] text-muted-foreground text-center leading-tight">
+                          {format(new Date(pdf.created_at), "d MMM yy", { locale: es })}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ))
+              })()}
+            </div>
+          )}
+        </div>
+
       </main>
 
       <AntroViewDialog
@@ -377,6 +435,12 @@ export default function PortalPage() {
         antros={antros}
         onSelectAntro={handleSelectAntro}
         parsing={parsing}
+      />
+
+      <AntroCompareDialog
+        open={showCompare}
+        onClose={() => setShowCompare(false)}
+        antros={antros}
       />
     </div>
   )

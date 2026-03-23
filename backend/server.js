@@ -7,6 +7,7 @@ import { addPaymentSupabase, deletePaymentSupabase, getPaymentsSupabase, updateP
 import { enviarRecordatoriosVencidos, previewRecordatoriosVencidos, sendTestAPIMail, recordatorioAntropometrias, recordatorioCumpleanos } from "./controllers/mailingController.js";
 import { getPlanes, addPlan, updatePlan, deletePlan } from "./controllers/planesController.js";
 import { getAntrosByAlumno, getAllAntrosCounts, createAntro, deleteAntro, updateAntroNombre, getParsedAntro } from "./controllers/antropometriasController.js";
+import { getNutricionByAlumno, getAllNutricionCounts, createNutricion, deleteNutricion, updateNutricionNombre } from "./controllers/nutricionController.js";
 
 import multer from "multer"
 import { parseAntropometriaPdf } from "./controllers/pdfAntroParser.js"
@@ -69,6 +70,13 @@ app.post("/clients/:id/antropometrias", createAntro);
 app.delete("/antropometrias/:id", deleteAntro);
 app.patch("/antropometrias/:id/nombre", updateAntroNombre);
 app.get("/antropometrias/:id/parsed", getParsedAntro);
+
+// Nutricion
+app.get("/nutricion/counts", getAllNutricionCounts);
+app.get("/clients/:id/nutricion", getNutricionByAlumno);
+app.post("/clients/:id/nutricion", createNutricion);
+app.delete("/nutricion/:id", deleteNutricion);
+app.patch("/nutricion/:id/nombre", updateNutricionNombre);
 
 // Pagos
 

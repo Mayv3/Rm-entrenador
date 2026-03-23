@@ -7,4 +7,6 @@ export const queryKeys = {
   allPaymentHistory: ["allPaymentHistory"] as const,
   antrosCounts: ["antrosCounts"] as const,
   antrosByAlumno: (id: number) => ["antrosByAlumno", id] as const,
+  nutricionCounts: ["nutricionCounts"] as const,
+  nutricionByAlumno: (id: number) => ["nutricionByAlumno", id] as const,
 }

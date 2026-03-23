@@ -10,8 +10,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Image from "next/image";
 import logoRodrigoEntrenador from "../../assets/LOGO-RODRIGO-VERDE.png";
-import { Users, CreditCard, Tag, LogOut, Moon, Sun, Globe, Copy, Check, Ruler } from "lucide-react";
+import { Users, CreditCard, Tag, LogOut, Moon, Sun, Globe, Copy, Check, Ruler, Salad, BarChart2 } from "lucide-react";
 import { AntropometriasSection } from "@/components/antropometrias/antropometrias-section";
+import { NutricionSection } from "@/components/nutricion/nutricion-section";
+import { EstadisticasSection } from "@/components/estadisticas/estadisticas-section";
 import { useTheme } from "next-themes";
 
 function PortalSection({ copied, setCopied }: { copied: boolean; setCopied: (v: boolean) => void }) {
@@ -74,7 +76,7 @@ function PortalSection({ copied, setCopied }: { copied: boolean; setCopied: (v: 
 export default function Dashboard() {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
-  const [activeTab, setActiveTab] = useState<"students" | "payments" | "planes" | "portal" | "antropometrias">("students");
+  const [activeTab, setActiveTab] = useState<"students" | "payments" | "planes" | "portal" | "antropometrias" | "nutricion" | "estadisticas">("students");
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -95,6 +97,8 @@ export default function Dashboard() {
     { value: "planes", label: "Planes", icon: Tag },
     { value: "portal", label: "Portal", icon: Globe },
     { value: "antropometrias", label: "Antropometría", icon: Ruler },
+    { value: "nutricion", label: "Nutrición", icon: Salad },
+    { value: "estadisticas", label: "Estadísticas", icon: BarChart2 },
   ] as const;
 
   return (
@@ -158,6 +162,8 @@ export default function Dashboard() {
             : activeTab === "payments" ? <PaymentsTable />
             : activeTab === "planes" ? <PlanesTable />
             : activeTab === "antropometrias" ? <AntropometriasSection />
+            : activeTab === "nutricion" ? <NutricionSection />
+            : activeTab === "estadisticas" ? <EstadisticasSection />
             : <PortalSection copied={copied} setCopied={setCopied} />
           }
         </div>
