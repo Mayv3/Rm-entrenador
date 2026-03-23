@@ -9,6 +9,7 @@ import { queryKeys } from "@/lib/query-keys"
 import { TrendingUp, TrendingDown, Users, Award, X } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { parseLocalDate } from "@/lib/payment-utils"
+import { usePlanes, getPlanColor as getPlanColorFromList } from "@/hooks/use-planes"
 import { Loader } from "@/components/ui/loader"
 import { differenceInYears } from "date-fns"
 
@@ -145,7 +146,7 @@ function ChartCard({ title, action, children, className = "" }: {
   className?: string
 }) {
   return (
-    <div className={`rounded-2xl bg-zinc-900 border border-zinc-800 p-5 flex flex-col gap-4 ${className}`}>
+    <div className={`rounded-2xl bg-zinc-900 border border-zinc-800 p-5 flex flex-col gap-4 h-full ${className}`}>
       <div className="flex items-center justify-between min-h-[28px]">
         <span className="text-sm font-semibold text-zinc-100">{title}</span>
         {action}
@@ -220,9 +221,10 @@ function DonutChart({ segments, size = 200, onSelect }: {
     return { ...seg, start, end }
   })
 
+  const pad = 8
   return (
-    <div className="relative" style={{ width: size, height: size }}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+    <div className="relative" style={{ width: size + pad * 2, height: size + pad * 2 }}>
+      <svg width={size + pad * 2} height={size + pad * 2} viewBox={`${-pad} ${-pad} ${size + pad * 2} ${size + pad * 2}`} overflow="visible">
         {arcs.map((arc) => {
           const isHovered = hovered === arc.label
           const scale = isHovered ? 1.04 : 1
@@ -267,15 +269,16 @@ function DonutChart({ segments, size = 200, onSelect }: {
 
 // ─── StudentsDrillDialog ──────────────────────────────────────────────────────
 
-function StudentsDrillDialog({ category, students, color, onClose }: {
+function StudentsDrillDialog({ category, students, color, getColor, onClose }: {
   category: string
   students: Student[]
   color: string
+  getColor: (nombre: string) => string
   onClose: () => void
 }) {
   return (
     <Dialog open onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-md bg-zinc-900 border-zinc-800 text-zinc-100 max-h-[80vh] flex flex-col">
+      <DialogContent className="w-[90vw] max-w-md bg-zinc-900 border-zinc-800 text-zinc-100 max-h-[80vh] flex flex-col pr-14">
         <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2 text-base">
             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: color }} />
@@ -295,7 +298,10 @@ function StudentsDrillDialog({ category, students, color, onClose }: {
                   </div>
                   <span className="text-sm font-medium truncate">{s.nombre}</span>
                 </div>
-                <span className="text-xs text-zinc-500 shrink-0 bg-zinc-800 px-2 py-0.5 rounded-md">
+                <span
+                  className="text-xs font-medium shrink-0 px-2 py-0.5 rounded-md"
+                  style={{ color: getColor(s.modalidad || ""), background: `${getColor(s.modalidad || "")}20` }}
+                >
                   {s.modalidad || "—"}
                 </span>
               </div>
@@ -309,15 +315,17 @@ function StudentsDrillDialog({ category, students, color, onClose }: {
 
 // ─── PaymentsDrillDialog ──────────────────────────────────────────────────────
 
-function PaymentsDrillDialog({ title, payments, onClose }: {
+function PaymentsDrillDialog({ title, payments, getColor, onClose }: {
   title: string
-  payments: Payment[]
+  payments: (Payment & { alumno_nombre?: string })[]
+  getColor: (nombre: string) => string
   onClose: () => void
 }) {
   const total = payments.reduce((s, p) => s + Number(p.monto), 0)
+  const showName = payments.some(p => p.alumno_nombre)
   return (
     <Dialog open onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-md bg-zinc-900 border-zinc-800 text-zinc-100 max-h-[80vh] flex flex-col">
+      <DialogContent className="w-[90vw] max-w-md bg-zinc-900 border-zinc-800 text-zinc-100 max-h-[80vh] flex flex-col pr-14">
         <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2 text-base">
             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: C.primary }} />
@@ -335,11 +343,26 @@ function PaymentsDrillDialog({ title, payments, onClose }: {
           <div className="overflow-y-auto flex flex-col divide-y divide-zinc-800 -mx-6 px-6">
             {payments.map(p => (
               <div key={p.id} className="flex items-center justify-between py-3 gap-3">
-                <div className="flex flex-col min-w-0">
-                  <span className="text-sm font-medium text-zinc-100">{formatARSFull(Number(p.monto))}</span>
-                  <span className="text-[11px] text-zinc-500">{p.fecha_de_pago}</span>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  {showName && (
+                    <div className="w-7 h-7 rounded-full bg-zinc-800 flex items-center justify-center shrink-0 text-xs font-bold text-zinc-300">
+                      {(p.alumno_nombre ?? "?").charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="flex flex-col min-w-0">
+                    {showName && <span className="text-sm font-medium truncate">{p.alumno_nombre}</span>}
+                    <span className={showName ? "text-[11px] text-zinc-400" : "text-sm font-medium text-zinc-100"}>
+                      {formatARSFull(Number(p.monto))}
+                    </span>
+                    <span className="text-[11px] text-zinc-500">
+                      {p.fecha_de_pago ? p.fecha_de_pago.split("-").reverse().join("/") : "—"}
+                    </span>
+                  </div>
                 </div>
-                <span className="text-xs text-zinc-400 shrink-0 bg-zinc-800 px-2 py-0.5 rounded-md">
+                <span
+                  className="text-xs font-medium shrink-0 px-2 py-0.5 rounded-md"
+                  style={{ color: getColor(p.modalidad || ""), background: `${getColor(p.modalidad || "")}20` }}
+                >
                   {p.modalidad || "—"}
                 </span>
               </div>
@@ -366,7 +389,7 @@ function DonutLegend({ segments, onSelect }: {
 }) {
   const total = segments.reduce((s, d) => s + d.value, 0)
   return (
-    <div className="grid grid-cols-2 sm:flex sm:flex-row sm:justify-around gap-4 w-full">
+    <div className="grid grid-cols-2 place-items-center sm:flex sm:flex-row sm:justify-around sm:items-center gap-4 w-full">
       {segments.map(s => (
         <button
           key={s.label}
@@ -402,6 +425,9 @@ export function EstadisticasSection() {
   const [selectedYear,  setSelectedYear]  = useState(today.getFullYear())
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth())
   const [billingYear,   setBillingYear]   = useState(today.getFullYear())
+
+  const { data: planes = [] } = usePlanes()
+  const planColor = (nombre: string) => getPlanColorFromList(planes, nombre)
 
   const { data: students = [], isLoading: ls } = useQuery<Student[]>({
     queryKey: queryKeys.students,
@@ -464,11 +490,12 @@ export function EstadisticasSection() {
     })
     const altas = altasList.length
 
+    const studentMap = new Map(students.map(s => [s.id, s]))
+
     // Pagos del mes seleccionado (para drill facturación)
-    const currentMonthPayments = paymentHistory.filter(p => {
-      const d = parseLocalDate(p.fecha_de_pago)
-      return d && d.getMonth() === selectedMonth && d.getFullYear() === selectedYear
-    })
+    const currentMonthPayments = paymentHistory
+      .filter(p => { const d = parseLocalDate(p.fecha_de_pago); return d && d.getMonth() === selectedMonth && d.getFullYear() === selectedYear })
+      .map(p => ({ ...p, alumno_nombre: studentMap.get(p.alumno_id)?.nombre ?? "—" }))
 
     const planCount: Record<string, number> = {}
     students.forEach(s => { if (s.modalidad) planCount[s.modalidad] = (planCount[s.modalidad] || 0) + 1 })
@@ -478,13 +505,23 @@ export function EstadisticasSection() {
 
     const plansCurr: Record<string, number> = {}
     const plansPrev: Record<string, number> = {}
+    const planPaymentsCurr: Record<string, (Payment & { alumno_nombre: string })[]> = {}
+    const planPaymentsPrev: Record<string, (Payment & { alumno_nombre: string })[]> = {}
     paymentHistory.forEach(p => {
       const d = parseLocalDate(p.fecha_de_pago)
       if (!d || !p.modalidad) return
-      if (d.getMonth() === selectedMonth && d.getFullYear() === selectedYear)
-        plansCurr[p.modalidad] = (plansCurr[p.modalidad] || 0) + 1
-      if (d.getMonth() === prevMonth && d.getFullYear() === prevYear)
-        plansPrev[p.modalidad] = (plansPrev[p.modalidad] || 0) + 1
+      const s = studentMap.get(p.alumno_id)
+      const enriched = { ...p, alumno_nombre: s?.nombre ?? "—" }
+      if (d.getMonth() === selectedMonth && d.getFullYear() === selectedYear) {
+        plansCurr[p.modalidad] = (plansCurr[p.modalidad] || 0) + Number(p.monto)
+        if (!planPaymentsCurr[p.modalidad]) planPaymentsCurr[p.modalidad] = []
+        planPaymentsCurr[p.modalidad].push(enriched)
+      }
+      if (d.getMonth() === prevMonth && d.getFullYear() === prevYear) {
+        plansPrev[p.modalidad] = (plansPrev[p.modalidad] || 0) + Number(p.monto)
+        if (!planPaymentsPrev[p.modalidad]) planPaymentsPrev[p.modalidad] = []
+        planPaymentsPrev[p.modalidad].push(enriched)
+      }
     })
     const planNames = [...new Set([...Object.keys(plansCurr), ...Object.keys(plansPrev)])]
 
@@ -519,10 +556,15 @@ export function EstadisticasSection() {
       currentMonthPayments,
       total: students.length,
       topPlanEntry, topPlanPct, topPlanStudents,
-      planNames, plansCurr, plansPrev,
+      planNames, plansCurr, plansPrev, planPaymentsCurr, planPaymentsPrev,
       ageGroups, studentsByAge, years,
     }
   }, [students, payments, paymentHistory, selectedYear, selectedMonth, billingYear, today])
+
+  // ── Drill state — must be before any early return ──────────────────────────
+  const [drillCategory, setDrillCategory] = useState<string | null>(null)
+  const [drillStudents, setDrillStudents] = useState<{ title: string; list: Student[] } | null>(null)
+  const [drillPayments, setDrillPayments] = useState<{ title: string; list: (Payment & { alumno_nombre?: string })[] } | null>(null)
 
   if (ls || lp) return <Loader />
 
@@ -533,20 +575,13 @@ export function EstadisticasSection() {
     currentMonthPayments,
     total,
     topPlanEntry, topPlanPct, topPlanStudents,
-    planNames, plansCurr, plansPrev,
+    planNames, plansCurr, plansPrev, planPaymentsCurr, planPaymentsPrev,
     ageGroups, studentsByAge, years,
   } = stats
 
-  // Donut drill
-  const [drillCategory, setDrillCategory] = useState<string | null>(null)
   const drillData: Record<string, Student[]> = {
     Activos: activosList, Inactivos: inactivosList, Altas: altasList, Bajas: bajasList,
   }
-
-  // KPI & age drill
-  const [drillStudents, setDrillStudents]   = useState<{ title: string; list: Student[] } | null>(null)
-  const [drillPayments, setDrillPayments]   = useState<{ title: string; list: Payment[] } | null>(null)
-  const [drillAge, setDrillAge]             = useState<string | null>(null)
 
   const prevMonth      = selectedMonth === 0 ? 11 : selectedMonth - 1
   const longPlanNames  = planNames.some(p => p.length > 8)
@@ -624,16 +659,16 @@ export function EstadisticasSection() {
         </StatCard>
 
         {/* Plan más frecuente */}
-        <StatCard label="Plan más frecuente" icon={<Award className="h-3.5 w-3.5" />} accentColor={C.altas}
+        <StatCard label="Plan más frecuente" icon={<Award className="h-3.5 w-3.5" />} accentColor={planColor(topPlanEntry[0])}
           onClick={() => setDrillStudents({ title: `Plan: ${topPlanEntry[0]}`, list: topPlanStudents })}
         >
-          <p className="text-2xl font-bold text-zinc-100 leading-tight truncate">{topPlanEntry[0]}</p>
+          <p className="text-2xl font-bold leading-tight truncate" style={{ color: planColor(topPlanEntry[0]) }}>{topPlanEntry[0]}</p>
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between text-xs">
               <span className="text-zinc-500">{topPlanEntry[1]} alumnos</span>
-              <span className="font-semibold" style={{ color: C.altas }}>{topPlanPct}%</span>
+              <span className="font-semibold" style={{ color: planColor(topPlanEntry[0]) }}>{topPlanPct}%</span>
             </div>
-            <ProgressBar value={topPlanPct} color={C.altas} />
+            <ProgressBar value={topPlanPct} color={planColor(topPlanEntry[0])} />
           </div>
         </StatCard>
       </div>
@@ -643,8 +678,8 @@ export function EstadisticasSection() {
 
         {/* Donut */}
         <ChartCard title="Estado de alumnos" className="lg:col-span-2">
-          <div className="flex flex-col items-center gap-6">
-            <DonutChart segments={donutSegments} size={200} onSelect={setDrillCategory} />
+          <div className="flex flex-col items-center justify-center gap-6 flex-1 py-2">
+            <DonutChart segments={donutSegments} size={260} onSelect={setDrillCategory} />
             <DonutLegend segments={donutSegments} onSelect={setDrillCategory} />
           </div>
         </ChartCard>
@@ -675,7 +710,7 @@ export function EstadisticasSection() {
               valueFormatter: (v: number | null) => v !== null ? formatARSFull(v) : "$0",
             }]}
             height={260}
-            margin={{ left: 48, right: 16, top: 8, bottom: 24 }}
+            margin={{ left: 0, right: 16, top: 8, bottom: 0 }}
             tooltip={{ trigger: "item" }}
             borderRadius={6}
             sx={{ width: "100%", ...chartSx }}
@@ -698,7 +733,7 @@ export function EstadisticasSection() {
               valueFormatter: (v: number | null) => `${v ?? 0} alumnos`,
             }]}
             height={260}
-            margin={{ left: 40, right: 16, top: 8, bottom: 24 }}
+            margin={{ left: 0, right: 16, top: 8, bottom: 24 }}
             tooltip={{ trigger: "item" }}
             borderRadius={6}
             sx={{ width: "100%", ...chartSx, "& .MuiBarElement-root": { cursor: "pointer" } }}
@@ -711,7 +746,7 @@ export function EstadisticasSection() {
 
         {/* Plan comparison */}
         <ChartCard
-          title="Alumnos por plan"
+          title="Facturación por plan"
           className="lg:col-span-2"
           action={
             <span className="text-[11px] text-zinc-500 font-medium">
@@ -732,26 +767,39 @@ export function EstadisticasSection() {
                   ? { angle: -30, textAnchor: "end", fill: C.axis, fontSize: 9 }
                   : { fill: C.axis, fontSize: 10 },
               }]}
-              yAxis={[{ tickLabelStyle: { fill: C.axis, fontSize: 10 } }]}
+              yAxis={[{
+                valueFormatter: (v: number) => formatARS(v),
+                tickLabelStyle: { fill: C.axis, fontSize: 10 },
+              }]}
               series={[
                 {
+                  id: "curr",
                   data: planNames.map(p => plansCurr[p] ?? 0),
                   label: MONTHS_LONG[selectedMonth],
                   color: C.primary,
-                  valueFormatter: (v: number | null) => `${v ?? 0} alumnos`,
+                  valueFormatter: (v: number | null) => formatARSFull(v ?? 0),
                 },
                 {
+                  id: "prev",
                   data: planNames.map(p => plansPrev[p] ?? 0),
                   label: MONTHS_LONG[prevMonth],
                   color: C.secondary,
-                  valueFormatter: (v: number | null) => `${v ?? 0} alumnos`,
+                  valueFormatter: (v: number | null) => formatARSFull(v ?? 0),
                 },
               ]}
               height={260}
-              margin={{ left: 40, right: 16, top: 8, bottom: longPlanNames ? 56 : 24 }}
+              margin={{ left: 0, right: 16, top: 8, bottom: longPlanNames ? 56 : 24 }}
               tooltip={{ trigger: "axis" }}
               borderRadius={6}
-              sx={{ width: "100%", ...chartSx }}
+              sx={{ width: "100%", ...chartSx, "& .MuiBarElement-root": { cursor: "pointer" } }}
+              onItemClick={(_e: React.MouseEvent, d: BarItemIdentifier) => {
+                const plan = planNames[d.dataIndex]
+                if (!plan) return
+                const isPrev = d.seriesId === "prev"
+                const list = isPrev ? (planPaymentsPrev[plan] ?? []) : (planPaymentsCurr[plan] ?? [])
+                const monthLabel = isPrev ? MONTHS_LONG[prevMonth] : MONTHS_LONG[selectedMonth]
+                setDrillPayments({ title: `${plan} — ${monthLabel}`, list })
+              }}
             />
           )}
           {/* legend manual */}
@@ -774,6 +822,7 @@ export function EstadisticasSection() {
           category={drillCategory}
           students={drillData[drillCategory] ?? []}
           color={donutSegments.find(s => s.label === drillCategory)?.color ?? C.primary}
+          getColor={planColor}
           onClose={() => setDrillCategory(null)}
         />
       )}
@@ -784,6 +833,7 @@ export function EstadisticasSection() {
           category={drillStudents.title}
           students={drillStudents.list}
           color={C.primary}
+          getColor={planColor}
           onClose={() => setDrillStudents(null)}
         />
       )}
@@ -793,6 +843,7 @@ export function EstadisticasSection() {
         <PaymentsDrillDialog
           title={drillPayments.title}
           payments={drillPayments.list}
+          getColor={planColor}
           onClose={() => setDrillPayments(null)}
         />
       )}

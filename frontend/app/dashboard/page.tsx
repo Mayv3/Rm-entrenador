@@ -92,13 +92,13 @@ export default function Dashboard() {
   };
 
   const navItems = [
+    { value: "estadisticas", label: "Estadísticas", icon: BarChart2 },
     { value: "students", label: "Alumnos", icon: Users },
     { value: "payments", label: "Pagos", icon: CreditCard },
     { value: "planes", label: "Planes", icon: Tag },
     { value: "portal", label: "Portal", icon: Globe },
     { value: "antropometrias", label: "Antropometría", icon: Ruler },
     { value: "nutricion", label: "Nutrición", icon: Salad },
-    { value: "estadisticas", label: "Estadísticas", icon: BarChart2 },
   ] as const;
 
   return (
@@ -115,11 +115,10 @@ export default function Dashboard() {
             <button
               key={value}
               onClick={() => setActiveTab(value)}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeTab === value
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === value
                   ? "bg-[var(--primary-color)] text-white"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              }`}
+                }`}
             >
               <Icon className="h-4 w-4" />
               {label}
@@ -160,11 +159,11 @@ export default function Dashboard() {
         <div className="space-y-4 w-full md:max-w-[85vw] md:mx-auto">
           {activeTab === "students" ? <StudentsTable />
             : activeTab === "payments" ? <PaymentsTable />
-            : activeTab === "planes" ? <PlanesTable />
-            : activeTab === "antropometrias" ? <AntropometriasSection />
-            : activeTab === "nutricion" ? <NutricionSection />
-            : activeTab === "estadisticas" ? <EstadisticasSection />
-            : <PortalSection copied={copied} setCopied={setCopied} />
+              : activeTab === "planes" ? <PlanesTable />
+                : activeTab === "antropometrias" ? <AntropometriasSection />
+                  : activeTab === "nutricion" ? <NutricionSection />
+                    : activeTab === "estadisticas" ? <EstadisticasSection />
+                      : <PortalSection copied={copied} setCopied={setCopied} />
           }
         </div>
       </main>
@@ -175,11 +174,10 @@ export default function Dashboard() {
           <button
             key={value}
             onClick={() => setActiveTab(value)}
-            className={`flex-1 min-w-0 flex flex-col items-center justify-center py-3 gap-1 transition-colors ${
-              activeTab === value
+            className={`flex-1 min-w-0 flex flex-col items-center justify-center py-3 gap-1 transition-colors ${activeTab === value
                 ? "text-[var(--primary-color)]"
                 : "text-muted-foreground"
-            }`}
+              }`}
           >
             <Icon className="h-5 w-5 shrink-0" />
             <span className="text-[9px] font-medium truncate w-full text-center">{label}</span>

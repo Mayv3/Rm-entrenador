@@ -1,6 +1,12 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(find /c/Users/nicop/OneDrive/Desktop/Rm-entrenador -type f \\\\\\(-name *.sql -o -name *.migration* \\\\\\))",
+      "Bash(find /c/Users/nicop/OneDrive/Desktop/Rm-entrenador -type f \\\\\\(-name *supabase* -o -name *database* -o -name *.env* \\\\\\) ! -path */node_modules/*)"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "supabase"
-  ],
-  "enableAllProjectMcpServers": true
+  ]
 }
