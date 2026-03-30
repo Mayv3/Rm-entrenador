@@ -42,7 +42,15 @@ function PlanMobileCard({
             />
             <CardTitle className="text-base">{plan.nombre}</CardTitle>
           </div>
-          <span className="font-semibold text-sm">${plan.precio?.toLocaleString()}</span>
+          <div className="flex flex-col items-end gap-0.5">
+            <span className="font-semibold text-sm">${plan.precio?.toLocaleString()}</span>
+            {plan.precio > 0 && (
+              <div className="flex gap-3 text-xs text-emerald-600 font-semibold">
+                <span>3m: ${(plan.precio * 3 * 0.9).toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+                <span>6m: ${(plan.precio * 6 * 0.85).toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+              </div>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -100,6 +108,18 @@ export function PlanesTable() {
     {
       field: "precio", headerName: "Precio", flex: 0.7, minWidth: 90,
       renderCell: ({ value }) => `$${value?.toLocaleString()}`,
+    },
+    {
+      field: "_3meses", headerName: "3 meses (-10%)", flex: 0.8, minWidth: 120, sortable: false,
+      renderCell: ({ row }) => row.precio
+        ? <span className="text-emerald-600 font-medium">${(row.precio * 3 * 0.9).toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+        : "—",
+    },
+    {
+      field: "_6meses", headerName: "6 meses (-15%)", flex: 0.8, minWidth: 120, sortable: false,
+      renderCell: ({ row }) => row.precio
+        ? <span className="text-emerald-600 font-medium">${(row.precio * 6 * 0.85).toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+        : "—",
     },
     {
       field: "descripcion", headerName: "Descripción", flex: 1, minWidth: 100,

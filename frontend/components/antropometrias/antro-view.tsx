@@ -81,7 +81,7 @@ function parseVal(val: string | null): number | null {
 
 // ── Tabla ──────────────────────────────────────────────────────────────────────
 
-function TableSection({ label, rows }: { label: string; rows: [string, MedidaVal][] }) {
+function TableSection({ label, rows, hideScoreZ }: { label: string; rows: [string, MedidaVal][]; hideScoreZ?: boolean }) {
   return (
     <div className="flex flex-col">
       <div className="bg-gradient-to-r from-green-600 to-green-500 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-green-100">
@@ -98,9 +98,11 @@ function TableSection({ label, rows }: { label: string; rows: [string, MedidaVal
           <span className="text-xs tabular-nums w-10 text-right text-gray-600 dark:text-gray-400">
             {m.diferencia ?? "—"}
           </span>
-          <span className="text-xs font-medium text-blue-500 tabular-nums w-10 text-right">
-            {m.scoreZ ?? "—"}
-          </span>
+          {!hideScoreZ && (
+            <span className="text-xs font-medium text-blue-500 tabular-nums w-10 text-right">
+              {m.scoreZ ?? "—"}
+            </span>
+          )}
         </div>
       ))}
     </div>
@@ -234,7 +236,7 @@ function MasasChart({ masas }: { masas: ParsedAntro["masas"] }) {
 
 // ── Vista principal ────────────────────────────────────────────────────────────
 
-export function AntroView({ data }: { data: ParsedAntro }) {
+export function AntroView({ data, hideScoreZ }: { data: ParsedAntro; hideScoreZ?: boolean }) {
   const isMobile = useMediaQuery("(max-width: 640px)")
 
   const basicos: [string, MedidaVal][] = [
@@ -303,12 +305,12 @@ export function AntroView({ data }: { data: ParsedAntro }) {
           <span className="text-[10px] font-semibold text-gray-500 tabular-nums w-10 text-right">Actual</span>
           <span className="text-[10px] font-semibold text-red-400 italic tabular-nums w-10 text-right">Ant.</span>
           <span className="text-[10px] font-semibold text-gray-400 tabular-nums w-10 text-right">Dif.</span>
-          <span className="text-[10px] font-semibold text-blue-500 tabular-nums w-10 text-right">Z</span>
+          {!hideScoreZ && <span className="text-[10px] font-semibold text-blue-500 tabular-nums w-10 text-right">Z</span>}
         </div>
-        <TableSection label="Básicos" rows={basicos} />
-        <TableSection label="Diámetros (cm)" rows={diametros} />
-        <TableSection label="Perímetros (cm)" rows={perimetros} />
-        <TableSection label="Pliegues (mm)" rows={pliegues} />
+        <TableSection label="Básicos" rows={basicos} hideScoreZ={hideScoreZ} />
+        <TableSection label="Diámetros (cm)" rows={diametros} hideScoreZ={hideScoreZ} />
+        <TableSection label="Perímetros (cm)" rows={perimetros} hideScoreZ={hideScoreZ} />
+        <TableSection label="Pliegues (mm)" rows={pliegues} hideScoreZ={hideScoreZ} />
       </div>
 
       {/* Masas */}

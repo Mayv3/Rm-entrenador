@@ -126,7 +126,12 @@ function AntroViewDialog({ parsedData, antro, onClose }: { parsedData: ParsedAnt
             </div>
           </DialogTitle>
         </DialogHeader>
-        {parsedData && <AntroView data={parsedData} />}
+        {parsedData && antro && (
+          <AntroView
+            data={{ ...parsedData, fecha: format(new Date(antro.created_at), "dd/MM/yyyy", { locale: es }) }}
+            hideScoreZ
+          />
+        )}
       </DialogContent>
     </Dialog>
   )

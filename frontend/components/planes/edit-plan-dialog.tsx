@@ -105,8 +105,29 @@ export function EditPlanDialog({ open, onOpenChange, plan }: EditPlanDialogProps
 
             {/* Precio */}
             <div className="grid gap-1.5">
-              <Label htmlFor="precio" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Precio</Label>
+              <Label htmlFor="precio" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Precio mensual</Label>
               <Input id="precio" name="precio" type="number" value={formData.precio} onChange={handleChange} placeholder="0.00" className="h-9" />
+
+              {/* Descuentos por duración */}
+              {Number(formData.precio) > 0 && (() => {
+                const base = Number(formData.precio)
+                const precio3 = base * 3 * 0.9
+                const precio6 = base * 6 * 0.85
+                return (
+                  <div className="grid grid-cols-2 gap-2 mt-1">
+                    <div className="flex flex-col gap-0.5 rounded-lg border bg-muted/40 px-3 py-2">
+                      <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">3 meses</span>
+                      <span className="text-sm font-semibold">${precio3.toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+                      <span className="text-[10px] text-emerald-500 font-medium">10% de descuento</span>
+                    </div>
+                    <div className="flex flex-col gap-0.5 rounded-lg border bg-muted/40 px-3 py-2">
+                      <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">6 meses</span>
+                      <span className="text-sm font-semibold">${precio6.toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+                      <span className="text-[10px] text-emerald-500 font-medium">15% de descuento</span>
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
 
             {/* Descripción */}
