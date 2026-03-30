@@ -378,57 +378,6 @@ export function NutricionUploadDialog({ open, onOpenChange, alumno }: Props) {
                     </Button>
                   )}
 
-                  {/* Hábitos link */}
-                  {editingHabitosId === record.id ? (
-                    <div className="flex items-center gap-1">
-                      <Input
-                        autoFocus
-                        className="h-7 text-xs w-40"
-                        placeholder="https://..."
-                        value={editingHabitosLink}
-                        onChange={(e) => setEditingHabitosLink(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") handleSaveHabitos(record)
-                          if (e.key === "Escape") setEditingHabitosId(null)
-                        }}
-                      />
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-7 w-7 shrink-0 text-green-600 hover:text-green-700"
-                        disabled={savingHabitosId === record.id}
-                        onClick={() => handleSaveHabitos(record)}
-                      >
-                        {savingHabitosId === record.id
-                          ? <Loader2 className="h-4 w-4 animate-spin" />
-                          : <Check className="h-4 w-4" />
-                        }
-                      </Button>
-                    </div>
-                  ) : record.habitos_link ? (
-                    <a
-                      href={record.habitos_link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title="Ver hábitos"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0 text-emerald-500 hover:text-emerald-600">
-                        <Link className="h-4 w-4" />
-                      </Button>
-                    </a>
-                  ) : (
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-7 w-7 shrink-0 text-muted-foreground/40 hover:text-muted-foreground"
-                      title="Agregar link de hábitos"
-                      onClick={() => { setEditingHabitosId(record.id); setEditingHabitosLink(record.habitos_link ?? "") }}
-                    >
-                      <Link className="h-4 w-4" />
-                    </Button>
-                  )}
-
                   <Button
                     size="icon"
                     variant="ghost"
@@ -480,9 +429,9 @@ export function NutricionUploadDialog({ open, onOpenChange, alumno }: Props) {
               </Button>
             </div>
           ) : habitosAlumno ? (
-            <div className="flex items-center gap-2 rounded-lg border bg-emerald-500/5 border-emerald-500/20 px-3 py-2">
+            <div className="flex items-center gap-2 rounded-lg border bg-emerald-500/5 border-emerald-500/20 px-3 py-2 min-w-0">
               <Link className="h-4 w-4 text-emerald-500 shrink-0" />
-              <a href={habitosAlumno} target="_blank" rel="noopener noreferrer" className="flex-1 text-sm text-emerald-600 truncate hover:underline">
+              <a href={habitosAlumno} target="_blank" rel="noopener noreferrer" className="flex-1 text-sm text-emerald-600 truncate hover:underline min-w-0 overflow-hidden">
                 {habitosAlumno}
               </a>
               <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground" onClick={() => setEditingHabitosAlumno(true)}>
