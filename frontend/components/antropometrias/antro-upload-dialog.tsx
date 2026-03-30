@@ -187,7 +187,7 @@ export function AntroUploadDialog({ open, onOpenChange, alumno }: Props) {
   return (
     <>
     <Dialog open={open} onOpenChange={(v) => { if (!v) { setPendingFile(null); setParsedData(null) }; onOpenChange(v) }}>
-      <DialogContent className={parsedData ? "max-w-2xl max-h-[90vh] overflow-y-auto" : "max-w-2xl"}>
+      <DialogContent className={parsedData ? "w-[calc(100vw-2rem)] max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden" : "w-[calc(100vw-2rem)] max-w-2xl overflow-hidden"}>
         <DialogHeader>
           <DialogTitle className="text-base flex items-center gap-2">
             {parsedData && (
@@ -316,7 +316,7 @@ export function AntroUploadDialog({ open, onOpenChange, alumno }: Props) {
               {antros.map((antro) => (
                 <div
                   key={antro.id}
-                  className="flex items-center gap-2 p-2.5 rounded-lg border bg-muted/50 cursor-pointer hover:border-green-400 hover:bg-green-50/50 dark:hover:bg-green-950/20 transition-colors"
+                  className="flex items-center gap-2 p-2.5 rounded-lg border bg-muted/50 cursor-pointer hover:border-green-400 hover:bg-green-50/50 dark:hover:bg-green-950/20 transition-colors min-w-0 overflow-hidden"
                   onClick={() => handleAnalysis(antro)}
                 >
                   <FileText className="h-5 w-5 text-[var(--primary-color)] shrink-0" />

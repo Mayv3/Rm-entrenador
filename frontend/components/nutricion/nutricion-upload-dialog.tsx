@@ -211,7 +211,7 @@ export function NutricionUploadDialog({ open, onOpenChange, alumno }: Props) {
   return (
     <>
     <Dialog open={open} onOpenChange={(v) => { if (!v) setPendingFile(null); onOpenChange(v) }}>
-      <DialogContent className="max-w-2xl overflow-hidden w-[90vw]">
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-2xl overflow-hidden">
         <DialogHeader>
           <DialogTitle className="text-base">{alumno.nombre}</DialogTitle>
         </DialogHeader>
@@ -330,7 +330,7 @@ export function NutricionUploadDialog({ open, onOpenChange, alumno }: Props) {
               {pdfs.map((record) => (
                 <div
                   key={record.id}
-                  className="flex items-center gap-2 p-2.5 rounded-lg border bg-muted/50"
+                  className="flex items-center gap-2 p-2.5 rounded-lg border bg-muted/50 min-w-0 overflow-hidden"
                 >
                   <FileText className="h-5 w-5 text-[var(--primary-color)] shrink-0" />
 
