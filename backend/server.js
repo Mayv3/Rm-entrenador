@@ -2,12 +2,12 @@ import express from "express";
 import { google } from "googleapis";
 import dotenv from "dotenv";
 import cors from "cors";
-import { addClientSupabase, deleteClientSupabase, getMembersSupabase, updateClientSupabase, getStudentByEmail, updateAntroPdf } from "./controllers/clientController.js";
+import { addClientSupabase, deleteClientSupabase, getMembersSupabase, updateClientSupabase, getStudentByEmail, updateAntroPdf, updateHabitosLink } from "./controllers/clientController.js";
 import { addPaymentSupabase, deletePaymentSupabase, getPaymentsSupabase, updatePaymentInSupabase, getPaymentHistory, getAllPaymentHistory, deleteHistoryEntry, updateHistoryEntry } from "./controllers/paymentsController.js";
 import { enviarRecordatoriosVencidos, previewRecordatoriosVencidos, sendTestAPIMail, recordatorioAntropometrias, recordatorioCumpleanos } from "./controllers/mailingController.js";
 import { getPlanes, addPlan, updatePlan, deletePlan } from "./controllers/planesController.js";
 import { getAntrosByAlumno, getAllAntrosCounts, createAntro, deleteAntro, updateAntroNombre, getParsedAntro } from "./controllers/antropometriasController.js";
-import { getNutricionByAlumno, getAllNutricionCounts, createNutricion, deleteNutricion, updateNutricionNombre } from "./controllers/nutricionController.js";
+import { getNutricionByAlumno, getAllNutricionCounts, createNutricion, deleteNutricion, updateNutricionNombre, updateNutricionHabitos } from "./controllers/nutricionController.js";
 
 import multer from "multer"
 import { parseAntropometriaPdf } from "./controllers/pdfAntroParser.js"
@@ -62,6 +62,7 @@ app.get("/student/by-email", getStudentByEmail);
 app.delete("/clients/:id", deleteClientSupabase);
 app.put("/clients/:id", updateClientSupabase);
 app.patch("/clients/:id/antro-pdf", updateAntroPdf);
+app.patch("/clients/:id/habitos-link", updateHabitosLink);
 
 // Antropometrias
 app.get("/antropometrias/counts", getAllAntrosCounts);
@@ -77,6 +78,7 @@ app.get("/clients/:id/nutricion", getNutricionByAlumno);
 app.post("/clients/:id/nutricion", createNutricion);
 app.delete("/nutricion/:id", deleteNutricion);
 app.patch("/nutricion/:id/nombre", updateNutricionNombre);
+app.patch("/nutricion/:id/habitos", updateNutricionHabitos);
 
 // Pagos
 

@@ -12,11 +12,12 @@ import { Button } from "@/components/ui/button"
 import { supabase } from "@/lib/supabase-client"
 import { queryKeys } from "@/lib/query-keys"
 import { Input } from "@/components/ui/input"
-import { Upload, FileText, Trash2, Eye, Loader2, X, Pencil, Check } from "lucide-react"
+import { Upload, FileText, Trash2, Eye, Loader2, X, Pencil, Check, Link } from "lucide-react"
 
 interface Student {
   id: number
   nombre: string
+  habitos_link?: string | null
 }
 
 interface NutricionRecord {
@@ -25,6 +26,7 @@ interface NutricionRecord {
   nombre_archivo: string
   pdf_path: string
   created_at: string
+  habitos_link: string | null
 }
 
 interface Props {
@@ -57,6 +59,7 @@ function formatBytes(bytes: number) {
 
 export function NutricionUploadDialog({ open, onOpenChange, alumno }: Props) {
   const [pendingFile, setPendingFile] = useState<File | null>(null)
+  const [habitosLink, setHabitosLink] = useState("")
   const [uploading, setUploading] = useState(false)
   const [dragOver, setDragOver] = useState(false)
   const [compressionInfo, setCompressionInfo] = useState<string | null>(null)
@@ -65,6 +68,12 @@ export function NutricionUploadDialog({ open, onOpenChange, alumno }: Props) {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editingNombre, setEditingNombre] = useState("")
   const [savingId, setSavingId] = useState<number | null>(null)
+  const [editingHabitosId, setEditingHabitosId] = useState<number | null>(null)
+  const [editingHabitosLink, setEditingHabitosLink] = useState("")
+  const [savingHabitosId, setSavingHabitosId] = useState<number | null>(null)
+  const [habitosAlumno, setHabitosAlumno] = useState(alumno.habitos_link ?? "")
+  const [editingHabitosAlumno, setEditingHabitosAlumno] = useState(false)
+  const [savingHabitosAlumno, setSavingHabitosAlumno] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const queryClient = useQueryClient()
 
@@ -105,12 +114,13 @@ export function NutricionUploadDialog({ open, onOpenChange, alumno }: Props) {
 
       await axios.post(
         `${process.env.NEXT_PUBLIC_URL_BACKEND}/clients/${alumno.id}/nutricion`,
-        { nombre_archivo: pendingFile.name, pdf_path: bucketPath }
+        { nombre_archivo: pendingFile.name, pdf_path: bucketPath, habitos_link: habitosLink || null }
       )
 
       queryClient.invalidateQueries({ queryKey: queryKeys.nutricionByAlumno(alumno.id) })
       queryClient.invalidateQueries({ queryKey: queryKeys.nutricionCounts })
       setPendingFile(null)
+      setHabitosLink("")
     } catch (err) {
       console.error(err)
       alert("Error al subir el archivo. Verificá la conexión e intentá de nuevo.")
@@ -143,6 +153,37 @@ export function NutricionUploadDialog({ open, onOpenChange, alumno }: Props) {
       alert("Error al eliminar el PDF")
     } finally {
       setDeletingId(null)
+    }
+  }
+
+  async function handleSaveHabitosAlumno() {
+    setSavingHabitosAlumno(true)
+    try {
+      await axios.patch(
+        `${process.env.NEXT_PUBLIC_URL_BACKEND}/clients/${alumno.id}/habitos-link`,
+        { habitos_link: habitosAlumno || null }
+      )
+      setEditingHabitosAlumno(false)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setSavingHabitosAlumno(false)
+    }
+  }
+
+  async function handleSaveHabitos(record: NutricionRecord) {
+    setSavingHabitosId(record.id)
+    try {
+      await axios.patch(
+        `${process.env.NEXT_PUBLIC_URL_BACKEND}/nutricion/${record.id}/habitos`,
+        { habitos_link: editingHabitosLink || null }
+      )
+      queryClient.invalidateQueries({ queryKey: queryKeys.nutricionByAlumno(alumno.id) })
+      setEditingHabitosId(null)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setSavingHabitosId(null)
     }
   }
 
@@ -199,11 +240,22 @@ export function NutricionUploadDialog({ open, onOpenChange, alumno }: Props) {
               <p className="text-xs text-green-600 dark:text-green-400 text-center">{compressionInfo}</p>
             )}
 
+            <div className="flex items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2">
+              <Link className="h-4 w-4 text-muted-foreground shrink-0" />
+              <Input
+                className="h-7 border-0 bg-transparent p-0 text-sm focus-visible:ring-0"
+                placeholder="Link de hábitos (opcional)"
+                value={habitosLink}
+                onChange={(e) => setHabitosLink(e.target.value)}
+                disabled={uploading}
+              />
+            </div>
+
             <div className="flex gap-2">
               <Button
                 variant="outline"
                 className="flex-1"
-                onClick={() => { setPendingFile(null); setCompressionInfo(null) }}
+                onClick={() => { setPendingFile(null); setCompressionInfo(null); setHabitosLink("") }}
                 disabled={uploading}
               >
                 Cancelar
@@ -326,6 +378,57 @@ export function NutricionUploadDialog({ open, onOpenChange, alumno }: Props) {
                     </Button>
                   )}
 
+                  {/* Hábitos link */}
+                  {editingHabitosId === record.id ? (
+                    <div className="flex items-center gap-1">
+                      <Input
+                        autoFocus
+                        className="h-7 text-xs w-40"
+                        placeholder="https://..."
+                        value={editingHabitosLink}
+                        onChange={(e) => setEditingHabitosLink(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleSaveHabitos(record)
+                          if (e.key === "Escape") setEditingHabitosId(null)
+                        }}
+                      />
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 shrink-0 text-green-600 hover:text-green-700"
+                        disabled={savingHabitosId === record.id}
+                        onClick={() => handleSaveHabitos(record)}
+                      >
+                        {savingHabitosId === record.id
+                          ? <Loader2 className="h-4 w-4 animate-spin" />
+                          : <Check className="h-4 w-4" />
+                        }
+                      </Button>
+                    </div>
+                  ) : record.habitos_link ? (
+                    <a
+                      href={record.habitos_link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Ver hábitos"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0 text-emerald-500 hover:text-emerald-600">
+                        <Link className="h-4 w-4" />
+                      </Button>
+                    </a>
+                  ) : (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7 shrink-0 text-muted-foreground/40 hover:text-muted-foreground"
+                      title="Agregar link de hábitos"
+                      onClick={() => { setEditingHabitosId(record.id); setEditingHabitosLink(record.habitos_link ?? "") }}
+                    >
+                      <Link className="h-4 w-4" />
+                    </Button>
+                  )}
+
                   <Button
                     size="icon"
                     variant="ghost"
@@ -352,6 +455,51 @@ export function NutricionUploadDialog({ open, onOpenChange, alumno }: Props) {
             </div>
           )}
         </div>
+
+        {/* Hábitos del alumno */}
+        <div className="flex flex-col gap-2">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Link de hábitos</p>
+          {editingHabitosAlumno ? (
+            <div className="flex items-center gap-2">
+              <Input
+                autoFocus
+                className="h-8 text-sm flex-1"
+                placeholder="https://..."
+                value={habitosAlumno}
+                onChange={(e) => setHabitosAlumno(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSaveHabitosAlumno()
+                  if (e.key === "Escape") { setEditingHabitosAlumno(false); setHabitosAlumno(alumno.habitos_link ?? "") }
+                }}
+              />
+              <Button size="sm" variant="ghost" className="text-green-600 hover:text-green-700 shrink-0" disabled={savingHabitosAlumno} onClick={handleSaveHabitosAlumno}>
+                {savingHabitosAlumno ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+              </Button>
+              <Button size="sm" variant="ghost" className="text-muted-foreground shrink-0" onClick={() => { setEditingHabitosAlumno(false); setHabitosAlumno(alumno.habitos_link ?? "") }}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : habitosAlumno ? (
+            <div className="flex items-center gap-2 rounded-lg border bg-emerald-500/5 border-emerald-500/20 px-3 py-2">
+              <Link className="h-4 w-4 text-emerald-500 shrink-0" />
+              <a href={habitosAlumno} target="_blank" rel="noopener noreferrer" className="flex-1 text-sm text-emerald-600 truncate hover:underline">
+                {habitosAlumno}
+              </a>
+              <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground" onClick={() => setEditingHabitosAlumno(true)}>
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setEditingHabitosAlumno(true)}
+              className="flex items-center gap-2 rounded-lg border border-dashed px-3 py-2.5 text-sm text-muted-foreground hover:border-muted-foreground/50 hover:text-foreground transition-colors"
+            >
+              <Link className="h-4 w-4" />
+              Agregar link de hábitos
+            </button>
+          )}
+        </div>
+
       </DialogContent>
     </Dialog>
 

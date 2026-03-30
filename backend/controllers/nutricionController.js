@@ -30,7 +30,7 @@ export const getAllNutricionCounts = async (req, res) => {
 
 export const createNutricion = async (req, res) => {
   const { id } = req.params;
-  const { nombre_archivo, pdf_path } = req.body;
+  const { nombre_archivo, pdf_path, habitos_link } = req.body;
 
   if (!nombre_archivo || !pdf_path) {
     return res.status(400).json({ message: "nombre_archivo y pdf_path son requeridos" });
@@ -38,7 +38,7 @@ export const createNutricion = async (req, res) => {
 
   const { data, error } = await supabase
     .from("nutricion")
-    .insert([{ alumno_id: id, nombre_archivo, pdf_path }])
+    .insert([{ alumno_id: id, nombre_archivo, pdf_path, habitos_link: habitos_link || null }])
     .select()
     .single();
 
@@ -59,6 +59,19 @@ export const updateNutricionNombre = async (req, res) => {
     .eq("id", id);
 
   if (error) return res.status(500).json({ message: "Error al actualizar el nombre" });
+  return res.json({ success: true });
+};
+
+export const updateNutricionHabitos = async (req, res) => {
+  const { id } = req.params;
+  const { habitos_link } = req.body;
+
+  const { error } = await supabase
+    .from("nutricion")
+    .update({ habitos_link: habitos_link || null })
+    .eq("id", id);
+
+  if (error) return res.status(500).json({ message: "Error al actualizar el link de hábitos" });
   return res.json({ success: true });
 };
 

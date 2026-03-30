@@ -161,6 +161,19 @@ export const deleteClientSupabase = async (req, res) => {
   }
 };
 
+export const updateHabitosLink = async (req, res) => {
+  const { id } = req.params;
+  const { habitos_link } = req.body;
+
+  const { error } = await supabase
+    .from("alumnos")
+    .update({ habitos_link: habitos_link || null })
+    .eq("id", id);
+
+  if (error) return res.status(500).json({ message: "No se pudo actualizar el link de hábitos" });
+  return res.json({ success: true });
+};
+
 export const updateAntroPdf = async (req, res) => {
   const { id } = req.params;
   const { antro_pdf_path } = req.body;

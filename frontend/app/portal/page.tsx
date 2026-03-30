@@ -12,7 +12,7 @@ import { Loader } from "@/components/ui/loader"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { FileText, LogOut, MessageSquare, ArrowLeft, Loader2, Download, Eye, TrendingUp, GitCompareArrows } from "lucide-react"
+import { FileText, LogOut, MessageSquare, ArrowLeft, Loader2, Download, Eye, TrendingUp, GitCompareArrows, Salad } from "lucide-react"
 import { supabase } from "@/lib/supabase-client"
 import { determineSubscriptionStatus, formatDate, getStatusColor } from "@/lib/payment-utils"
 import { format } from "date-fns"
@@ -32,6 +32,7 @@ interface Student {
   email: string
   telefono: string
   plan: string
+  habitos_link?: string | null
 }
 
 interface Payment {
@@ -49,6 +50,7 @@ interface AntroRecord {
   nombre_archivo: string
   pdf_path: string
   created_at: string
+  habitos_link?: string | null
 }
 
 function DaysSquares({ dias }: { dias: string }) {
@@ -441,6 +443,22 @@ export default function PortalPage() {
             </div>
           )}
         </div>
+
+        {/* Hábitos */}
+        {student.habitos_link && (
+          <div className="flex flex-col gap-2">
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Hábitos</span>
+            <a
+              href={student.habitos_link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex flex-col items-center justify-center gap-1 rounded-xl border bg-emerald-500/5 border-emerald-500/20 p-4 hover:bg-emerald-500/10 hover:border-emerald-500/40 transition-colors active:scale-95 w-full"
+            >
+              <Salad className="h-7 w-7 text-emerald-500" />
+              <span className="text-xs font-medium text-emerald-600">Ver mis hábitos</span>
+            </a>
+          </div>
+        )}
 
       </main>
 

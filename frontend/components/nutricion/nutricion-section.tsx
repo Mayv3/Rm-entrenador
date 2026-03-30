@@ -13,6 +13,7 @@ interface Student {
   id: number
   nombre: string
   modalidad?: string
+  habitos_link?: string | null
 }
 
 function AlumnoCard({ alumno, count, onClick }: { alumno: Student; count: number; onClick: () => void }) {
