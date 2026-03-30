@@ -55,7 +55,8 @@ export const addClientSupabase = async (req, res) => {
         whatsapp,
         email,
         startService,
-        lastAntro
+        lastAntro,
+        sexo
       } = clientData;
 
       let scheduleString;
@@ -79,6 +80,7 @@ export const addClientSupabase = async (req, res) => {
         dias: scheduleString,
         fecha_de_inicio: startService || null,
         ultima_antro: lastAntro || null,
+        sexo: sexo || null,
       };
 
       const { data, error } = await supabase
@@ -198,7 +200,8 @@ export const updateClientSupabase = async (req, res) => {
       schedule,
       time,
       startService,
-      lastAntro
+      lastAntro,
+      sexo
     } = clientData;
 
     let scheduleString;
@@ -222,6 +225,7 @@ export const updateClientSupabase = async (req, res) => {
       dias: scheduleString,
       fecha_de_inicio: startService || null,
       ultima_antro: lastAntro || null,
+      sexo: sexo || null,
     };
 
     const { error: updateError } = await supabase

@@ -21,6 +21,7 @@ interface Student {
   modalidad: string
   fecha_de_nacimiento: string
   fecha_de_inicio: string
+  sexo?: string
 }
 
 interface Payment {
@@ -528,6 +529,9 @@ export function EstadisticasSection() {
 
     const ageKeys = ["0-12","13-17","18-25","26-35","36-45","46-60","60+"] as const
     const ageGroups: Record<string, number> = Object.fromEntries(ageKeys.map(k => [k, 0]))
+    const ageGroupsM: Record<string, number> = Object.fromEntries(ageKeys.map(k => [k, 0]))
+    const ageGroupsF: Record<string, number> = Object.fromEntries(ageKeys.map(k => [k, 0]))
+    const ageGroupsN: Record<string, number> = Object.fromEntries(ageKeys.map(k => [k, 0]))
     const studentsByAge: Record<string, Student[]> = Object.fromEntries(ageKeys.map(k => [k, []]))
     students.forEach(s => {
       const d = parseLocalDate(s.fecha_de_nacimiento)
@@ -543,6 +547,9 @@ export function EstadisticasSection() {
       else                key = "60+"
       ageGroups[key]++
       studentsByAge[key].push(s)
+      if (s.sexo === "Masculino")      ageGroupsM[key]++
+      else if (s.sexo === "Femenino")  ageGroupsF[key]++
+      else                             ageGroupsN[key]++
     })
 
     const yearsSet = new Set<number>([today.getFullYear()])
@@ -558,7 +565,7 @@ export function EstadisticasSection() {
       total: students.length,
       topPlanEntry, topPlanPct, topPlanStudents,
       planNames, plansCurr, plansPrev, planPaymentsCurr, planPaymentsPrev,
-      ageGroups, studentsByAge, years,
+      ageGroups, ageGroupsM, ageGroupsF, ageGroupsN, studentsByAge, years,
     }
   }, [students, payments, paymentHistory, selectedYear, selectedMonth, billingYear, today])
 
@@ -577,7 +584,7 @@ export function EstadisticasSection() {
     total,
     topPlanEntry, topPlanPct, topPlanStudents,
     planNames, plansCurr, plansPrev, planPaymentsCurr, planPaymentsPrev,
-    ageGroups, studentsByAge, years,
+    ageGroups, ageGroupsM, ageGroupsF, ageGroupsN, studentsByAge, years,
   } = stats
 
   const drillData: Record<string, Student[]> = {
@@ -727,12 +734,29 @@ export function EstadisticasSection() {
           <BarChart
             xAxis={[{ scaleType: "band", data: Object.keys(ageGroups), ...axisStyle }]}
             yAxis={[{ tickLabelStyle: { fill: C.axis, fontSize: 10 } }]}
-            series={[{
-              data: Object.values(ageGroups),
-              label: "Alumnos",
-              color: C.primary,
-              valueFormatter: (v: number | null) => `${v ?? 0} alumnos`,
-            }]}
+            series={[
+              {
+                data: Object.values(ageGroupsM),
+                label: "Masculino",
+                color: "#3b82f6",
+                stack: "sex",
+                valueFormatter: (v: number | null) => `${v ?? 0} varones`,
+              },
+              {
+                data: Object.values(ageGroupsF),
+                label: "Femenino",
+                color: "#ec4899",
+                stack: "sex",
+                valueFormatter: (v: number | null) => `${v ?? 0} mujeres`,
+              },
+              {
+                data: Object.values(ageGroupsN),
+                label: "Sin definir",
+                color: "#22b567",
+                stack: "sex",
+                valueFormatter: (v: number | null) => `${v ?? 0} sin definir`,
+              },
+            ]}
             height={260}
             margin={{ left: 0, right: 16, top: 8, bottom: 24 }}
             tooltip={{ trigger: "item" }}

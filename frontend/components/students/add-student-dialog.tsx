@@ -41,6 +41,7 @@ const EMPTY_FORM = {
   time: "",
   startService: "",
   lastAntro: "",
+  sexo: "",
 }
 
 export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStudentDialogProps) {
@@ -182,16 +183,30 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
               </div>
             </div>
 
-            {/* Nacimiento + Antropometría */}
+            {/* Nacimiento + Sexo */}
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-1.5">
                 <Label htmlFor="birthDate" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Nacimiento</Label>
                 <Input id="birthDate" name="birthDate" type="date" value={formData.birthDate} onChange={handleChange} className="h-9" />
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="lastAntro" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Antropometría</Label>
-                <Input id="lastAntro" name="lastAntro" type="date" value={formData.lastAntro} onChange={handleChange} className="h-9" />
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Sexo</Label>
+                <Select value={formData.sexo} onValueChange={(v) => setFormData((p) => ({ ...p, sexo: v }))}>
+                  <SelectTrigger className="h-9 w-full">
+                    <SelectValue placeholder="Seleccionar" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Masculino">Masculino</SelectItem>
+                    <SelectItem value="Femenino">Femenino</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
+            </div>
+
+            {/* Antropometría */}
+            <div className="grid gap-1.5">
+              <Label htmlFor="lastAntro" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Antropometría</Label>
+              <Input id="lastAntro" name="lastAntro" type="date" value={formData.lastAntro} onChange={handleChange} className="h-9" />
             </div>
 
           </div>

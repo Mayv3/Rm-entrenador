@@ -35,6 +35,7 @@ interface Student {
   dias: string;
   fecha_de_inicio: string;
   ultima_antro: string;
+  sexo: string;
 }
 
 interface EditStudentDialogProps {
@@ -61,6 +62,7 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
     time: "",
     startService: "",
     lastAntro: "",
+    sexo: "",
   })
   const [files, setFiles] = useState<File[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -100,6 +102,7 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
         time: hora,
         startService: formatDate(student.fecha_de_inicio),
         lastAntro: formatDate(student.ultima_antro),
+        sexo: student.sexo || "",
       })
     }
   }, [student])
@@ -233,16 +236,30 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
               </div>
             </div>
 
-            {/* Nacimiento + Antropometría */}
+            {/* Nacimiento + Sexo */}
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-1.5">
                 <Label htmlFor="birthDate" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Nacimiento</Label>
                 <Input id="birthDate" name="birthDate" type="date" value={formData.birthDate} onChange={handleChange} className="h-9" />
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="lastAntro" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Antropometría</Label>
-                <Input id="lastAntro" name="lastAntro" type="date" value={formData.lastAntro} onChange={handleChange} className="h-9" />
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Sexo</Label>
+                <Select value={formData.sexo} onValueChange={(v) => setFormData((p) => ({ ...p, sexo: v }))}>
+                  <SelectTrigger className="h-9 w-full">
+                    <SelectValue placeholder="Seleccionar" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Masculino">Masculino</SelectItem>
+                    <SelectItem value="Femenino">Femenino</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
+            </div>
+
+            {/* Antropometría */}
+            <div className="grid gap-1.5">
+              <Label htmlFor="lastAntro" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Antropometría</Label>
+              <Input id="lastAntro" name="lastAntro" type="date" value={formData.lastAntro} onChange={handleChange} className="h-9" />
             </div>
 
           </div>
