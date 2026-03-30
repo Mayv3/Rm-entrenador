@@ -211,7 +211,7 @@ export function NutricionUploadDialog({ open, onOpenChange, alumno }: Props) {
   return (
     <>
     <Dialog open={open} onOpenChange={(v) => { if (!v) setPendingFile(null); onOpenChange(v) }}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl overflow-hidden w-[90vw]">
         <DialogHeader>
           <DialogTitle className="text-base">{alumno.nombre}</DialogTitle>
         </DialogHeader>
@@ -429,9 +429,9 @@ export function NutricionUploadDialog({ open, onOpenChange, alumno }: Props) {
               </Button>
             </div>
           ) : habitosAlumno ? (
-            <div className="flex items-center gap-2 rounded-lg border bg-emerald-500/5 border-emerald-500/20 px-3 py-2 min-w-0">
+            <div className="flex items-center gap-2 rounded-lg border bg-emerald-500/5 border-emerald-500/20 px-3 py-2 w-full min-w-0 overflow-hidden">
               <Link className="h-4 w-4 text-emerald-500 shrink-0" />
-              <a href={habitosAlumno} target="_blank" rel="noopener noreferrer" className="flex-1 text-sm text-emerald-600 truncate hover:underline min-w-0 overflow-hidden">
+              <a href={habitosAlumno} target="_blank" rel="noopener noreferrer" className="flex-1 text-sm text-emerald-600 truncate hover:underline w-0 min-w-0">
                 {habitosAlumno}
               </a>
               <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground" onClick={() => setEditingHabitosAlumno(true)}>
