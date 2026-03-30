@@ -219,9 +219,9 @@ export function NutricionUploadDialog({ open, onOpenChange, alumno }: Props) {
         {/* Zona de subida / preview */}
         {pendingFile ? (
           <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-3 p-4 border rounded-xl bg-muted">
+            <div className="flex items-center gap-3 p-4 border rounded-xl bg-muted overflow-hidden">
               <FileText className="h-8 w-8 text-[var(--primary-color)] shrink-0" />
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 w-0">
                 <p className="text-sm font-medium truncate">{pendingFile.name}</p>
                 <p className="text-xs text-muted-foreground">{formatBytes(pendingFile.size)}</p>
               </div>
@@ -239,17 +239,6 @@ export function NutricionUploadDialog({ open, onOpenChange, alumno }: Props) {
             {compressionInfo && (
               <p className="text-xs text-green-600 dark:text-green-400 text-center">{compressionInfo}</p>
             )}
-
-            <div className="flex items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2">
-              <Link className="h-4 w-4 text-muted-foreground shrink-0" />
-              <Input
-                className="h-7 border-0 bg-transparent p-0 text-sm focus-visible:ring-0"
-                placeholder="Link de hábitos (opcional)"
-                value={habitosLink}
-                onChange={(e) => setHabitosLink(e.target.value)}
-                disabled={uploading}
-              />
-            </div>
 
             <div className="flex gap-2">
               <Button
@@ -326,11 +315,11 @@ export function NutricionUploadDialog({ open, onOpenChange, alumno }: Props) {
               No hay PDFs de nutrición cargados
             </p>
           ) : (
-            <div className="flex flex-col gap-1 max-h-80 overflow-y-auto pr-1">
+            <div className="flex flex-col gap-1 max-h-80 overflow-y-auto overflow-x-hidden pr-1">
               {pdfs.map((record) => (
                 <div
                   key={record.id}
-                  className="flex items-center gap-2 p-2.5 rounded-lg border bg-muted/50 min-w-0 overflow-hidden"
+                  className="flex items-center gap-2 p-2.5 rounded-lg border bg-muted/50 w-full min-w-0 overflow-hidden"
                 >
                   <FileText className="h-5 w-5 text-[var(--primary-color)] shrink-0" />
 
@@ -346,7 +335,7 @@ export function NutricionUploadDialog({ open, onOpenChange, alumno }: Props) {
                       }}
                     />
                   ) : (
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 w-0">
                       <p className="text-sm font-medium truncate">{record.nombre_archivo}</p>
                       <p className="text-[11px] text-muted-foreground">
                         {format(new Date(record.created_at), "d MMM yyyy", { locale: es })}

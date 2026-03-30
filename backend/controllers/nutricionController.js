@@ -30,7 +30,7 @@ export const getAllNutricionCounts = async (req, res) => {
 
 export const createNutricion = async (req, res) => {
   const { id } = req.params;
-  const { nombre_archivo, pdf_path, habitos_link } = req.body;
+  const { nombre_archivo, pdf_path } = req.body;
 
   if (!nombre_archivo || !pdf_path) {
     return res.status(400).json({ message: "nombre_archivo y pdf_path son requeridos" });
@@ -38,7 +38,7 @@ export const createNutricion = async (req, res) => {
 
   const { data, error } = await supabase
     .from("nutricion")
-    .insert([{ alumno_id: id, nombre_archivo, pdf_path, habitos_link: habitos_link || null }])
+    .insert([{ alumno_id: id, nombre_archivo, pdf_path }])
     .select()
     .single();
 

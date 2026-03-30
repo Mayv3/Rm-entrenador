@@ -216,9 +216,9 @@ export function AntroUploadDialog({ open, onOpenChange, alumno }: Props) {
         {/* Zona de subida / preview */}
         {pendingFile ? (
           <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-3 p-4 border rounded-xl bg-muted">
+            <div className="flex items-center gap-3 p-4 border rounded-xl bg-muted overflow-hidden">
               <FileText className="h-8 w-8 text-[var(--primary-color)] shrink-0" />
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 w-0">
                 <p className="text-sm font-medium truncate">{pendingFile.name}</p>
                 <p className="text-xs text-muted-foreground">{formatBytes(pendingFile.size)}</p>
               </div>
@@ -264,7 +264,7 @@ export function AntroUploadDialog({ open, onOpenChange, alumno }: Props) {
           </div>
         ) : (
           <div
-            className={`border-2 border-dashed rounded-xl px-6 py-7 flex flex-col items-center gap-2 cursor-pointer select-none transition-colors ${
+            className={`border-2 border-dashed rounded-xl px-6 py-7 flex flex-col items-center gap-2 cursor-pointer select-none transition-colors w-full max-w-full box-border ${
               dragOver
                 ? "border-[var(--primary-color)] bg-[var(--primary-color)]/5"
                 : "border-muted-foreground/30 hover:border-muted-foreground/50"
@@ -312,11 +312,11 @@ export function AntroUploadDialog({ open, onOpenChange, alumno }: Props) {
               No hay antropometrías cargadas
             </p>
           ) : (
-            <div className="flex flex-col gap-1 max-h-80 overflow-y-auto pr-1">
+            <div className="flex flex-col gap-1 max-h-80 overflow-y-auto overflow-x-hidden pr-1">
               {antros.map((antro) => (
                 <div
                   key={antro.id}
-                  className="flex items-center gap-2 p-2.5 rounded-lg border bg-muted/50 cursor-pointer hover:border-green-400 hover:bg-green-50/50 dark:hover:bg-green-950/20 transition-colors min-w-0 overflow-hidden"
+                  className="flex items-center gap-2 p-2.5 rounded-lg border bg-muted/50 cursor-pointer hover:border-green-400 hover:bg-green-50/50 dark:hover:bg-green-950/20 transition-colors w-full min-w-0 overflow-hidden"
                   onClick={() => handleAnalysis(antro)}
                 >
                   <FileText className="h-5 w-5 text-[var(--primary-color)] shrink-0" />
@@ -333,7 +333,7 @@ export function AntroUploadDialog({ open, onOpenChange, alumno }: Props) {
                       }}
                     />
                   ) : (
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 w-0">
                       <p className="text-sm font-medium truncate">{antro.nombre_archivo}</p>
                       <p className="text-[11px] text-muted-foreground">
                         {format(new Date(antro.created_at), "d MMM yyyy", { locale: es })}
