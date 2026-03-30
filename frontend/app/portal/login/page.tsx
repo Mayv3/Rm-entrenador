@@ -1,10 +1,19 @@
 "use client"
 
-import { signIn } from "next-auth/react"
+import { signIn, useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
+import { useEffect } from "react"
 import Image from "next/image"
 import logoRodrigoEntrenador from "../../../assets/LOGO-RODRIGO-VERDE.png"
 
 export default function PortalLoginPage() {
+  const { status } = useSession()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (status === "authenticated") router.replace("/portal")
+  }, [status, router])
+
   return (
     <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
       {/* background glow */}
