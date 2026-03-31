@@ -351,25 +351,6 @@ export default function PortalPage() {
                 <span className="text-xs text-muted-foreground">Última: {formatDate(student.ultima_antro)}</span>
               )}
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowCompare(true)}
-                disabled={antros.length < 2}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-purple-600 text-white text-xs font-semibold shadow-md hover:brightness-110 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <GitCompareArrows className="h-3.5 w-3.5" />
-                Comparar
-              </button>
-              {antros.length >= 2 && (
-                <button
-                  onClick={() => setShowAnualChart(true)}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[var(--primary-color)] text-white text-xs font-semibold shadow-md hover:brightness-110 active:scale-95 transition-all"
-                >
-                  <TrendingUp className="h-3.5 w-3.5" />
-                  Ver evolución
-                </button>
-              )}
-            </div>
           </div>
 
           {antros.length === 0 ? (
@@ -399,6 +380,25 @@ export default function PortalPage() {
                   ))}
                 </div>
               ))}
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  onClick={() => setShowCompare(true)}
+                  disabled={antros.length < 2}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-purple-600 text-white text-xs font-semibold shadow-md hover:brightness-110 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <GitCompareArrows className="h-3.5 w-3.5" />
+                  Comparar
+                </button>
+                {antros.length >= 2 && (
+                  <button
+                    onClick={() => setShowAnualChart(true)}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-[var(--primary-color)] text-white text-xs font-semibold shadow-md hover:brightness-110 active:scale-95 transition-all"
+                  >
+                    <TrendingUp className="h-3.5 w-3.5" />
+                    Ver evolución
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </div>
