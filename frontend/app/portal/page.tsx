@@ -282,34 +282,36 @@ export default function PortalPage() {
         {/* Pago activo */}
         {latestPayment && (
           <div className="flex flex-col gap-2">
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Estado de pago</span>
-            <div className="rounded-2xl border border-border bg-card overflow-hidden">
-              {/* status bar top */}
+            <div className="rounded-2xl overflow-hidden border border-border bg-card">
+              {/* Header */}
               <div
-                className="h-1 w-full"
-                style={{ backgroundColor: getStatusColor(subscriptionStatus) }}
-              />
-              <div className="divide-y divide-border text-sm">
-                <div className="flex justify-between items-center px-4 py-3">
-                  <span className="text-muted-foreground text-xs uppercase tracking-wide font-medium">Plan</span>
-                  <span className="font-semibold">{latestPayment.modalidad}</span>
+                className="px-4 py-3 flex items-center justify-between"
+                style={{ backgroundColor: `${getStatusColor(subscriptionStatus)}15`, borderBottom: `1px solid ${getStatusColor(subscriptionStatus)}30` }}
+              >
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full animate-pulse" style={{ backgroundColor: getStatusColor(subscriptionStatus) }} />
+                  <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Estado de pago</span>
                 </div>
-                <div className="flex justify-between items-center px-4 py-3">
-                  <span className="text-muted-foreground text-xs uppercase tracking-wide font-medium">Monto</span>
-                  <span className="font-semibold text-[var(--primary-color)]">${Number(latestPayment.monto).toLocaleString("es-AR")}</span>
+                <span
+                  className="text-xs font-bold px-3 py-1 rounded-full"
+                  style={{ color: getStatusColor(subscriptionStatus), backgroundColor: `${getStatusColor(subscriptionStatus)}20` }}
+                >
+                  {subscriptionStatus === "Pagado" ? "Activo" : subscriptionStatus === "Indefinido" ? "Indefinido" : "Inactivo"}
+                </span>
+              </div>
+              {/* Body */}
+              <div className="grid grid-cols-3 divide-x divide-border">
+                <div className="flex flex-col items-center justify-center gap-1 px-3 py-4">
+                  <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">Plan</span>
+                  <span className="font-bold text-sm text-center">{latestPayment.modalidad}</span>
                 </div>
-                <div className="flex justify-between items-center px-4 py-3">
-                  <span className="text-muted-foreground text-xs uppercase tracking-wide font-medium">Vencimiento</span>
-                  <span className="font-semibold">{formatDate(latestPayment.fecha_de_vencimiento)}</span>
+                <div className="flex flex-col items-center justify-center gap-1 px-3 py-4">
+                  <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">Monto</span>
+                  <span className="font-bold text-sm" style={{ color: getStatusColor(subscriptionStatus) }}>${Number(latestPayment.monto).toLocaleString("es-AR")}</span>
                 </div>
-                <div className="flex justify-between items-center px-4 py-3">
-                  <span className="text-muted-foreground text-xs uppercase tracking-wide font-medium">Estado</span>
-                  <span
-                    className="text-xs font-semibold px-2.5 py-1 rounded-full"
-                    style={{ color: getStatusColor(subscriptionStatus), backgroundColor: `${getStatusColor(subscriptionStatus)}18` }}
-                  >
-                    {subscriptionStatus === "Pagado" ? "Activo" : subscriptionStatus === "Indefinido" ? "Indefinido" : "Inactivo"}
-                  </span>
+                <div className="flex flex-col items-center justify-center gap-1 px-3 py-4">
+                  <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">Vence</span>
+                  <span className="font-bold text-sm text-center">{formatDate(latestPayment.fecha_de_vencimiento)}</span>
                 </div>
               </div>
             </div>
