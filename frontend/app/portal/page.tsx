@@ -272,13 +272,6 @@ export default function PortalPage() {
           </Badge>
         </div>
 
-        {/* Info */}
-        <div className="grid grid-cols-2 gap-3">
-          <InfoCard label="Plan" value={student.modalidad} accent />
-          <InfoCard label="Inicio" value={formatDate(student.fecha_de_inicio)} />
-          <InfoCard label="Nacimiento" value={formatDate(student.fecha_de_nacimiento)} />
-          <InfoCard label="Última antrop." value={formatDate(student.ultima_antro)} />
-        </div>
 
         {/* Días de entrenamiento */}
         <div className="flex flex-col gap-2">
@@ -350,9 +343,14 @@ export default function PortalPage() {
         {/* Antropometrías */}
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Mis antropometrías {antros.length > 0 && `(${antros.length})`}
-            </span>
+            <div className="flex flex-col gap-0.5">
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Mis antropometrías {antros.length > 0 && `(${antros.length})`}
+              </span>
+              {student.ultima_antro && (
+                <span className="text-xs text-muted-foreground">Última: {formatDate(student.ultima_antro)}</span>
+              )}
+            </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowCompare(true)}
