@@ -289,20 +289,20 @@ export default function PortalPage() {
               {/* Body */}
               <div className="grid grid-cols-4 divide-x divide-border">
                 <div className="flex flex-col items-center justify-center gap-1 px-2 py-4">
-                  <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">Plan</span>
-                  <span className="font-bold text-sm text-center">{latestPayment.modalidad}</span>
+                  <span className="text-[9px] uppercase tracking-widest text-muted-foreground font-medium">Plan</span>
+                  <span className="font-bold text-xs text-center">{latestPayment.modalidad}</span>
                 </div>
                 <div className="flex flex-col items-center justify-center gap-1 px-2 py-4">
-                  <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">Monto</span>
-                  <span className="font-bold text-sm" style={{ color: getStatusColor(subscriptionStatus) }}>${Number(latestPayment.monto).toLocaleString("es-AR")}</span>
+                  <span className="text-[9px] uppercase tracking-widest text-muted-foreground font-medium">Monto</span>
+                  <span className="font-bold text-xs" style={{ color: getStatusColor(subscriptionStatus) }}>${Number(latestPayment.monto).toLocaleString("es-AR")}</span>
                 </div>
                 <div className="flex flex-col items-center justify-center gap-1 px-2 py-4">
-                  <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">Inicio</span>
-                  <span className="font-bold text-sm text-center">{formatDate(student.fecha_de_inicio)}</span>
+                  <span className="text-[9px] uppercase tracking-widest text-muted-foreground font-medium">Inicio</span>
+                  <span className="font-bold text-xs text-center">{formatDate(student.fecha_de_inicio)}</span>
                 </div>
                 <div className="flex flex-col items-center justify-center gap-1 px-2 py-4">
-                  <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">Vence</span>
-                  <span className="font-bold text-sm text-center">{formatDate(latestPayment.fecha_de_vencimiento)}</span>
+                  <span className="text-[9px] uppercase tracking-widest text-muted-foreground font-medium">Vence</span>
+                  <span className="font-bold text-xs text-center">{formatDate(latestPayment.fecha_de_vencimiento)}</span>
                 </div>
               </div>
             </div>
