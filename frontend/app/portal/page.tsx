@@ -259,17 +259,9 @@ export default function PortalPage() {
       <main className="max-w-lg mx-auto px-4 py-6 flex flex-col gap-5">
 
         {/* Perfil */}
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h1 className="font-bold text-2xl leading-tight">{student.nombre}</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">{student.email}</p>
-          </div>
-          <Badge
-            className="shrink-0 mt-1 text-xs"
-            style={{ backgroundColor: getStatusColor(subscriptionStatus) }}
-          >
-            {subscriptionStatus === "Pagado" ? "Activo" : subscriptionStatus === "Indefinido" ? "Indefinido" : "Inactivo"}
-          </Badge>
+        <div>
+          <h1 className="font-bold text-2xl leading-tight">{student.nombre}</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">{student.email}</p>
         </div>
 
 
