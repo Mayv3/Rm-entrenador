@@ -6,7 +6,7 @@ import { addClientSupabase, deleteClientSupabase, getMembersSupabase, updateClie
 import { addPaymentSupabase, deletePaymentSupabase, getPaymentsSupabase, updatePaymentInSupabase, getPaymentHistory, getAllPaymentHistory, deleteHistoryEntry, updateHistoryEntry } from "./controllers/paymentsController.js";
 import { enviarRecordatoriosVencidos, previewRecordatoriosVencidos, sendTestAPIMail, recordatorioAntropometrias, recordatorioCumpleanos } from "./controllers/mailingController.js";
 import { getPlanes, addPlan, updatePlan, deletePlan } from "./controllers/planesController.js";
-import { getAntrosByAlumno, getAllAntrosCounts, createAntro, deleteAntro, updateAntroNombre, getParsedAntro } from "./controllers/antropometriasController.js";
+import { getAntrosByAlumno, getAllAntrosCounts, createAntro, deleteAntro, updateAntroNombre, updateAntroFecha, getParsedAntro } from "./controllers/antropometriasController.js";
 import { getNutricionByAlumno, getAllNutricionCounts, createNutricion, deleteNutricion, updateNutricionNombre, updateNutricionHabitos } from "./controllers/nutricionController.js";
 
 import multer from "multer"
@@ -70,6 +70,7 @@ app.get("/clients/:id/antropometrias", getAntrosByAlumno);
 app.post("/clients/:id/antropometrias", createAntro);
 app.delete("/antropometrias/:id", deleteAntro);
 app.patch("/antropometrias/:id/nombre", updateAntroNombre);
+app.patch("/antropometrias/:id/fecha", updateAntroFecha);
 app.get("/antropometrias/:id/parsed", getParsedAntro);
 
 // Nutricion

@@ -12,7 +12,8 @@ import { Button } from "@/components/ui/button"
 import { supabase } from "@/lib/supabase-client"
 import { queryKeys } from "@/lib/query-keys"
 import { Input } from "@/components/ui/input"
-import { Upload, FileText, Trash2, Eye, Loader2, X, Pencil, Check, BarChart2, ArrowLeft } from "lucide-react"
+import { Upload, FileText, Trash2, Eye, Loader2, X, Pencil, Check, BarChart2, ArrowLeft, Calendar, MoreVertical } from "lucide-react"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { AntroView, ParsedAntro } from "./antro-view"
 
 interface Student {
@@ -26,6 +27,7 @@ interface AntroRecord {
   nombre_archivo: string
   pdf_path: string
   created_at: string
+  fecha?: string
 }
 
 interface Props {
@@ -66,7 +68,11 @@ export function AntroUploadDialog({ open, onOpenChange, alumno }: Props) {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editingNombre, setEditingNombre] = useState("")
   const [savingId, setSavingId] = useState<number | null>(null)
+  const [editingDateId, setEditingDateId] = useState<number | null>(null)
+  const [editingDate, setEditingDate] = useState("")
+  const [savingDateId, setSavingDateId] = useState<number | null>(null)
   const [parsedData, setParsedData] = useState<ParsedAntro | null>(null)
+  const [viewingAntro, setViewingAntro] = useState<AntroRecord | null>(null)
   const [parsing, setParsing] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const queryClient = useQueryClient()
@@ -129,6 +135,7 @@ export function AntroUploadDialog({ open, onOpenChange, alumno }: Props) {
     try {
       const res = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/antropometrias/${antro.id}/parsed`)
       setParsedData(res.data)
+      setViewingAntro(antro)
     } catch (err) {
       console.error(err)
       alert("Error al procesar la antropometría")
@@ -160,6 +167,25 @@ export function AntroUploadDialog({ open, onOpenChange, alumno }: Props) {
       alert("Error al eliminar el PDF")
     } finally {
       setDeletingId(null)
+    }
+  }
+
+  async function handleUpdateFecha(antro: AntroRecord) {
+    if (!editingDate) { setEditingDateId(null); return }
+    setSavingDateId(antro.id)
+    try {
+      await axios.patch(
+        `${process.env.NEXT_PUBLIC_URL_BACKEND}/antropometrias/${antro.id}/fecha`,
+        { fecha: editingDate }
+      )
+      queryClient.invalidateQueries({ queryKey: queryKeys.antrosByAlumno(alumno.id) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.students })
+      setEditingDateId(null)
+    } catch (err) {
+      console.error(err)
+      alert("Error al actualizar la fecha")
+    } finally {
+      setSavingDateId(null)
     }
   }
 
@@ -205,7 +231,10 @@ export function AntroUploadDialog({ open, onOpenChange, alumno }: Props) {
 
         {/* Vista de análisis */}
         {parsedData ? (
-          <AntroView data={parsedData} />
+          <AntroView
+            data={parsedData}
+            fechaFallback={(viewingAntro?.fecha || viewingAntro?.created_at || "").split("T")[0].split(" ")[0]}
+          />
         ) : parsing ? (
           <div className="flex flex-col items-center justify-center py-12 gap-3">
             <Loader2 className="h-8 w-8 animate-spin text-green-600" />
@@ -316,8 +345,7 @@ export function AntroUploadDialog({ open, onOpenChange, alumno }: Props) {
               {antros.map((antro) => (
                 <div
                   key={antro.id}
-                  className="flex items-center gap-2 p-2.5 rounded-lg border bg-muted/50 cursor-pointer hover:border-green-400 hover:bg-green-50/50 dark:hover:bg-green-950/20 transition-colors w-full min-w-0 overflow-hidden"
-                  onClick={() => handleAnalysis(antro)}
+                  className="flex items-center gap-2 p-2.5 rounded-lg border bg-muted/50 w-full min-w-0 overflow-hidden"
                 >
                   <FileText className="h-5 w-5 text-[var(--primary-color)] shrink-0" />
 
@@ -332,11 +360,32 @@ export function AntroUploadDialog({ open, onOpenChange, alumno }: Props) {
                         if (e.key === "Escape") setEditingId(null)
                       }}
                     />
+                  ) : editingDateId === antro.id ? (
+                    <div className="flex items-center gap-1 flex-1 min-w-0">
+                      <input
+                        autoFocus
+                        type="date"
+                        className="h-7 text-sm border rounded px-1 flex-1 bg-background"
+                        value={editingDate}
+                        onChange={(e) => setEditingDate(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleUpdateFecha(antro)
+                          if (e.key === "Escape") setEditingDateId(null)
+                        }}
+                      />
+                    </div>
                   ) : (
                     <div className="flex-1 min-w-0 w-0">
                       <p className="text-sm font-medium truncate">{antro.nombre_archivo}</p>
                       <p className="text-[11px] text-muted-foreground">
-                        {format(new Date(antro.created_at), "d MMM yyyy", { locale: es })}
+                        {(() => {
+                          const raw = antro.fecha || antro.created_at
+                          if (!raw) return "—"
+                          const dateStr = raw.split("T")[0].split(" ")[0]
+                          const [y, m, d] = dateStr.split("-").map(Number)
+                          if (!y || !m || !d) return "—"
+                          return format(new Date(y, m - 1, d), "d MMM yyyy", { locale: es })
+                        })()}
                       </p>
                     </div>
                   )}
@@ -354,38 +403,55 @@ export function AntroUploadDialog({ open, onOpenChange, alumno }: Props) {
                         : <Check className="h-4 w-4" />
                       }
                     </Button>
-                  ) : (
+                  ) : editingDateId === antro.id ? (
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
-                      onClick={(e) => { e.stopPropagation(); setEditingId(antro.id); setEditingNombre(antro.nombre_archivo) }}
+                      className="h-7 w-7 shrink-0 text-green-600 hover:text-green-700"
+                      disabled={savingDateId === antro.id}
+                      onClick={(e) => { e.stopPropagation(); handleUpdateFecha(antro) }}
                     >
-                      <Pencil className="h-4 w-4" />
+                      {savingDateId === antro.id
+                        ? <Loader2 className="h-4 w-4 animate-spin" />
+                        : <Check className="h-4 w-4" />
+                      }
                     </Button>
+                  ) : deletingId === antro.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />
+                  ) : (
+                    <>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
+                        title="Ver resumen"
+                        onClick={(e) => { e.stopPropagation(); handleAnalysis(antro) }}
+                      >
+                        <BarChart2 className="h-4 w-4" />
+                      </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleView(antro)}>
+                          <Eye className="h-4 w-4 mr-2" /> Ver PDF
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => { setEditingId(antro.id); setEditingNombre(antro.nombre_archivo) }}>
+                          <Pencil className="h-4 w-4 mr-2" /> Renombrar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => { setEditingDate((antro.fecha || antro.created_at || "").split("T")[0].split(" ")[0]); setEditingDateId(antro.id) }}>
+                          <Calendar className="h-4 w-4 mr-2" /> Editar fecha
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="text-red-500 focus:text-red-500" onClick={() => setConfirmAntro(antro)}>
+                          <Trash2 className="h-4 w-4 mr-2" /> Eliminar
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    </>
                   )}
-
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
-                    onClick={(e) => { e.stopPropagation(); handleView(antro) }}
-                    title="Ver PDF"
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7 shrink-0 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
-                    disabled={deletingId === antro.id}
-                    onClick={(e) => { e.stopPropagation(); setConfirmAntro(antro) }}
-                  >
-                    {deletingId === antro.id
-                      ? <Loader2 className="h-4 w-4 animate-spin" />
-                      : <Trash2 className="h-4 w-4" />
-                    }
-                  </Button>
                 </div>
               ))}
             </div>

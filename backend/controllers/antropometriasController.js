@@ -8,6 +8,7 @@ export const getAntrosByAlumno = async (req, res) => {
     .from("antropometrias")
     .select("*")
     .eq("alumno_id", id)
+    .order("fecha", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });
 
   if (error) return res.status(500).json({ message: "Error al obtener antropometrías" });
@@ -117,6 +118,21 @@ export const getParsedAntro = async (req, res) => {
     .eq("id", id);
 
   return res.json(parsed);
+};
+
+export const updateAntroFecha = async (req, res) => {
+  const { id } = req.params;
+  const { fecha } = req.body;
+
+  if (!fecha) return res.status(400).json({ message: "La fecha es requerida" });
+
+  const { error } = await supabase
+    .from("antropometrias")
+    .update({ fecha })
+    .eq("id", id);
+
+  if (error) return res.status(500).json({ message: "Error al actualizar la fecha" });
+  return res.json({ success: true });
 };
 
 export const deleteAntro = async (req, res) => {

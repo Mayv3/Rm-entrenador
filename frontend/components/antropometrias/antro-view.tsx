@@ -203,7 +203,6 @@ function MasasChart({ masas }: { masas: ParsedAntro["masas"] }) {
   const rows: [string, MasaVal][] = [
     ["Adiposa", masas.adiposa],
     ["Muscular", masas.muscular],
-    ["Residual", masas.residual],
   ]
   const filtered = rows.filter(([, m]) => m.kgActual !== null && m.kgAnterior !== null)
   if (filtered.length === 0) return null
@@ -236,21 +235,11 @@ function MasasChart({ masas }: { masas: ParsedAntro["masas"] }) {
 
 // ── Vista principal ────────────────────────────────────────────────────────────
 
-export function AntroView({ data, hideScoreZ }: { data: ParsedAntro; hideScoreZ?: boolean }) {
+export function AntroView({ data, hideScoreZ, fechaFallback }: { data: ParsedAntro; hideScoreZ?: boolean; fechaFallback?: string }) {
   const isMobile = useMediaQuery("(max-width: 640px)")
 
   const basicos: [string, MedidaVal][] = [
     ["Peso (kg)", data.basicos.peso],
-    ["Talla (cm)", data.basicos.talla],
-    ["Talla sentado (cm)", data.basicos.tallaSentado],
-  ]
-  const diametros: [string, MedidaVal][] = [
-    ["Biacromial", data.diametros.biacromial],
-    ["Tórax Transverso", data.diametros.toraxTransverso],
-    ["Tórax Anteroposterior", data.diametros.toraxAnteroposterior],
-    ["Bi-iliocrestídeo", data.diametros.biIliocrestideo],
-    ["Humeral (biepicondilar)", data.diametros.humeralBiepicondilar],
-    ["Femoral (biepicondilar)", data.diametros.femoralBiepicondilar],
   ]
   const perimetros: [string, MedidaVal][] = [
     ["Cabeza", data.perimetros.cabeza],
@@ -293,7 +282,14 @@ export function AntroView({ data, hideScoreZ }: { data: ParsedAntro; hideScoreZ?
           </div>
           <div className="flex flex-col items-center py-3 px-2 gap-0.5">
             <span className="text-[9px] font-semibold uppercase tracking-widest text-gray-400">Fecha</span>
-            <span className="text-base font-bold text-gray-800 dark:text-gray-100">{data.fecha ?? "—"}</span>
+            <span className="text-base font-bold text-gray-800 dark:text-gray-100">
+              {(() => {
+                const raw = data.fecha ?? fechaFallback
+                if (!raw) return "—"
+                const [y, m, d] = raw.split("-")
+                return d && m && y ? `${d}/${m}/${y}` : raw
+              })()}
+            </span>
           </div>
         </div>
       </div>
@@ -308,7 +304,6 @@ export function AntroView({ data, hideScoreZ }: { data: ParsedAntro; hideScoreZ?
           {!hideScoreZ && <span className="text-[10px] font-semibold text-blue-500 tabular-nums w-10 text-right">Z</span>}
         </div>
         <TableSection label="Básicos" rows={basicos} hideScoreZ={hideScoreZ} />
-        <TableSection label="Diámetros (cm)" rows={diametros} hideScoreZ={hideScoreZ} />
         <TableSection label="Perímetros (cm)" rows={perimetros} hideScoreZ={hideScoreZ} />
         <TableSection label="Pliegues (mm)" rows={pliegues} hideScoreZ={hideScoreZ} />
       </div>
@@ -326,7 +321,6 @@ export function AntroView({ data, hideScoreZ }: { data: ParsedAntro; hideScoreZ?
         {([
           ["Masa Adiposa", data.masas.adiposa],
           ["Masa Muscular", data.masas.muscular],
-          ["Masa Residual", data.masas.residual],
         ] as [string, MasaVal][]).map(([label, m]) => (
           <div key={label} className="flex items-center gap-2 px-3 py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
             <span className="flex-1 text-xs text-gray-700 dark:text-gray-300">{label}</span>
@@ -356,7 +350,6 @@ export function AntroView({ data, hideScoreZ }: { data: ParsedAntro; hideScoreZ?
             ["Muslo Med.", data.perimetros.musloMedial],
             ["Pantorrilla", data.perimetros.pantorrillaMaxima],
           ]} unit="cm" />
-          <DiffBarChart title="Diámetros (cm)" rows={diametros} unit="cm" />
           <DiffBarChart title="Pliegues (mm)" rows={pliegues} unit="mm" />
           <MasasChart masas={data.masas} />
         </div>
