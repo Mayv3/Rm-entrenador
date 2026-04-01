@@ -15,6 +15,14 @@ interface AntroRecord {
   nombre_archivo: string
   pdf_path: string
   created_at: string
+  fecha?: string
+}
+
+function getAntroDate(antro: AntroRecord): Date {
+  const raw = antro.fecha || antro.created_at
+  const dateStr = (raw || "").split("T")[0].split(" ")[0]
+  const [y, m, d] = dateStr.split("-").map(Number)
+  return new Date(y, m - 1, d)
 }
 
 interface Props {
@@ -84,14 +92,14 @@ function MultiLineChart({
 }
 
 export function AntroAnualChart({ open, onClose, antros, onSelectAntro, parsing }: Props) {
-  const years = [...new Set(antros.map(a => new Date(a.created_at).getFullYear()))].sort((a, b) => b - a)
+  const years = [...new Set(antros.map(a => getAntroDate(a).getFullYear()))].sort((a, b) => b - a)
   const [selectedYear, setSelectedYear] = useState<number>(years[0] ?? new Date().getFullYear())
   const [parsedMap, setParsedMap] = useState<Map<number, ParsedAntro>>(new Map())
   const [loading, setLoading] = useState(false)
 
   const yearAntros = antros
-    .filter(a => new Date(a.created_at).getFullYear() === selectedYear)
-    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+    .filter(a => getAntroDate(a).getFullYear() === selectedYear)
+    .sort((a, b) => getAntroDate(a).getTime() - getAntroDate(b).getTime())
 
   const yearAntroIds = yearAntros.map(a => a.id).join(",")
 
@@ -119,7 +127,7 @@ export function AntroAnualChart({ open, onClose, antros, onSelectAntro, parsing 
   }, [open, yearAntroIds])
 
   const labels = yearAntros.map(a =>
-    format(new Date(a.created_at), "d MMM yy", { locale: es })
+    format(getAntroDate(a), "d MMM yy", { locale: es })
   )
   const parsed = yearAntros.map(a => parsedMap.get(a.id) ?? null)
 
@@ -232,7 +240,7 @@ export function AntroAnualChart({ open, onClose, antros, onSelectAntro, parsing 
                     <FileText className="h-6 w-6 text-[var(--primary-color)]" />
                   )}
                   <span className="text-[10px] text-muted-foreground text-center leading-tight">
-                    {format(new Date(antro.created_at), "d MMM yy", { locale: es })}
+                    {format(getAntroDate(antro), "d MMM yy", { locale: es })}
                   </span>
                 </button>
               ))}

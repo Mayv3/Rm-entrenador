@@ -16,6 +16,14 @@ interface AntroRecord {
   nombre_archivo: string
   pdf_path: string
   created_at: string
+  fecha?: string
+}
+
+function getAntroDate(antro: AntroRecord): Date {
+  const raw = antro.fecha || antro.created_at
+  const dateStr = (raw || "").split("T")[0].split(" ")[0]
+  const [y, m, d] = dateStr.split("-").map(Number)
+  return new Date(y, m - 1, d)
 }
 
 interface Props {
@@ -146,8 +154,8 @@ export function AntroCompareDialog({ open, onClose, antros }: Props) {
     }
   }
 
-  const labelA = selA ? format(new Date(selA.created_at), "d MMM yy", { locale: es }) : "A"
-  const labelB = selB ? format(new Date(selB.created_at), "d MMM yy", { locale: es }) : "B"
+  const labelA = selA ? format(getAntroDate(selA), "d MMM yy", { locale: es }) : "A"
+  const labelB = selB ? format(getAntroDate(selB), "d MMM yy", { locale: es }) : "B"
 
   function buildRows(
     getter: (p: ParsedAntro) => (string | null),
@@ -161,7 +169,7 @@ export function AntroCompareDialog({ open, onClose, antros }: Props) {
     ])
   }
 
-  const sorted = [...antros].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+  const sorted = [...antros].sort((a, b) => getAntroDate(b).getTime() - getAntroDate(a).getTime())
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
@@ -192,14 +200,14 @@ export function AntroCompareDialog({ open, onClose, antros }: Props) {
               {selA && (
                 <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 text-xs font-semibold">
                   <span className="w-4 h-4 rounded-full bg-green-600 text-white flex items-center justify-center text-[9px] font-bold shrink-0">A</span>
-                  {format(new Date(selA.created_at), "d MMM yy", { locale: es })}
+                  {format(getAntroDate(selA), "d MMM yy", { locale: es })}
                   <button onClick={() => setSelA(null)} className="ml-0.5 hover:text-green-900"><X className="h-3 w-3" /></button>
                 </span>
               )}
               {selB && (
                 <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 text-xs font-semibold">
                   <span className="w-4 h-4 rounded-full bg-[#86efac] text-green-900 flex items-center justify-center text-[9px] font-bold shrink-0">B</span>
-                  {format(new Date(selB.created_at), "d MMM yy", { locale: es })}
+                  {format(getAntroDate(selB), "d MMM yy", { locale: es })}
                   <button onClick={() => setSelB(null)} className="ml-0.5 hover:text-blue-900"><X className="h-3 w-3" /></button>
                 </span>
               )}
@@ -236,7 +244,7 @@ export function AntroCompareDialog({ open, onClose, antros }: Props) {
                     )}
                     <FileText className={`h-6 w-6 ${isA ? "text-green-600" : isB ? "text-green-400" : "text-[var(--primary-color)]"}`} />
                     <span className="text-[10px] text-muted-foreground text-center leading-tight">
-                      {format(new Date(antro.created_at), "d MMM yy", { locale: es })}
+                      {format(getAntroDate(antro), "d MMM yy", { locale: es })}
                     </span>
                   </button>
                 )
