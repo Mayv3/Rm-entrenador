@@ -11,7 +11,6 @@ import { EditPaymentDialog } from "./edit-payment-dialog";
 import { DeletePaymentDialog } from "./delete-payment-dialog";
 import { PaymentHistoryDialog } from "./payment-history-dialog";
 import { PaymentHistoryGlobalDialog } from "./payment-history-global-dialog";
-import { PaymentStats } from "./payment-stats";
 import { Loader } from "@/components/ui/loader";
 import { GenericDataGrid } from "@/components/tables/DataGrid";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -253,16 +252,6 @@ export function PaymentsTable() {
 
   return (
     <>
-      <PaymentStats
-        totalPaid={stats.totalPaid}
-        totalOverdue={stats.totalOverdue}
-        totalPaidStudents={stats.totalPaidStudents}
-        totalOverdueStudents={stats.totalOverdueStudents}
-        loyaltyPercentage={stats.loyaltyPercentage}
-        totalStudents={payments.length}
-        planCounts={stats.planCounts}
-      />
-
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="relative w-full md:w-96">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
