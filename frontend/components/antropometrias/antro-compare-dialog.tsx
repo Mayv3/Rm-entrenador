@@ -93,8 +93,6 @@ function CompareMasasChart({
   const rows: [string, number | null, number | null][] = [
     ["Adiposa", parseVal(parsedA.masas.adiposa.kgActual), parseVal(parsedB.masas.adiposa.kgActual)],
     ["Muscular", parseVal(parsedA.masas.muscular.kgActual), parseVal(parsedB.masas.muscular.kgActual)],
-    ["Residual", parseVal(parsedA.masas.residual.kgActual), parseVal(parsedB.masas.residual.kgActual)],
-    ["Ósea", parseVal(parsedA.masas.osea.kgActual), parseVal(parsedB.masas.osea.kgActual)],
   ]
   return (
     <CompareBarChart title="Masas Corporales (kg)" rows={rows} labelA={labelA} labelB={labelB} unit="kg" />
@@ -282,34 +280,6 @@ export function AntroCompareDialog({ open, onClose, antros }: Props) {
               labelA={labelA}
               labelB={labelB}
               unit="kg"
-            />
-
-            {/* Básicos */}
-            <CompareBarChart
-              title="Básicos (cm)"
-              rows={[
-                ["Talla", parseVal(parsedA.basicos.talla.actual), parseVal(parsedB.basicos.talla.actual)],
-                ["Talla Sentado", parseVal(parsedA.basicos.tallaSentado.actual), parseVal(parsedB.basicos.tallaSentado.actual)],
-              ]}
-              labelA={labelA}
-              labelB={labelB}
-              unit="cm"
-            />
-
-            {/* Diámetros */}
-            <CompareBarChart
-              title="Diámetros (cm)"
-              rows={[
-                ["Biacromial", parseVal(parsedA.diametros.biacromial.actual), parseVal(parsedB.diametros.biacromial.actual)],
-                ["Tórax Trans.", parseVal(parsedA.diametros.toraxTransverso.actual), parseVal(parsedB.diametros.toraxTransverso.actual)],
-                ["Tórax AP", parseVal(parsedA.diametros.toraxAnteroposterior.actual), parseVal(parsedB.diametros.toraxAnteroposterior.actual)],
-                ["Bi-ilioc.", parseVal(parsedA.diametros.biIliocrestideo.actual), parseVal(parsedB.diametros.biIliocrestideo.actual)],
-                ["Humeral", parseVal(parsedA.diametros.humeralBiepicondilar.actual), parseVal(parsedB.diametros.humeralBiepicondilar.actual)],
-                ["Femoral", parseVal(parsedA.diametros.femoralBiepicondilar.actual), parseVal(parsedB.diametros.femoralBiepicondilar.actual)],
-              ]}
-              labelA={labelA}
-              labelB={labelB}
-              unit="cm"
             />
 
             {/* Perímetros brazos */}

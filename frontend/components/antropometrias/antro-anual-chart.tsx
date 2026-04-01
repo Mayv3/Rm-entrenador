@@ -134,26 +134,6 @@ export function AntroAnualChart({ open, onClose, antros, onSelectAntro, parsing 
       series: [ms("Peso", p => p.basicos.peso.actual)],
     },
     {
-      title: "Talla (cm)",
-      unit: "cm",
-      series: [
-        ms("Talla", p => p.basicos.talla.actual),
-        ms("Talla sentado", p => p.basicos.tallaSentado.actual),
-      ],
-    },
-    {
-      title: "Diámetros (cm)",
-      unit: "cm",
-      series: [
-        ms("Biacromial", p => p.diametros.biacromial.actual),
-        ms("Tórax Transverso", p => p.diametros.toraxTransverso.actual),
-        ms("Tórax AP", p => p.diametros.toraxAnteroposterior.actual),
-        ms("Bi-iliocrestídeo", p => p.diametros.biIliocrestideo.actual),
-        ms("Humeral", p => p.diametros.humeralBiepicondilar.actual),
-        ms("Femoral", p => p.diametros.femoralBiepicondilar.actual),
-      ],
-    },
-    {
       title: "Perímetros Miembros Sup. (cm)",
       unit: "cm",
       series: [
@@ -199,9 +179,6 @@ export function AntroAnualChart({ open, onClose, antros, onSelectAntro, parsing 
       series: [
         ms("Adiposa", p => p.masas.adiposa.kgActual),
         ms("Muscular", p => p.masas.muscular.kgActual),
-        ms("Residual", p => p.masas.residual.kgActual),
-        ms("Ósea", p => p.masas.osea.kgActual),
-        ms("Piel", p => p.masas.piel.kgActual),
       ],
     },
   ]
