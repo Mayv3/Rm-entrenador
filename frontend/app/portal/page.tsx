@@ -50,6 +50,7 @@ interface AntroRecord {
   nombre_archivo: string
   pdf_path: string
   created_at: string
+  fecha?: string
   habitos_link?: string | null
 }
 
@@ -367,7 +368,14 @@ export default function PortalPage() {
                         <FileText className="h-6 w-6 text-[var(--primary-color)]" />
                       )}
                       <span className="text-[10px] text-muted-foreground text-center leading-tight">
-                        {format(new Date(antro.created_at), "d MMM yy", { locale: es })}
+                        {(() => {
+                          const raw = antro.fecha || antro.created_at
+                          if (!raw) return "—"
+                          const dateStr = raw.split("T")[0].split(" ")[0]
+                          const [y, m, d] = dateStr.split("-").map(Number)
+                          if (!y || !m || !d) return "—"
+                          return format(new Date(y, m - 1, d), "d MMM yy", { locale: es })
+                        })()}
                       </span>
                     </button>
                   ))}
