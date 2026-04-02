@@ -17,6 +17,7 @@ export interface MasaVal {
   kgAnterior: string | null
   porcentaje: string | null
   kgActual: string | null
+  diferencia: string | null
 }
 
 export interface ParsedAntro {
@@ -63,6 +64,10 @@ export interface ParsedAntro {
     residual: MasaVal
     osea: MasaVal
     piel: MasaVal
+  }
+  indices: {
+    musculoOseo:     { actual: string | null; anterior: string | null; diferencia: string | null }
+    adiposoMuscular: { actual: string | null; anterior: string | null; diferencia: string | null }
   }
   _debug?: Record<string, unknown>
 }
@@ -239,10 +244,10 @@ export function AntroView({ data, hideScoreZ, fechaFallback }: { data: ParsedAnt
   const isMobile = useMediaQuery("(max-width: 640px)")
 
   const basicos: [string, MedidaVal][] = [
+    ["Talla (cm)", data.basicos.talla],
     ["Peso (kg)", data.basicos.peso],
   ]
   const perimetros: [string, MedidaVal][] = [
-    ["Cabeza", data.perimetros.cabeza],
     ["Brazo Relajado", data.perimetros.brazoRelajado],
     ["Brazo Flexionado en Tensión", data.perimetros.brazoFlexionado],
     ["Antebrazo", data.perimetros.antebrazo],
@@ -323,6 +328,8 @@ export function AntroView({ data, hideScoreZ, fechaFallback }: { data: ParsedAnt
           <span className="flex-1" />
           <span className="text-[10px] font-semibold text-gray-500 tabular-nums w-10 text-right">Actual</span>
           <span className="text-[10px] font-semibold text-red-400 italic tabular-nums w-10 text-right">Ant.</span>
+          <span className="text-[10px] font-semibold text-gray-400 tabular-nums w-10 text-right">Dif.</span>
+          <span className="text-[10px] font-semibold text-purple-400 tabular-nums w-10 text-right">%</span>
         </div>
         {([
           ["Masa Adiposa", data.masas.adiposa],
@@ -335,50 +342,59 @@ export function AntroView({ data, hideScoreZ, fechaFallback }: { data: ParsedAnt
             <span className="flex-1 text-xs text-gray-700 dark:text-gray-300">{label}</span>
             <span className="text-xs font-semibold tabular-nums w-10 text-right">{v(m.kgActual)}</span>
             <span className="text-xs italic text-red-400 tabular-nums w-10 text-right">{m.kgAnterior ?? "—"}</span>
+            <span className="text-xs tabular-nums w-10 text-right text-gray-600 dark:text-gray-400">{m.diferencia ?? "—"}</span>
+            <span className="text-xs tabular-nums w-10 text-right text-purple-400">{m.porcentaje ? `${m.porcentaje}%` : "—"}</span>
           </div>
         ))}
-        {/* Índices calculados */}
-        {(() => {
-          const indicesData: { label: string; actual: string | null; anterior: string | null }[] = []
-          const adipActual = parseVal(data.masas.adiposa.kgActual)
-          const oseaActual = parseVal(data.masas.osea.kgActual)
-          const muscActual = parseVal(data.masas.muscular.kgActual)
-          const adipAnt = parseVal(data.masas.adiposa.kgAnterior)
-          const oseaAnt = parseVal(data.masas.osea.kgAnterior)
-          const muscAnt = parseVal(data.masas.muscular.kgAnterior)
-          if (adipActual !== null && oseaActual !== null && oseaActual !== 0) {
-            indicesData.push({
-              label: "Índice Adiposo/Óseo",
-              actual: (adipActual / oseaActual).toFixed(2),
-              anterior: adipAnt !== null && oseaAnt !== null && oseaAnt !== 0
-                ? (adipAnt / oseaAnt).toFixed(2) : null,
-            })
-          }
-          if (adipActual !== null && muscActual !== null && muscActual !== 0) {
-            indicesData.push({
-              label: "Índice Adiposo/Muscular",
-              actual: (adipActual / muscActual).toFixed(2),
-              anterior: adipAnt !== null && muscAnt !== null && muscAnt !== 0
-                ? (adipAnt / muscAnt).toFixed(2) : null,
-            })
-          }
-          if (indicesData.length === 0) return null
-          return (
-            <>
-              <div className="bg-gray-50 dark:bg-gray-800/50 px-3 py-1 border-b border-gray-100 dark:border-gray-800">
-                <span className="text-[9px] font-semibold uppercase tracking-widest text-gray-400">Índices</span>
-              </div>
-              {indicesData.map(({ label, actual, anterior }) => (
-                <div key={label} className="flex items-center gap-2 px-3 py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
-                  <span className="flex-1 text-xs text-gray-700 dark:text-gray-300">{label}</span>
-                  <span className="text-xs font-semibold tabular-nums w-10 text-right">{actual ?? "—"}</span>
-                  <span className="text-xs italic text-red-400 tabular-nums w-10 text-right">{anterior ?? "—"}</span>
-                </div>
-              ))}
-            </>
-          )
-        })()}
       </div>
+
+      {/* Datos Adicionales */}
+      {(() => {
+        const plieguesMedidas = [
+          data.pliegues.triceps, data.pliegues.subescapular, data.pliegues.supraespinal,
+          data.pliegues.abdominal, data.pliegues.musloMedial, data.pliegues.pantorrilla,
+        ]
+        const sumActual = plieguesMedidas.reduce<number | null>((acc, p) => {
+          const n = parseVal(p.actual); return n !== null ? (acc ?? 0) + n : acc
+        }, null)
+        const sumAnterior = plieguesMedidas.reduce<number | null>((acc, p) => {
+          const n = parseVal(p.anterior); return n !== null ? (acc ?? 0) + n : acc
+        }, null)
+        const sumaPliegues = sumActual !== null ? {
+          actual:     sumActual.toFixed(2),
+          anterior:   sumAnterior !== null ? sumAnterior.toFixed(2) : null,
+          diferencia: sumAnterior !== null ? (sumActual - sumAnterior).toFixed(2) : null,
+        } : null
+
+        const rows: [string, { actual: string | null; anterior: string | null; diferencia: string | null } | null | undefined][] = [
+          ["Suma 6 Pliegues (mm)",    sumaPliegues],
+          ["Índice Músculo/Óseo",     data.indices?.musculoOseo],
+          ["Índice Adiposo/Muscular", data.indices?.adiposoMuscular],
+        ]
+        const hasAny = rows.some(([, m]) => m?.actual)
+        if (!hasAny) return null
+        return (
+          <div className="border rounded-lg overflow-hidden">
+            <div className="bg-gradient-to-r from-green-600 to-green-500 text-center text-xs font-bold uppercase tracking-widest py-2 text-white">
+              Datos Adicionales
+            </div>
+            <div className="flex items-center gap-2 px-3 py-1.5 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+              <span className="flex-1" />
+              <span className="text-[10px] font-semibold text-gray-500 tabular-nums w-10 text-right">Actual</span>
+              <span className="text-[10px] font-semibold text-red-400 italic tabular-nums w-10 text-right">Ant.</span>
+              <span className="text-[10px] font-semibold text-gray-400 tabular-nums w-10 text-right">Dif.</span>
+            </div>
+            {rows.map(([label, m]) => m?.actual ? (
+              <div key={label} className="flex items-center gap-2 px-3 py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
+                <span className="flex-1 text-xs text-gray-700 dark:text-gray-300">{label}</span>
+                <span className="text-xs font-semibold tabular-nums w-10 text-right">{m.actual}</span>
+                <span className="text-xs italic text-red-400 tabular-nums w-10 text-right">{m.anterior ?? "—"}</span>
+                <span className="text-xs tabular-nums w-10 text-right text-gray-600 dark:text-gray-400">{m.diferencia ?? "—"}</span>
+              </div>
+            ) : null)}
+          </div>
+        )
+      })()}
 
       {/* Gráficos */}
       <div>

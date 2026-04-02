@@ -13,6 +13,7 @@ const MASA_COL = {
   kgAnterior: [178, 193],   // x ≈ 183-187
   porcentaje: [212, 227],   // x ≈ 218-220
   kgActual:   [258, 272],   // x ≈ 264-266
+  diferencia: [462, 475],   // x ≈ 467-468
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -129,11 +130,58 @@ function med1(row) {
   return { actual: valAt(row, COL.actual), anterior: null, diferencia: null, scoreZ: null };
 }
 
-function masa(row) {
+// La diferencia de masa puede estar 1px por encima del label en el PDF
+function masa(row, rows) {
+  const labelY = row[0]?.y ?? 0;
+  const nearItems = rows
+    .filter(r => Math.abs((r[0]?.y ?? -999) - labelY) <= 1)
+    .flat();
   return {
     kgAnterior: valAt(row, MASA_COL.kgAnterior),
     porcentaje: pctAt(row, MASA_COL.porcentaje),
     kgActual:   valAt(row, MASA_COL.kgActual),
+    diferencia: nearItems.find(it => inRange(it.x, MASA_COL.diferencia) && IS_NUMBER.test(it.text))?.text ?? null,
+  };
+}
+
+// Los índices tienen 3 sub-filas (actual/anterior/diferencia) con valores en x≈266.
+// El label y el valor "actual" pueden estar en y's distintos por 1-2px (offset del PDF).
+// Las filas no son consecutivas: hay otras filas del PDF entremedio.
+const INDICE_VAL = [255, 285];  // x del valor del índice (≈266)
+
+function indice(rows, fieldName) {
+  const labelRow = rows.find(row =>
+    row.some(it => it.x < 200 && it.text.includes(fieldName))
+  );
+  if (!labelRow) return { actual: null, anterior: null, diferencia: null };
+
+  const labelY = labelRow[0].y;
+
+  function numInRow(row) {
+    const hit = row.find(it => inRange(it.x, INDICE_VAL) && IS_NUMBER.test(it.text));
+    return hit?.text ?? null;
+  }
+
+  // "actual" puede estar en el label row o hasta 3px debajo (offset tipográfico del PDF)
+  const actualCandidates = rows.filter(row => {
+    const y = row[0]?.y;
+    return y !== undefined && y <= labelY && y >= labelY - 3;
+  });
+  const actual = actualCandidates.reduce((found, row) => found ?? numInRow(row), null);
+
+  // "anterior" y "diferencia" están identificados por su texto en filas debajo del label
+  const nearBelow = rows.filter(row => {
+    const y = row[0]?.y;
+    return y !== undefined && y < labelY && y >= labelY - 35;
+  });
+
+  const anteriorRow   = nearBelow.find(row => row.some(it => it.text === "anterior"));
+  const diferenciaRow = nearBelow.find(row => row.some(it => it.text === "diferencia"));
+
+  return {
+    actual,
+    anterior:   anteriorRow   ? numInRow(anteriorRow)   : null,
+    diferencia: diferenciaRow ? numInRow(diferenciaRow) : null,
   };
 }
 
@@ -194,11 +242,16 @@ export async function parseAntropometriaPdf(buffer) {
     },
 
     masas: {
-      adiposa:  masa(getRow(rows, "Masa Adiposa")),
-      muscular: masa(getRow(rows, "Masa Muscular")),
-      residual: masa(getRow(rows, "Masa Residual")),
-      osea:     masa(getRow(rows, "Masa Ósea")),
-      piel:     masa(getRow(rows, "Masa de la Piel")),
+      adiposa:  masa(getRow(rows, "Masa Adiposa"),      rows),
+      muscular: masa(getRow(rows, "Masa Muscular"),     rows),
+      residual: masa(getRow(rows, "Masa Residual"),     rows),
+      osea:     masa(getRow(rows, "Masa Ósea"),         rows),
+      piel:     masa(getRow(rows, "Masa de la Piel"),   rows),
+    },
+
+    indices: {
+      musculoOseo:     indice(rows, "músculo/óseo"),
+      adiposoMuscular: indice(rows, "adiposo/muscular"),
     },
   };
 }

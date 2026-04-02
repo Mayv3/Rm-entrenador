@@ -95,8 +95,12 @@ export const getParsedAntro = async (req, res) => {
 
   if (error || !record) return res.status(404).json({ message: "Registro no encontrado" });
 
-  // Cache hit: devolver inmediatamente
-  if (record.parsed_data) return res.json(record.parsed_data);
+  // Cache hit: devolver solo si tiene indices Y diferencia en masas (sino re-parsear)
+  if (
+    record.parsed_data &&
+    record.parsed_data.indices !== undefined &&
+    record.parsed_data.masas?.adiposa?.diferencia !== undefined
+  ) return res.json(record.parsed_data);
 
   // Cache miss: el backend descarga el PDF directamente desde Supabase
   const { data: signed, error: signedError } = await supabase.storage

@@ -313,7 +313,7 @@ export default function PortalPage() {
         {/* Acciones */}
         <div className="flex gap-3">
           <a
-            href="https://wa.me/3516671026"
+            href="https://wa.me/543516671026"
             target="_blank"
             rel="noopener noreferrer"
             className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg bg-[var(--primary-color)] text-white text-sm font-medium"
