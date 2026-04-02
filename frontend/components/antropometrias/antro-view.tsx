@@ -271,10 +271,16 @@ export function AntroView({ data, hideScoreZ, fechaFallback }: { data: ParsedAnt
           <p className="text-[10px] font-semibold uppercase tracking-widest text-green-100 mb-0.5">Alumno</p>
           <p className="text-lg font-bold text-white leading-tight">{data.nombre ?? "—"}</p>
         </div>
-        <div className="grid grid-cols-3 divide-x divide-gray-100 dark:divide-gray-800">
+        <div className="grid grid-cols-4 divide-x divide-gray-100 dark:divide-gray-800">
           <div className="flex flex-col items-center py-3 px-2 gap-0.5">
             <span className="text-[9px] font-semibold uppercase tracking-widest text-gray-400">Edad</span>
             <span className="text-base font-bold text-gray-800 dark:text-gray-100">{data.edad ?? "—"}</span>
+          </div>
+          <div className="flex flex-col items-center py-3 px-2 gap-0.5">
+            <span className="text-[9px] font-semibold uppercase tracking-widest text-gray-400">Talla</span>
+            <span className="text-base font-bold text-gray-800 dark:text-gray-100">
+              {data.basicos.talla.actual ? `${data.basicos.talla.actual} cm` : "—"}
+            </span>
           </div>
           <div className="flex flex-col items-center py-3 px-2 gap-0.5">
             <span className="text-[9px] font-semibold uppercase tracking-widest text-gray-400">Medición</span>
@@ -321,6 +327,9 @@ export function AntroView({ data, hideScoreZ, fechaFallback }: { data: ParsedAnt
         {([
           ["Masa Adiposa", data.masas.adiposa],
           ["Masa Muscular", data.masas.muscular],
+          ["Masa Residual", data.masas.residual],
+          ["Masa Ósea", data.masas.osea],
+          ["Masa de la Piel", data.masas.piel],
         ] as [string, MasaVal][]).map(([label, m]) => (
           <div key={label} className="flex items-center gap-2 px-3 py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
             <span className="flex-1 text-xs text-gray-700 dark:text-gray-300">{label}</span>
@@ -328,6 +337,47 @@ export function AntroView({ data, hideScoreZ, fechaFallback }: { data: ParsedAnt
             <span className="text-xs italic text-red-400 tabular-nums w-10 text-right">{m.kgAnterior ?? "—"}</span>
           </div>
         ))}
+        {/* Índices calculados */}
+        {(() => {
+          const indicesData: { label: string; actual: string | null; anterior: string | null }[] = []
+          const adipActual = parseVal(data.masas.adiposa.kgActual)
+          const oseaActual = parseVal(data.masas.osea.kgActual)
+          const muscActual = parseVal(data.masas.muscular.kgActual)
+          const adipAnt = parseVal(data.masas.adiposa.kgAnterior)
+          const oseaAnt = parseVal(data.masas.osea.kgAnterior)
+          const muscAnt = parseVal(data.masas.muscular.kgAnterior)
+          if (adipActual !== null && oseaActual !== null && oseaActual !== 0) {
+            indicesData.push({
+              label: "Índice Adiposo/Óseo",
+              actual: (adipActual / oseaActual).toFixed(2),
+              anterior: adipAnt !== null && oseaAnt !== null && oseaAnt !== 0
+                ? (adipAnt / oseaAnt).toFixed(2) : null,
+            })
+          }
+          if (adipActual !== null && muscActual !== null && muscActual !== 0) {
+            indicesData.push({
+              label: "Índice Adiposo/Muscular",
+              actual: (adipActual / muscActual).toFixed(2),
+              anterior: adipAnt !== null && muscAnt !== null && muscAnt !== 0
+                ? (adipAnt / muscAnt).toFixed(2) : null,
+            })
+          }
+          if (indicesData.length === 0) return null
+          return (
+            <>
+              <div className="bg-gray-50 dark:bg-gray-800/50 px-3 py-1 border-b border-gray-100 dark:border-gray-800">
+                <span className="text-[9px] font-semibold uppercase tracking-widest text-gray-400">Índices</span>
+              </div>
+              {indicesData.map(({ label, actual, anterior }) => (
+                <div key={label} className="flex items-center gap-2 px-3 py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
+                  <span className="flex-1 text-xs text-gray-700 dark:text-gray-300">{label}</span>
+                  <span className="text-xs font-semibold tabular-nums w-10 text-right">{actual ?? "—"}</span>
+                  <span className="text-xs italic text-red-400 tabular-nums w-10 text-right">{anterior ?? "—"}</span>
+                </div>
+              ))}
+            </>
+          )
+        })()}
       </div>
 
       {/* Gráficos */}
