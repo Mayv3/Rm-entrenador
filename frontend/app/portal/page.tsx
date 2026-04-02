@@ -152,12 +152,12 @@ export default function PortalPage() {
 
   const [parsedData, setParsedData] = useState<ParsedAntro | null>(null)
   const [selectedAntro, setSelectedAntro] = useState<AntroRecord | null>(null)
-  const [parsing, setParsing] = useState(false)
+  const [parsingId, setParsingId] = useState<number | null>(null)
   const [showAnualChart, setShowAnualChart] = useState(false)
   const [showCompare, setShowCompare] = useState(false)
 
   async function handleSelectAntro(antro: AntroRecord) {
-    setParsing(true)
+    setParsingId(antro.id)
     setSelectedAntro(antro)
     try {
       const res = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/antropometrias/${antro.id}/parsed`)
@@ -166,7 +166,7 @@ export default function PortalPage() {
       alert("Error al procesar la antropometría")
       setSelectedAntro(null)
     } finally {
-      setParsing(false)
+      setParsingId(null)
     }
   }
 
@@ -359,10 +359,10 @@ export default function PortalPage() {
                     <button
                       key={antro.id}
                       onClick={() => handleSelectAntro(antro)}
-                      disabled={parsing}
+                      disabled={parsingId === antro.id}
                       className="flex flex-col items-center justify-center gap-1 rounded-xl border bg-[var(--primary-color)]/5 border-[var(--primary-color)]/20 p-3 hover:bg-[var(--primary-color)]/10 hover:border-[var(--primary-color)]/40 transition-colors active:scale-95 disabled:opacity-50"
                     >
-                      {parsing ? (
+                      {parsingId === antro.id ? (
                         <Loader2 className="h-6 w-6 text-[var(--primary-color)] animate-spin" />
                       ) : (
                         <FileText className="h-6 w-6 text-[var(--primary-color)]" />
@@ -472,7 +472,7 @@ export default function PortalPage() {
         onClose={() => setShowAnualChart(false)}
         antros={antros}
         onSelectAntro={handleSelectAntro}
-        parsing={parsing}
+        parsing={parsingId !== null}
       />
 
       <AntroCompareDialog
