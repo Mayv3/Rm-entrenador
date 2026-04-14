@@ -330,7 +330,7 @@ export default function PortalPage() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-bold text-sm">Planes disponibles</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Ver todos los planes del gimnasio</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Ver todos los planes</p>
           </div>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1">
