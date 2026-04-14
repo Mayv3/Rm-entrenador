@@ -299,8 +299,13 @@ export default function PortalPage() {
                   <span className="font-bold text-xs text-center">{latestPayment.modalidad}</span>
                 </div>
                 <div className="flex flex-col items-center justify-center gap-1 px-2 py-4">
-                  <span className="text-[9px] uppercase tracking-widest text-muted-foreground font-medium">Monto</span>
-                  <span className="font-bold text-xs" style={{ color: getStatusColor(subscriptionStatus) }}>${Number(latestPayment.monto).toLocaleString("es-AR")}</span>
+                  <span className="text-[9px] uppercase tracking-widest text-muted-foreground font-medium">Precio</span>
+                  <span className="font-bold text-xs" style={{ color: getStatusColor(subscriptionStatus) }}>
+                    {(() => {
+                      const planData = planes.find(p => p.nombre === latestPayment.modalidad)
+                      return planData ? `$${Number(planData.precio).toLocaleString("es-AR")}` : `$${Number(latestPayment.monto).toLocaleString("es-AR")}`
+                    })()}
+                  </span>
                 </div>
                 <div className="flex flex-col items-center justify-center gap-1 px-2 py-4">
                   <span className="text-[9px] uppercase tracking-widest text-muted-foreground font-medium">Inicio</span>
