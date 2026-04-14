@@ -12,9 +12,10 @@ import { Loader } from "@/components/ui/loader"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { FileText, LogOut, MessageSquare, ArrowLeft, Loader2, Download, Eye, TrendingUp, GitCompareArrows, Salad } from "lucide-react"
+import { FileText, LogOut, MessageSquare, ArrowLeft, Loader2, Download, Eye, TrendingUp, GitCompareArrows, Salad, Dumbbell, ArrowRight } from "lucide-react"
 import { supabase } from "@/lib/supabase-client"
 import { determineSubscriptionStatus, formatDate, getStatusColor } from "@/lib/payment-utils"
+import { usePlanes, Plan } from "@/hooks/use-planes"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { AntroView, ParsedAntro } from "@/components/antropometrias/antro-view"
@@ -155,6 +156,7 @@ export default function PortalPage() {
   const [parsingId, setParsingId] = useState<number | null>(null)
   const [showAnualChart, setShowAnualChart] = useState(false)
   const [showCompare, setShowCompare] = useState(false)
+  const [showPlanes, setShowPlanes] = useState(false)
 
   async function handleSelectAntro(antro: AntroRecord) {
     setParsingId(antro.id)
@@ -198,6 +200,8 @@ export default function PortalPage() {
       axios.get<AntroRecord[]>(`${process.env.NEXT_PUBLIC_URL_BACKEND}/clients/${student!.id}/antropometrias`).then(r => r.data),
     enabled: !!student?.id,
   })
+
+  const { data: planes = [] } = usePlanes()
 
   const { data: nutricionPdfs = [] } = useQuery<AntroRecord[]>({
     queryKey: ["portalNutricion", student?.id],
@@ -309,6 +313,34 @@ export default function PortalPage() {
             </div>
           </div>
         )}
+
+        {/* Planes disponibles */}
+        <button
+          onClick={() => setShowPlanes(true)}
+          className="w-full rounded-2xl border border-border bg-card px-4 py-4 flex items-center gap-3 hover:bg-muted/40 transition-colors active:scale-[0.98] text-left"
+        >
+          <div className="flex-shrink-0 h-9 w-9 rounded-xl bg-pink-500/10 flex items-center justify-center">
+            <Dumbbell className="h-5 w-5 text-pink-500" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-sm">Planes disponibles</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Ver todos los planes del gimnasio</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
+              {planes.slice(0, 5).map((p) => (
+                <span
+                  key={p.id}
+                  className="h-2 w-2 rounded-full"
+                  style={{ backgroundColor: p.color ?? "#9e9e9e" }}
+                />
+              ))}
+            </div>
+            <span className="text-xs text-muted-foreground font-medium flex items-center gap-0.5">
+              Ver <ArrowRight className="h-3 w-3" />
+            </span>
+          </div>
+        </button>
 
         {/* Acciones */}
         <div className="flex gap-3">
@@ -460,6 +492,41 @@ export default function PortalPage() {
         )}
 
       </main>
+
+      {/* Modal Planes disponibles */}
+      <Dialog open={showPlanes} onOpenChange={setShowPlanes}>
+        <DialogContent className="w-[90vw] !max-w-[420px] p-0 gap-0 overflow-hidden rounded-2xl">
+          <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-xl bg-pink-500/10 flex items-center justify-center">
+                <Dumbbell className="h-4 w-4 text-pink-500" />
+              </div>
+              <DialogTitle className="text-base font-bold">Planes disponibles</DialogTitle>
+            </div>
+          </div>
+          <div className="px-4 py-3 flex flex-col gap-2 max-h-[60vh] overflow-y-auto">
+            {planes.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-6">No hay planes cargados</p>
+            ) : (
+              planes.map((plan) => (
+                <div
+                  key={plan.id}
+                  className="rounded-xl border border-border bg-card px-4 py-3 flex items-center gap-3"
+                >
+                  <span
+                    className="h-3 w-3 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: plan.color ?? "#9e9e9e" }}
+                  />
+                  <span className="flex-1 font-medium text-sm">{plan.nombre}</span>
+                  <span className="text-sm font-bold" style={{ color: plan.color ?? undefined }}>
+                    ${Number(plan.precio).toLocaleString("es-AR")}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <AntroViewDialog
         parsedData={parsedData}
