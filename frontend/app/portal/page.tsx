@@ -157,6 +157,7 @@ export default function PortalPage() {
   const [showAnualChart, setShowAnualChart] = useState(false)
   const [showCompare, setShowCompare] = useState(false)
   const [showPlanes, setShowPlanes] = useState(false)
+  const [expandedPlan, setExpandedPlan] = useState<number | null>(null)
 
   async function handleSelectAntro(antro: AntroRecord) {
     setParsingId(antro.id)
@@ -319,8 +320,8 @@ export default function PortalPage() {
           onClick={() => setShowPlanes(true)}
           className="w-full rounded-2xl border border-border bg-card px-4 py-4 flex items-center gap-3 hover:bg-muted/40 transition-colors active:scale-[0.98] text-left"
         >
-          <div className="flex-shrink-0 h-9 w-9 rounded-xl bg-pink-500/10 flex items-center justify-center">
-            <Dumbbell className="h-5 w-5 text-pink-500" />
+          <div className="flex-shrink-0 h-9 w-9 rounded-xl bg-[var(--primary-color)]/10 flex items-center justify-center">
+            <Dumbbell className="h-5 w-5 text-[var(--primary-color)]" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-bold text-sm">Planes disponibles</p>
@@ -331,8 +332,7 @@ export default function PortalPage() {
               {planes.slice(0, 5).map((p) => (
                 <span
                   key={p.id}
-                  className="h-2 w-2 rounded-full"
-                  style={{ backgroundColor: p.color ?? "#9e9e9e" }}
+                  className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40"
                 />
               ))}
             </div>
@@ -496,33 +496,68 @@ export default function PortalPage() {
       {/* Modal Planes disponibles */}
       <Dialog open={showPlanes} onOpenChange={setShowPlanes}>
         <DialogContent className="w-[90vw] !max-w-[420px] p-0 gap-0 overflow-hidden rounded-2xl">
-          <div className="px-5 py-4 border-b border-border flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-xl bg-pink-500/10 flex items-center justify-center">
-                <Dumbbell className="h-4 w-4 text-pink-500" />
-              </div>
-              <DialogTitle className="text-base font-bold">Planes disponibles</DialogTitle>
+          <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+            <div className="h-8 w-8 rounded-xl bg-[var(--primary-color)]/10 flex items-center justify-center">
+              <Dumbbell className="h-4 w-4 text-[var(--primary-color)]" />
             </div>
+            <DialogTitle className="text-base font-bold">Planes disponibles</DialogTitle>
           </div>
-          <div className="px-4 py-3 flex flex-col gap-2 max-h-[60vh] overflow-y-auto">
+          <div className="px-4 py-4 flex flex-col gap-3 max-h-[60vh] overflow-y-auto">
             {planes.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-6">No hay planes cargados</p>
             ) : (
-              planes.map((plan) => (
-                <div
-                  key={plan.id}
-                  className="rounded-xl border border-border bg-card px-4 py-3 flex items-center gap-3"
-                >
-                  <span
-                    className="h-3 w-3 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: plan.color ?? "#9e9e9e" }}
-                  />
-                  <span className="flex-1 font-medium text-sm">{plan.nombre}</span>
-                  <span className="text-sm font-bold" style={{ color: plan.color ?? undefined }}>
-                    ${Number(plan.precio).toLocaleString("es-AR")}
-                  </span>
-                </div>
-              ))
+              planes.map((plan) => {
+                const isExpanded = expandedPlan === plan.id
+                return (
+                  <div
+                    key={plan.id}
+                    className="relative rounded-2xl overflow-hidden border"
+                    style={{ borderColor: `${plan.color ?? "#9e9e9e"}40` }}
+                  >
+                    {/* Barra de color izquierda */}
+                    <div
+                      className="absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl"
+                      style={{ backgroundColor: plan.color ?? "#9e9e9e" }}
+                    />
+                    {/* Header */}
+                    <div
+                      className="px-5 py-4 flex items-center justify-between"
+                      style={{ backgroundColor: `${plan.color ?? "#9e9e9e"}0d` }}
+                    >
+                      <span className="font-bold text-sm">{plan.nombre}</span>
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="px-3 py-1.5 rounded-xl font-bold text-sm"
+                          style={{
+                            color: plan.color ?? "#9e9e9e",
+                            backgroundColor: `${plan.color ?? "#9e9e9e"}20`,
+                          }}
+                        >
+                          ${Number(plan.precio).toLocaleString("es-AR")}
+                        </div>
+                        {plan.descripcion && (
+                          <button
+                            onClick={() => setExpandedPlan(isExpanded ? null : plan.id)}
+                            className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-0.5"
+                          >
+                            {isExpanded ? "Cerrar" : "Ver más"}
+                            <ArrowRight className={`h-3 w-3 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    {/* Descripción expandida */}
+                    {isExpanded && plan.descripcion && (
+                      <div
+                        className="px-5 py-3 border-t text-xs text-muted-foreground whitespace-pre-wrap"
+                        style={{ borderColor: `${plan.color ?? "#9e9e9e"}30`, backgroundColor: `${plan.color ?? "#9e9e9e"}08` }}
+                      >
+                        {plan.descripcion}
+                      </div>
+                    )}
+                  </div>
+                )
+              })
             )}
           </div>
         </DialogContent>
