@@ -509,9 +509,10 @@ export default function PortalPage() {
               planes.map((plan) => {
                 const isExpanded = expandedPlan === plan.id
                 return (
-                  <div
+                  <button
                     key={plan.id}
-                    className="relative rounded-2xl overflow-hidden border"
+                    onClick={() => setExpandedPlan(isExpanded ? null : plan.id)}
+                    className="relative rounded-2xl overflow-hidden border w-full text-left transition-all active:scale-[0.98]"
                     style={{ borderColor: `${plan.color ?? "#9e9e9e"}40` }}
                   >
                     {/* Barra de color izquierda */}
@@ -524,38 +525,31 @@ export default function PortalPage() {
                       className="px-5 py-4 flex items-center justify-between"
                       style={{ backgroundColor: `${plan.color ?? "#9e9e9e"}0d` }}
                     >
-                      <span className="font-bold text-sm">{plan.nombre}</span>
                       <div className="flex items-center gap-2">
-                        <div
-                          className="px-3 py-1.5 rounded-xl font-bold text-sm"
-                          style={{
-                            color: plan.color ?? "#9e9e9e",
-                            backgroundColor: `${plan.color ?? "#9e9e9e"}20`,
-                          }}
-                        >
-                          ${Number(plan.precio).toLocaleString("es-AR")}
-                        </div>
+                        <span className="font-bold text-sm">{plan.nombre}</span>
                         {plan.descripcion && (
-                          <button
-                            onClick={() => setExpandedPlan(isExpanded ? null : plan.id)}
-                            className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-0.5"
-                          >
-                            {isExpanded ? "Cerrar" : "Ver más"}
-                            <ArrowRight className={`h-3 w-3 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
-                          </button>
+                          <ArrowRight className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`} />
                         )}
+                      </div>
+                      <div
+                        className="px-3 py-1.5 rounded-xl font-bold text-sm"
+                        style={{
+                          color: plan.color ?? "#9e9e9e",
+                          backgroundColor: `${plan.color ?? "#9e9e9e"}20`,
+                        }}
+                      >
+                        ${Number(plan.precio).toLocaleString("es-AR")}
                       </div>
                     </div>
                     {/* Descripción expandida */}
                     {isExpanded && plan.descripcion && (
                       <div
-                        className="px-5 py-3 border-t text-xs text-muted-foreground whitespace-pre-wrap"
+                        className="px-5 py-3 border-t text-xs text-muted-foreground [&_strong]:font-semibold [&_strong]:text-foreground [&_p]:mb-1 [&_br]:block"
                         style={{ borderColor: `${plan.color ?? "#9e9e9e"}30`, backgroundColor: `${plan.color ?? "#9e9e9e"}08` }}
-                      >
-                        {plan.descripcion}
-                      </div>
+                        dangerouslySetInnerHTML={{ __html: plan.descripcion }}
+                      />
                     )}
-                  </div>
+                  </button>
                 )
               })
             )}
