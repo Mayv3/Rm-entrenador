@@ -82,13 +82,13 @@ export default function Dashboard() {
   useEffect(() => {
     const isAuthenticated = localStorage.getItem("isAuthenticated");
     if (!isAuthenticated) {
-      router.push("/login");
+      router.push("/landing.html");
     }
   }, [router]);
 
   const handleLogout = () => {
     localStorage.removeItem("isAuthenticated");
-    router.push("/login");
+    router.push("/landing.html");
   };
 
   const navItems = [
