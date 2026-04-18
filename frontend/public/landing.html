@@ -187,7 +187,7 @@ window.__TWEAKS = /*EDITMODE-BEGIN*/{
   .fc2 { bottom: 25%; left: -40px; animation-delay: 1.5s; }
 
   /* Section scaffolding */
-  section.block { padding: 110px 0; position: relative; }
+  section.block { padding: 64px 0; position: relative; }
   .section-head { margin-bottom: 56px; max-width: 780px; }
   .section-tag { font-family: 'Geist Mono', monospace; font-size: 12px; color: var(--accent); letter-spacing: 0.14em; text-transform: uppercase; display: flex; align-items: center; gap: 10px; }
   .section-tag::before { content:""; width: 24px; height: 1px; background: var(--accent); }
@@ -385,7 +385,7 @@ window.__TWEAKS = /*EDITMODE-BEGIN*/{
     .pillars { grid-template-columns: repeat(2, 1fr); }
     .hero-meta { gap: 24px; }
     .hero { padding: 56px 0 24px; }
-    section.block { padding: 72px 0; }
+    section.block { padding: 44px 0; }
     .cta { padding: 48px 28px; }
     .quote-block { padding: 48px 28px; }
     .nav-links { display: none; }
@@ -398,6 +398,7 @@ window.__TWEAKS = /*EDITMODE-BEGIN*/{
     .logo-mark { width: 28px; height: 28px; font-size: 11px; }
     .hero-actions { flex-wrap: wrap; }
     .hero-actions .btn { width: calc(50% - 6px); justify-content: center; padding: 14px 18px; }
+    .cta-actions .btn { width: calc(50% - 6px); justify-content: center; padding: 14px 18px; }
   }
 </style>
 </head>
@@ -416,13 +417,12 @@ window.__TWEAKS = /*EDITMODE-BEGIN*/{
       <a class="nav-link" href="#proceso">Proceso</a>
     </div>
     <div class="nav-cta">
-      <a class="btn btn-ghost" href="#proceso">Cómo empezar</a>
       <a class="btn btn-outline" href="/portal/login">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-        Acceso alumnos
+        Acceso
       </a>
       <a class="btn btn-primary" href="https://wa.me/5493516671026?text=Hola%20Rodrigo%2C%20quiero%20reservar%20mi%20lugar%20y%20empezar%20a%20entrenar%20con%20vos%21" target="_blank" rel="noopener">
-        Reservar lugar
+        Reservar
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
       </a>
     </div>
@@ -608,12 +608,6 @@ window.__TWEAKS = /*EDITMODE-BEGIN*/{
       <p class="section-lede" style="margin: 16px auto 0">Estás contratando un <b style="color:var(--text)">servicio mensual</b>, no un simple plan. Se renueva del 1 al 10 de cada mes.</p>
     </div>
 
-    <div class="plans-toggle reveal">
-      <div class="segment" id="currencySeg">
-        <button class="on" data-cur="ars">Pesos (ARS)</button>
-        <button data-cur="usd">Dólares (USD)</button>
-      </div>
-    </div>
 
     <div class="plans">
       <!-- Básico -->
@@ -768,11 +762,11 @@ window.__TWEAKS = /*EDITMODE-BEGIN*/{
         <h2>¿Listo para <span class="serif accent">empezar</span>?</h2>
         <p>Podés contar conmigo para este cambio. Un mensaje es todo lo que necesitás — lo demás lo construimos juntos, paso a paso.</p>
         <div class="cta-actions">
+          <a class="btn btn-outline" href="#planes">Ver planes</a>
           <a class="btn btn-primary" href="#">
             Escribirme por WhatsApp
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           </a>
-          <a class="btn btn-outline" href="#planes">Ver planes</a>
         </div>
       </div>
       <div class="cta-side">
@@ -889,19 +883,6 @@ const statIo = new IntersectionObserver((entries) => {
 }, { threshold: 0.4 });
 document.querySelectorAll('[data-count]').forEach(el => statIo.observe(el));
 
-// —— Currency toggle
-document.getElementById('currencySeg').addEventListener('click', (e) => {
-  const b = e.target.closest('button'); if (!b) return;
-  document.querySelectorAll('#currencySeg button').forEach(x => x.classList.remove('on'));
-  b.classList.add('on');
-  const cur = b.dataset.cur;
-  document.querySelectorAll('.plan .amount').forEach(a => {
-    a.textContent = cur === 'usd' ? a.dataset.usd : a.dataset.ars;
-  });
-  document.querySelectorAll('.plan .currency').forEach(c => {
-    c.textContent = cur === 'usd' ? 'US$' : '$';
-  });
-});
 
 // —— Hero variant
 function applyHero(variant) {
