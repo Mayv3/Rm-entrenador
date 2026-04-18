@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "@/styles/globals.css";
 import { Comfortaa } from "next/font/google";
 import { Providers } from "./providers";
@@ -8,10 +8,22 @@ const comfortaa = Comfortaa({ subsets: ["latin"], weight: "400" });
 export const metadata: Metadata = {
   title: "RM ENTRENADOR",
   description: "Plataforma de entrenamiento y seguimiento de alumnos.",
-  viewport: "width=device-width, initial-scale=1",
   icons: {
     icon: "/favicon.png",
+    apple: "/favicon.png",
   },
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "RM Entrenador",
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#000000",
 };
 
 export default function RootLayout({

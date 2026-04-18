@@ -5,7 +5,9 @@
       "Bash(find /c/Users/nicop/OneDrive/Desktop/Rm-entrenador -type f \\\\\\(-name *supabase* -o -name *database* -o -name *.env* \\\\\\) ! -path */node_modules/*)",
       "Bash(grep -r \"add-student\\\\|edit-student\\\\|/students\\\\|/clients\" /c/Users/nicop/OneDrive/Desktop/Rm-entrenador/backend --include=*.js)",
       "Bash(grep:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
