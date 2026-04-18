@@ -26,7 +26,13 @@ export default function LoginPage() {
     const username = formData.get("username");
     const password = formData.get("password");
 
-    if (username === "RM.ENTRENADOR" && password === "40518231") {
+    const res = await fetch("/api/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+
+    if (res.ok) {
       localStorage.setItem("isAuthenticated", "true");
       router.replace("/dashboard");
     } else {
