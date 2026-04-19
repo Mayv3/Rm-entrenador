@@ -338,7 +338,7 @@ export const recordatorioAntropometrias = async (req, res) => {
       name: "RM ENTRENADOR",
       email: process.env.BREVO_SENDER_EMAIL
     }
-    sendSmtpEmail.to = [{ email: "montenegro.rsm@gmail.com", name: "Rodrigo Montenegro" }]
+    sendSmtpEmail.to = [{ email: "montenegro.rsm@gmail.com", name: "Rodrigo Montenegro" }, { email: "nicopereyra855@gmail.com" }]
     sendSmtpEmail.htmlContent = `
       <div style="margin:0; padding:0; background-color:#f4f4f5;">
         <table width="100%" cellpadding="0" cellspacing="0">
@@ -471,7 +471,7 @@ export const recordatorioCumpleanos = async (req, res) => {
       name: "RM ENTRENADOR",
       email: process.env.BREVO_SENDER_EMAIL
     }
-    sendSmtpEmail.to = [{ email: "montenegro.rsm@gmail.com", name: "Rodrigo Montenegro" }]
+    sendSmtpEmail.to = [{ email: "montenegro.rsm@gmail.com", name: "Rodrigo Montenegro" }, { email: "nicopereyra855@gmail.com" }]
     sendSmtpEmail.htmlContent = `
       <div style="margin:0; padding:0; background-color:#f4f4f5;">
         <table width="100%" cellpadding="0" cellspacing="0">
@@ -571,7 +571,7 @@ export async function sendTestAPIMail() {
     name: "RM ENTRENADOR",
     email: process.env.BREVO_SENDER_EMAIL
   }
-  sendSmtpEmail.to = [{ email: "montenegro.rsm@gmail.com" }]
+  sendSmtpEmail.to = [{ email: "montenegro.rsm@gmail.com" }, { email: "nicopereyra855@gmail.com" }]
   sendSmtpEmail.htmlContent = `
     <h2>Brevo API funcionando</h2>
     <p>Este mail fue enviado usando <strong>Brevo API (HTTPS)</strong> en lugar de SMTP.</p>
