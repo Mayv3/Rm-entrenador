@@ -7,10 +7,59 @@
 
 :root {
   --primary-color: #22b567;
+
+  /* Colores de fila por categoría — modo claro */
+  --cat-activador-bg: #fefce8;
+  --cat-activador-color: #713f12;
+  --cat-a-bg: #eff6ff;
+  --cat-a-color: #1e3a5f;
+  --cat-b-bg: #faf5ff;
+  --cat-b-color: #3b0764;
+  --cat-c-bg: #fff7ed;
+  --cat-c-color: #7c2d12;
+  --cat-d-bg: #f0fdf4;
+  --cat-d-color: #14532d;
+  --cat-e-bg: #fdf2f8;
+  --cat-e-color: #701a75;
+}
+
+.dark {
+  /* Colores de fila por categoría — modo oscuro (más apagados) */
+  --cat-activador-bg: #2d2a16;
+  --cat-activador-color: #fde68a;
+  --cat-a-bg: #0f1e30;
+  --cat-a-color: #93c5fd;
+  --cat-b-bg: #1a1025;
+  --cat-b-color: #d8b4fe;
+  --cat-c-bg: #2a1a0d;
+  --cat-c-color: #fdba74;
+  --cat-d-bg: #0e1f13;
+  --cat-d-color: #86efac;
+  --cat-e-bg: #27102a;
+  --cat-e-color: #f9a8d4;
 }
 
 html {
     overflow-x: hidden;
+}
+
+/* Scrollbar delgada sin flechas — clase .scrollbar-slim */
+.scrollbar-slim {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(155, 155, 155, 0.35) transparent;
+}
+.scrollbar-slim::-webkit-scrollbar {
+  width: 4px;
+}
+.scrollbar-slim::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-slim::-webkit-scrollbar-thumb {
+  background-color: rgba(155, 155, 155, 0.35);
+  border-radius: 999px;
+}
+.scrollbar-slim::-webkit-scrollbar-button {
+  display: none;
 }
 
 /* Fix iOS Safari date/time input bug */

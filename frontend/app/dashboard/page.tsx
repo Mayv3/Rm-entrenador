@@ -10,10 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Image from "next/image";
 import logoRodrigoEntrenador from "../../assets/LOGO-RODRIGO-VERDE.png";
-import { Users, CreditCard, Tag, LogOut, Moon, Sun, Globe, Copy, Check, Ruler, Salad, BarChart2 } from "lucide-react";
+import { Users, CreditCard, Tag, LogOut, Moon, Sun, Globe, Copy, Check, Ruler, Salad, BarChart2, ClipboardList } from "lucide-react";
 import { AntropometriasSection } from "@/components/antropometrias/antropometrias-section";
 import { NutricionSection } from "@/components/nutricion/nutricion-section";
 import { EstadisticasSection } from "@/components/estadisticas/estadisticas-section";
+import { PlanificacionesSection } from "@/components/training-plans/planificaciones-section";
 import { useTheme } from "next-themes";
 
 function PortalSection({ copied, setCopied }: { copied: boolean; setCopied: (v: boolean) => void }) {
@@ -76,7 +77,7 @@ function PortalSection({ copied, setCopied }: { copied: boolean; setCopied: (v: 
 export default function Dashboard() {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
-  const [activeTab, setActiveTab] = useState<"students" | "payments" | "planes" | "portal" | "antropometrias" | "nutricion" | "estadisticas">("students");
+  const [activeTab, setActiveTab] = useState<"students" | "payments" | "planes" | "portal" | "antropometrias" | "nutricion" | "estadisticas" | "planificaciones">("students");
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -99,6 +100,7 @@ export default function Dashboard() {
     { value: "portal", label: "Portal", icon: Globe },
     { value: "antropometrias", label: "Antropometría", icon: Ruler },
     { value: "nutricion", label: "Nutrición", icon: Salad },
+    { value: "planificaciones", label: "Planificaciones", icon: ClipboardList },
   ] as const;
 
   return (
@@ -154,15 +156,16 @@ export default function Dashboard() {
       </div>
 
       {/* ── Contenido principal ── */}
-      <main className="flex-1 md:ml-52 p-4 sm:p-6 mt-16 md:mt-0 pb-20 md:pb-0 overflow-x-hidden">
+      <main className={`flex-1 md:ml-52 p-4 sm:p-6 mt-16 md:mt-0 pb-20 md:pb-0 overflow-x-hidden ${activeTab === "planificaciones" ? "md:overflow-y-hidden md:h-screen" : ""}`}>
         {/* Contenido */}
-        <div className="space-y-4 w-full md:max-w-[85vw] md:mx-auto">
+        <div className={`w-full md:max-w-[85vw] md:mx-auto ${activeTab === "planificaciones" ? "" : "space-y-4"}`}>
           {activeTab === "students" ? <StudentsTable />
             : activeTab === "payments" ? <PaymentsTable />
               : activeTab === "planes" ? <PlanesTable />
                 : activeTab === "antropometrias" ? <AntropometriasSection />
                   : activeTab === "nutricion" ? <NutricionSection />
                     : activeTab === "estadisticas" ? <EstadisticasSection />
+                    : activeTab === "planificaciones" ? <PlanificacionesSection />
                       : <PortalSection copied={copied} setCopied={setCopied} />
           }
         </div>

@@ -6,6 +6,15 @@ import { addClientSupabase, deleteClientSupabase, getMembersSupabase, updateClie
 import { addPaymentSupabase, deletePaymentSupabase, getPaymentsSupabase, updatePaymentInSupabase, getPaymentHistory, getAllPaymentHistory, deleteHistoryEntry, updateHistoryEntry } from "./controllers/paymentsController.js";
 import { enviarRecordatoriosVencidos, previewRecordatoriosVencidos, sendTestAPIMail, recordatorioAntropometrias, recordatorioCumpleanos } from "./controllers/mailingController.js";
 import { getPlanes, addPlan, updatePlan, deletePlan } from "./controllers/planesController.js";
+import {
+  getEjercicios, createEjercicio, updateEjercicio, deleteEjercicio,
+  getPlanificaciones, getPlanificacionesByAlumno, getPlanificacionById,
+  createPlanificacion, updatePlanificacion, deletePlanificacion,
+  createHoja, updateHoja, deleteHoja,
+  createDia, updateDia, deleteDia,
+  addEjercicioADia, addEjerciciosADiaBulk, updateEjercicioEnDia, removeEjercicioDeDia,
+  updateDosis, updateDosisBulk, guardarPlanCompleto, bulkUpdateOrden, saveMovilidad, getEjerciciosMovilidad, saveAll,
+} from "./controllers/planificacionesController.js";
 import { getAntrosByAlumno, getAllAntrosCounts, createAntro, deleteAntro, updateAntroNombre, updateAntroFecha, getParsedAntro } from "./controllers/antropometriasController.js";
 import { getNutricionByAlumno, getAllNutricionCounts, createNutricion, deleteNutricion, updateNutricionNombre, updateNutricionHabitos } from "./controllers/nutricionController.js";
 
@@ -98,6 +107,47 @@ app.get("/planes", getPlanes);
 app.post("/planes", addPlan);
 app.put("/planes/:id", updatePlan);
 app.delete("/planes/:id", deletePlan);
+
+// Ejercicios (librería)
+app.get("/ejercicios", getEjercicios);
+app.post("/ejercicios", createEjercicio);
+app.put("/ejercicios/:id", updateEjercicio);
+app.delete("/ejercicios/:id", deleteEjercicio);
+
+// Planificaciones
+app.get("/planificaciones", getPlanificaciones);
+app.post("/planificaciones", createPlanificacion);
+app.get("/planificaciones/:id", getPlanificacionById);
+app.put("/planificaciones/:id", updatePlanificacion);
+app.delete("/planificaciones/:id", deletePlanificacion);
+app.get("/planificaciones/alumno/:alumnoId", getPlanificacionesByAlumno);
+
+// Hojas
+app.post("/planificaciones/:id/hojas", createHoja);
+app.put("/planificaciones/hojas/:hojaId", updateHoja);
+app.delete("/planificaciones/hojas/:hojaId", deleteHoja);
+
+// Días
+app.post("/planificaciones/hojas/:hojaId/dias", createDia);
+app.put("/planificaciones/dias/:diaId", updateDia);
+app.delete("/planificaciones/dias/:diaId", deleteDia);
+
+// Ejercicios en un día
+app.post("/planificaciones/dias/:diaId/ejercicios", addEjercicioADia);
+app.post("/planificaciones/dias/:diaId/ejercicios/bulk", addEjerciciosADiaBulk);
+app.put("/planificaciones/ejercicios/bulk-orden", bulkUpdateOrden);
+app.put("/planificaciones/ejercicios/:planEjId", updateEjercicioEnDia);
+app.delete("/planificaciones/ejercicios/:planEjId", removeEjercicioDeDia);
+
+// Guardar plan completo (semanas + categorías de golpe)
+app.put("/planificaciones/:id/guardar", guardarPlanCompleto);
+app.post("/planificaciones/:id/save-all", saveAll);
+app.put("/planificaciones/hojas/:hojaId/movilidad", saveMovilidad);
+app.get("/ejercicios-movilidad", getEjerciciosMovilidad);
+
+// Dosis por semana (legacy, por si se necesita)
+app.put("/planificaciones/ejercicios/:planEjId/semanas/:semana", updateDosis);
+app.put("/planificaciones/ejercicios/:planEjId/semanas", updateDosisBulk);
 
 // Mailing
 
