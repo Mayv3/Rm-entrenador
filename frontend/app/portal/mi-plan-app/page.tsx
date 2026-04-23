@@ -7,7 +7,7 @@ import { useTheme } from "next-themes"
 import Link from "next/link"
 import { useQuery } from "@tanstack/react-query"
 import axios from "axios"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Dumbbell } from "lucide-react"
 import { Loader } from "@/components/ui/loader"
 import { StudentPlanificacionSection } from "@/components/portal/student-planificacion-section"
 
@@ -44,32 +44,48 @@ export default function MiPlanAppPage() {
 
   if (status === "loading" || isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader />
+      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-10 w-10 rounded-xl bg-green-500/10 flex items-center justify-center">
+            <Dumbbell className="h-5 w-5 text-green-400 animate-pulse" />
+          </div>
+          <Loader />
+        </div>
       </div>
     )
   }
 
   if (isError || !student) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4 text-center">
-        <p className="text-sm text-muted-foreground">No pudimos cargar tu cuenta para abrir Mi plan app.</p>
+      <div className="min-h-screen flex items-center justify-center px-4 bg-[#0a0a0a]">
+        <div className="text-center space-y-2">
+          <div className="h-12 w-12 rounded-full bg-red-500/10 flex items-center justify-center mx-auto">
+            <Dumbbell className="h-6 w-6 text-red-400" />
+          </div>
+          <p className="text-sm text-zinc-400">No pudimos cargar tu cuenta.</p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b bg-background sticky top-0 z-10">
-        <div className="max-w-lg mx-auto flex items-center justify-between px-4 py-4">
+    <div className="min-h-screen bg-[#0a0a0a]">
+      <header className="border-b border-white/[0.06] bg-[#0a0a0a]/80 backdrop-blur-xl sticky top-0 z-10">
+        <div className="max-w-lg mx-auto flex items-center justify-between px-4 py-3.5">
           <Link
             href="/portal"
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-200 transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
             Volver
           </Link>
-          <span className="text-sm font-semibold">Mi plan app</span>
+          <div className="flex items-center gap-2">
+            <div className="h-6 w-6 rounded-lg bg-green-500/15 flex items-center justify-center">
+              <Dumbbell className="h-3.5 w-3.5 text-green-400" />
+            </div>
+            <span className="text-sm font-semibold text-white">Mi plan app</span>
+          </div>
+          <div className="w-16" />
         </div>
       </header>
 
