@@ -640,17 +640,23 @@ export function StudentPlanificacionSection({ studentId }: { studentId: number }
                 <X className="h-3.5 w-3.5 text-zinc-400" />
               </button>
             </div>
-            <div className="aspect-video w-full bg-black">
-              <iframe
-                src={videoModal.url.includes("youtube.com/watch")
-                  ? videoModal.url.replace("watch?v=", "embed/")
-                  : videoModal.url.includes("youtu.be/")
-                  ? videoModal.url.replace("youtu.be/", "www.youtube.com/embed/")
-                  : videoModal.url}
-                className="w-full h-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
+            <div className="aspect-video w-full bg-zinc-900 flex flex-col items-center justify-center gap-4 p-6 text-center">
+              <div className="h-14 w-14 rounded-full bg-red-600 flex items-center justify-center">
+                <Play className="h-6 w-6 text-white" fill="white" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-white">Ver video del ejercicio</p>
+                <p className="text-xs text-zinc-500">Se abrirá en una nueva pestaña</p>
+              </div>
+              <a
+                href={videoModal.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm font-bold px-5 py-2.5 transition-colors"
+              >
+                <Play className="h-3.5 w-3.5" fill="white" />
+                Abrir video
+              </a>
             </div>
           </div>
         </div>
