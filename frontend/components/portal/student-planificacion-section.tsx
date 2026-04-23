@@ -619,11 +619,11 @@ export function StudentPlanificacionSection({
             return (
               <div
                 key={ej.id}
-                className="rounded-2xl border border-white/[0.07] overflow-hidden transition-all duration-200"
+                className="rounded-2xl border border-white/[0.07] transition-all duration-200"
               >
                 {/* Category color strip */}
                 <div
-                  className="px-4 pt-3 pb-2 flex items-center gap-2"
+                  className="px-4 pt-3 pb-2 flex items-center gap-2 rounded-t-2xl"
                   style={{ backgroundColor: catBg ? `color-mix(in srgb, ${catBg} 60%, transparent)` : undefined }}
                 >
                   <span
@@ -716,7 +716,7 @@ export function StudentPlanificacionSection({
                                   <button
                                     key={n}
                                     onClick={() => { handleFieldChange(ej.id, "repeticiones", String(n)); setOpenPicker(null) }}
-                                    className={`w-full px-4 py-2.5 text-sm font-semibold text-left transition-colors ${
+                                    className={`w-full px-4 py-3 text-sm font-semibold text-left transition-colors ${
                                       row.repeticiones === String(n)
                                         ? "bg-green-500/20 text-green-400"
                                         : "text-zinc-300 hover:bg-white/[0.06]"
@@ -753,7 +753,7 @@ export function StudentPlanificacionSection({
                                 <button
                                   key={n}
                                   onClick={() => { handleFieldChange(ej.id, "rpe", String(n)); setOpenPicker(null) }}
-                                  className={`w-full px-4 py-2.5 text-sm font-semibold text-left transition-colors ${
+                                  className={`w-full px-4 py-3 text-sm font-semibold text-left transition-colors ${
                                     row.rpe === String(n)
                                       ? "bg-green-500/20 text-green-400"
                                       : "text-zinc-300 hover:bg-white/[0.06]"
