@@ -9,12 +9,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader } from "@/components/ui/loader"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { queryKeys } from "@/lib/query-keys"
-import { ArrowLeft, Plus, Loader2, Save, Eye, EyeOff, Trash2, Dumbbell } from "lucide-react"
+import { ArrowLeft, Plus, Loader2, Save, Eye, EyeOff, Trash2 } from "lucide-react"
 import { DayBlock } from "./day-block"
 import { ExerciseLibraryPanel } from "./exercise-library-panel"
 import { ExerciseLibrarySheet } from "./exercise-library-sheet"
 import { MovilidadSection } from "./movilidad-section"
 import type { Planificacion, Ejercicio } from "@/types/planificaciones"
+import { CATEGORIA_COLORS, CATEGORIA_ROW_STYLE } from "@/types/planificaciones"
 
 const CATEGORIA_ORDER = ["ACTIVADOR", "A", "B", "C", "D", "E"]
 
@@ -44,6 +45,7 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
   const [creatingHoja, setCreatingHoja] = useState(false)
   const [hojaToDelete, setHojaToDelete] = useState<{ id: number; nombre: string } | null>(null)
   const [libSheetOpen, setLibSheetOpen] = useState(false)
+  const [previewOpen, setPreviewOpen] = useState(false)
   const [movilidadCollapseSignal, setMovilidadCollapseSignal] = useState(0)
 
   // Estado centralizado: dosis, rpe y categoría de todos los ejercicios ya guardados
@@ -157,7 +159,7 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
         if (semana % 2 === 1 && !isNaN(baseRpe)) {
           let step = 0
           for (let s = semana; s <= 5; s += 2) {
-            newSemanas[s] = { ...newSemanas[s], rpe: String(Math.min(baseRpe + step * 2, 10)) }
+            newSemanas[s] = { ...newSemanas[s], rpe: String(Math.min(baseRpe + step, 10)) }
             step++
           }
         } else {
@@ -429,6 +431,53 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
     }))
   }
 
+  const handleMoveDia = async (diaId: number, direction: -1 | 1) => {
+    if (!activeHojaId) return
+
+    const planActual = queryClient.getQueryData<Planificacion>(queryKeys.planificacionById(planId))
+    const hojaActiva = planActual?.hojas.find((h) => h.id === activeHojaId)
+    if (!hojaActiva) return
+
+    const currentIndex = hojaActiva.dias.findIndex((d) => d.id === diaId)
+    const targetIndex = currentIndex + direction
+    if (currentIndex === -1 || targetIndex < 0 || targetIndex >= hojaActiva.dias.length) return
+
+    const diasReordenados = [...hojaActiva.dias]
+    const [movido] = diasReordenados.splice(currentIndex, 1)
+    diasReordenados.splice(targetIndex, 0, movido)
+
+    const diasNormalizados = diasReordenados.map((d, index) => ({
+      ...d,
+      numero_dia: index + 1,
+      orden: index,
+    }))
+
+    queryClient.setQueryData<Planificacion>(queryKeys.planificacionById(planId), (old) => {
+      if (!old) return old
+      return {
+        ...old,
+        hojas: old.hojas.map((h) => (h.id === activeHojaId ? { ...h, dias: diasNormalizados } : h)),
+      }
+    })
+
+    try {
+      await Promise.all(
+        diasNormalizados
+          .filter((d) => d.id > 0)
+          .map((d) =>
+            axios.put(`${process.env.NEXT_PUBLIC_URL_BACKEND}/planificaciones/dias/${d.id}`, {
+              nombre: d.nombre,
+              orden: d.orden,
+              numero_dia: d.numero_dia,
+            })
+          )
+      )
+    } catch (err) {
+      console.error(err)
+      queryClient.invalidateQueries({ queryKey: queryKeys.planificacionById(planId) })
+    }
+  }
+
   if (isLoading || !plan) return <Loader />
   if (!plan.hojas) return (
     <div className="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground text-sm">
@@ -442,18 +491,20 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
   const allDias = plan.hojas.flatMap((h) => h.dias)
 
   return (
-    <div className="flex flex-col gap-4 h-full">
+      <div className="flex flex-col gap-5 h-full pb-2">
       {/* ─── Cabecera ─── */}
-      <div className="flex items-start gap-3 flex-wrap">
-        <Button variant="ghost" size="sm" onClick={onBack} className="shrink-0 gap-1.5 text-muted-foreground mt-0.5">
-          <ArrowLeft className="h-4 w-4" />
-          Volver
-        </Button>
+      <Button variant="ghost" size="sm" onClick={onBack} className="shrink-0 gap-1.5 text-muted-foreground mt-0.5 w-full justify-start md:w-auto">
+        <ArrowLeft className="h-4 w-4" />
+        Volver
+      </Button>
 
-        <div className="flex-1 min-w-0 flex items-center gap-3 flex-wrap">
-          <PlanNameEditor value={plan.nombre} onSave={(v) => handleSaveMeta("nombre", v)} disabled={savingMeta} />
+      <div className="rounded-xl border bg-card p-3 md:p-0 md:rounded-none md:border-0 md:bg-transparent">
+        <div className="flex-1 min-w-0 flex items-center gap-2.5">
+          <div className="min-w-0 flex-1">
+            <PlanNameEditor value={plan.nombre} onSave={(v) => handleSaveMeta("nombre", v)} disabled={savingMeta} />
+          </div>
           <Select value={plan.estado} onValueChange={(v) => handleSaveMeta("estado", v)}>
-            <SelectTrigger className="w-32 h-8 text-sm"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-28 h-8 text-sm shrink-0"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="borrador">Borrador</SelectItem>
               <SelectItem value="activo">Activo</SelectItem>
@@ -465,12 +516,12 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
       </div>
 
       {/* ─── Tabs de hojas ─── */}
-      <div className="flex items-center gap-2 flex-wrap border-b pb-3">
+      <div className="flex items-center gap-2 overflow-x-auto md:overflow-visible flex-nowrap md:flex-wrap border-b pb-3 px-0.5">
         {[...plan.hojas].reverse().map((hoja) => {
           const esVisible = plan.hoja_activa_id === hoja.id
           const esActiva = activeHojaId === hoja.id
           return (
-            <div key={hoja.id} className="group/tab flex items-center gap-0.5">
+            <div key={hoja.id} className="group/tab flex items-center gap-0.5 shrink-0">
               <button
                 onClick={() => { setActiveHojaId(hoja.id); setActiveDayId(null) }}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
@@ -509,46 +560,38 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
             </div>
           )
         })}
+      </div>
+
+      <div className="flex items-center gap-2.5 pt-0.5">
         <Button
           size="sm"
           variant="outline"
           onClick={handleCreateHoja}
           disabled={creatingHoja}
-          className="h-7 px-2.5 text-xs border-dashed gap-1"
+          className="h-8 px-3 text-xs border-dashed gap-1.5 shrink-0"
         >
           {creatingHoja ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
           Nueva hoja
         </Button>
+
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setPreviewOpen(true)}
+          className="h-8 px-3 text-xs gap-1.5 shrink-0 ml-auto"
+        >
+          <Eye className="h-3.5 w-3.5" />
+          Preview
+        </Button>
       </div>
 
-      {/* ─── Layout dos columnas ─── */}
-      <div className="flex gap-4 items-start">
-        {/* Librería izquierda — solo desktop */}
-        <div className="hidden md:block w-80 shrink-0 sticky top-4" style={{ height: "calc(100vh - 140px)" }}>
+      <div className="flex-1 min-h-0 min-w-0 flex gap-4 items-start">
+        <div className="hidden md:block w-80 lg:w-96 shrink-0 sticky top-4" style={{ maxHeight: "calc(100vh - 180px)" }}>
           <ExerciseLibraryPanel onSelect={handleExerciseSelect} selectedDayName={activeDay?.nombre ?? null} />
         </div>
 
-        {/* Días derecha */}
-        <div className="flex-1 min-w-0 space-y-3">
-          {/* Botón librería + Guardar — solo mobile */}
-          <div className="md:hidden flex items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setLibSheetOpen(true)}
-              className="flex-1 gap-1.5"
-            >
-              <Dumbbell className="h-4 w-4" />
-              Agregar ejercicio
-            </Button>
-            <Button
-              onClick={handleGuardar}
-              disabled={!isDirty || saveStatus === "saving"}
-              className={`gap-1.5 bg-[var(--primary-color)] hover:bg-[var(--primary-color)]/90 text-white transition-opacity duration-300 ${isDirty ? "opacity-100" : "opacity-40"}`}
-            >
-              {saveStatus === "saving" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              {saveStatus === "saving" ? "Guardando..." : "Guardar"}
-            </Button>
-          </div>
+        {/* ─── Días ─── */}
+        <div className="flex-1 min-h-0 min-w-0 space-y-4 overflow-y-auto pb-4">
 
           {/* Aviso unsaved — solo desktop */}
           {isDirty && (
@@ -577,7 +620,7 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
               No hay días en esta hoja. Agregá el primero abajo.
             </div>
           ) : (
-            activeHoja.dias.map((dia) => (
+            activeHoja.dias.map((dia, index) => (
               <DayBlock
                 key={dia.id}
                 dia={dia}
@@ -594,11 +637,20 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
                 onPendingChange={(p) => handlePendingChange(dia.id, p)}
                 onOrderChange={(ids) => handleOrderChange(dia.id, ids)}
                 onDeleteEj={handleDeleteEj}
+                canMoveUp={index > 0}
+                canMoveDown={index < activeHoja.dias.length - 1}
+                onMoveUp={() => handleMoveDia(dia.id, -1)}
+                onMoveDown={() => handleMoveDia(dia.id, 1)}
+                onOpenLibrary={() => {
+                  setActiveDayId(dia.id)
+                  setMovilidadCollapseSignal((n) => n + 1)
+                  setLibSheetOpen(true)
+                }}
               />
             ))
           )}
 
-          <div className="flex items-center gap-2 pt-1">
+          <div className="flex flex-col md:flex-row md:items-center gap-2.5 pt-2">
             <Input
               placeholder="Nombre del día (ej: Empuje, Tirón, Piernas...)"
               value={newDiaNombre}
@@ -608,7 +660,7 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
               disabled={!activeHojaId}
             />
             <Button onClick={handleAddDia} disabled={!newDiaNombre.trim() || !activeHojaId}
-              className="shrink-0 bg-[var(--primary-color)] hover:bg-[var(--primary-color)]/90 text-white gap-2">
+              className="shrink-0 w-full md:w-auto bg-[var(--primary-color)] hover:bg-[var(--primary-color)]/90 text-white gap-2">
               <Plus className="h-4 w-4" />
               Agregar día
             </Button>
@@ -624,11 +676,21 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
         </div>
       </div>
 
-      {/* Librería mobile */}
       <ExerciseLibrarySheet
         open={libSheetOpen}
         onOpenChange={setLibSheetOpen}
-        onSelect={(ej) => { handleExerciseSelect(ej); setLibSheetOpen(false) }}
+        onSelect={handleExerciseSelect}
+        dayName={activeDay?.nombre ?? null}
+      />
+
+      {/* ─── Preview ─── */}
+      <PlanPreviewDialog
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        activeHoja={activeHoja}
+        localData={localData}
+        pendingByDay={pendingByDay}
+        movilidadItems={activeHoja ? (movByHoja[activeHoja.id] ?? activeHoja.movilidad.map((m) => ({ nombre: m.nombre, imagen_url: m.imagen_url ?? "" }))) : []}
       />
 
       <Dialog open={!!hojaToDelete} onOpenChange={(open) => { if (!open) setHojaToDelete(null) }}>
@@ -639,13 +701,172 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
           <p className="text-sm text-muted-foreground">
             ¿Seguro que querés eliminar <span className="font-medium text-foreground">{hojaToDelete?.nombre}</span>? Se borrarán todos sus días y ejercicios. Esta acción no se puede deshacer.
           </p>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setHojaToDelete(null)}>Cancelar</Button>
-            <Button variant="destructive" onClick={confirmDeleteHoja}>Eliminar</Button>
+          <DialogFooter className="flex-row gap-2 sm:gap-2">
+            <Button variant="outline" className="w-1/2" onClick={() => setHojaToDelete(null)}>Cancelar</Button>
+            <Button variant="destructive" className="w-1/2" onClick={confirmDeleteHoja}>Eliminar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
+  )
+}
+
+const SEMANAS_PREVIEW = [1, 2, 3, 4, 5, 6]
+
+function PlanPreviewDialog({
+  open, onOpenChange, activeHoja, localData, pendingByDay, movilidadItems,
+}: {
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  activeHoja: Planificacion["hojas"][number] | undefined
+  localData: Record<number, EjercicioLocal>
+  pendingByDay: Record<number, PendingEjercicio[]>
+  movilidadItems: { nombre: string; imagen_url: string }[]
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-5xl w-full flex flex-col p-0 max-h-[88vh]">
+        <DialogHeader className="px-6 pt-5 pb-4 border-b shrink-0">
+          <DialogTitle className="text-base">
+            Preview — {activeHoja?.nombre ?? ""}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="overflow-y-auto flex-1 px-6 py-5 space-y-8">
+          {!activeHoja ? (
+            <p className="text-sm text-muted-foreground text-center py-10">Sin hoja seleccionada.</p>
+          ) : (
+            <>
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <h3 className="text-sm font-semibold">Movilidad</h3>
+                  <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
+                    {movilidadItems.filter((i) => i.nombre.trim()).length} ejerc.
+                  </span>
+                </div>
+
+                {movilidadItems.filter((i) => i.nombre.trim()).length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic pl-1">Sin movilidad.</p>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                    {movilidadItems
+                      .filter((i) => i.nombre.trim())
+                      .map((item, idx) => (
+                        <div key={`${item.nombre}-${idx}`} className="rounded-lg border overflow-hidden bg-card">
+                          <div className="aspect-video bg-muted/30 overflow-hidden flex items-center justify-center">
+                            {item.imagen_url ? (
+                              <img src={item.imagen_url} alt={item.nombre} className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground">Sin imagen</span>
+                            )}
+                          </div>
+                          <div className="px-2 py-1.5">
+                            <p className="text-xs font-medium truncate" title={item.nombre}>{item.nombre}</p>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+
+              {activeHoja.dias.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-10">Sin días en esta hoja.</p>
+              ) : (
+            activeHoja.dias.map((dia) => {
+              const pending = pendingByDay[dia.id] ?? []
+              const savedEjs = [...dia.ejercicios]
+                .sort((a, b) => a.orden - b.orden)
+                .map((ej) => ({
+                  key: String(ej.id),
+                  nombre: ej.ejercicios.nombre,
+                  categoria: localData[ej.id]?.categoria ?? ej.categoria,
+                  semanas: localData[ej.id]?.semanas ?? {},
+                  isPending: false,
+                }))
+              const pendingEjs = pending.map((p) => ({
+                key: p.tempId,
+                nombre: p.ejercicio.nombre,
+                categoria: p.categoria,
+                semanas: Object.fromEntries(
+                  SEMANAS_PREVIEW.map((s) => [s, { dosis: p.dosis[s] ?? "", rpe: p.rpe[s] ?? "" }])
+                ),
+                isPending: true,
+              }))
+              const allEjs = [...savedEjs, ...pendingEjs]
+
+              return (
+                <div key={dia.id}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <h3 className="text-sm font-semibold">
+                      DÍA {dia.numero_dia} — {dia.nombre}
+                    </h3>
+                    <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
+                      {allEjs.length} ejerc.
+                    </span>
+                  </div>
+
+                  {allEjs.length === 0 ? (
+                    <p className="text-xs text-muted-foreground italic pl-1">Sin ejercicios.</p>
+                  ) : (
+                    <div className="overflow-x-auto rounded-lg border">
+                      <table className="w-full text-xs min-w-[700px]">
+                        <thead>
+                          <tr className="border-b bg-muted/30">
+                            <th className="px-3 py-2 text-left font-medium text-muted-foreground w-16">Cat.</th>
+                            <th className="px-3 py-2 text-left font-medium text-muted-foreground">Ejercicio</th>
+                            {SEMANAS_PREVIEW.map((s) => (
+                              <th key={s} className="px-2 py-2 text-center font-medium text-muted-foreground w-24">
+                                Sem. {s}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                          {allEjs.map((ej) => (
+                            <tr key={ej.key} style={CATEGORIA_ROW_STYLE[ej.categoria]}>
+                              <td className="px-3 py-2">
+                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${CATEGORIA_COLORS[ej.categoria] ?? ""}`}>
+                                  {ej.categoria}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2 font-medium whitespace-nowrap">
+                                {ej.nombre}
+                                {ej.isPending && (
+                                  <span className="ml-1.5 text-[10px] font-normal text-orange-500 italic">sin guardar</span>
+                                )}
+                              </td>
+                              {SEMANAS_PREVIEW.map((s) => {
+                                const sem = ej.semanas[s]
+                                return (
+                                  <td key={s} className="px-2 py-2 text-center">
+                                    {sem?.dosis ? (
+                                      <div className="space-y-0.5">
+                                        <div className="font-medium">{sem.dosis}</div>
+                                        {sem.rpe && (
+                                          <div className="text-[10px] text-muted-foreground">RPE {sem.rpe}</div>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <span className="text-muted-foreground/30">—</span>
+                                    )}
+                                  </td>
+                                )
+                              })}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )
+            })
+              )}
+            </>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 

@@ -160,7 +160,7 @@ export function ExerciseLibraryPanel({ onSelect, selectedDayName }: ExerciseLibr
         </div>
 
         {/* Lista */}
-        <div className="overflow-y-auto max-h-[65vh] px-2 py-2 space-y-1 scrollbar-slim">
+        <div className="overflow-y-auto flex-1 min-h-0 px-2 py-2 space-y-1 scrollbar-slim">
           {filtered.length === 0 ? (
             <p className="text-xs text-muted-foreground text-center py-6">Sin resultados</p>
           ) : search ? (
@@ -331,7 +331,7 @@ function ExerciseItem({
           <Youtube className="h-3 w-3 shrink-0 text-red-500" />
         )}
       </button>
-      <div className="flex items-center gap-0.5 pr-1 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="flex items-center gap-0.5 pr-1 opacity-100">
         <button onClick={() => onEdit(ejercicio)}
           className="p-1 rounded text-muted-foreground hover:text-foreground transition-colors">
           <Pencil className="h-3 w-3" />

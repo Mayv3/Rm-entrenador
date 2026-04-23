@@ -17,6 +17,7 @@ import {
 } from "./controllers/planificacionesController.js";
 import { getAntrosByAlumno, getAllAntrosCounts, createAntro, deleteAntro, updateAntroNombre, updateAntroFecha, getParsedAntro } from "./controllers/antropometriasController.js";
 import { getNutricionByAlumno, getAllNutricionCounts, createNutricion, deleteNutricion, updateNutricionNombre, updateNutricionHabitos } from "./controllers/nutricionController.js";
+import { getPortalPlanificacion, getPortalSesion, upsertPortalSesion } from "./controllers/portalPlanController.js";
 
 import multer from "multer"
 import { parseAntropometriaPdf } from "./controllers/pdfAntroParser.js"
@@ -148,6 +149,11 @@ app.get("/ejercicios-movilidad", getEjerciciosMovilidad);
 // Dosis por semana (legacy, por si se necesita)
 app.put("/planificaciones/ejercicios/:planEjId/semanas/:semana", updateDosis);
 app.put("/planificaciones/ejercicios/:planEjId/semanas", updateDosisBulk);
+
+// Portal alumno: planificacion + carga de entrenamiento
+app.get("/portal/alumnos/:alumnoId/planificacion", getPortalPlanificacion);
+app.get("/portal/planificaciones/:planId/sesiones", getPortalSesion);
+app.put("/portal/planificaciones/:planId/sesiones", upsertPortalSesion);
 
 // Mailing
 

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Trash2, Youtube, ChevronDown, ChevronUp, Loader2, GripVertical, Pencil } from "lucide-react"
+import { Trash2, Youtube, ChevronDown, ChevronUp, Loader2, GripVertical, Pencil, Plus, ArrowUp, ArrowDown } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import axios from "axios"
 import { useQueryClient } from "@tanstack/react-query"
@@ -46,11 +46,17 @@ interface DayBlockProps {
   onPendingChange: (pending: PendingEjercicio[]) => void
   onOrderChange: (orderedIds: number[]) => void
   onDeleteEj: (planEjId: number) => void
+  onOpenLibrary: () => void
+  canMoveUp: boolean
+  canMoveDown: boolean
+  onMoveUp: () => void
+  onMoveDown: () => void
 }
 
 export function DayBlock({
   dia, planId, localData, pending, isActive, onActivate, onDeleted,
-  onSemanaChange, onCategoriaChange, onPendingChange, onOrderChange, onDeleteEj,
+  onSemanaChange, onCategoriaChange, onPendingChange, onOrderChange, onDeleteEj, onOpenLibrary,
+  canMoveUp, canMoveDown, onMoveUp, onMoveDown,
 }: DayBlockProps) {
   const queryClient = useQueryClient()
   const [collapsed, setCollapsed] = useState(true)
@@ -146,7 +152,16 @@ export function DayBlock({
       if (!old) return old
       return {
         ...old,
-        hojas: old.hojas.map((h) => ({ ...h, dias: h.dias.filter((d) => d.id !== dia.id) })),
+        hojas: old.hojas.map((h) => {
+          if (!h.dias.some((d) => d.id === dia.id)) return h
+          const diasFiltrados = h.dias.filter((d) => d.id !== dia.id)
+          const diasReordenados = diasFiltrados.map((d, index) => ({
+            ...d,
+            numero_dia: index + 1,
+            orden: index,
+          }))
+          return { ...h, dias: diasReordenados }
+        }),
       }
     })
     onDeleted()
@@ -203,7 +218,7 @@ export function DayBlock({
         if (semana % 2 === 1 && !isNaN(baseRpe)) {
           let step = 0
           for (let s = semana; s <= 5; s += 2) {
-            newRpe[s] = String(Math.min(baseRpe + step * 2, 10))
+            newRpe[s] = String(Math.min(baseRpe + step, 10))
             step++
           }
         } else {
@@ -251,6 +266,26 @@ export function DayBlock({
 
         <div className="flex items-center gap-1 ml-auto" onClick={(e) => e.stopPropagation()}>
           <span className="text-xs text-muted-foreground">{totalCount} ejerc.</span>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 w-7 p-0 text-muted-foreground"
+            onClick={onMoveUp}
+            disabled={!canMoveUp}
+            title="Mover día arriba"
+          >
+            <ArrowUp className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 w-7 p-0 text-muted-foreground"
+            onClick={onMoveDown}
+            disabled={!canMoveDown}
+            title="Mover día abajo"
+          >
+            <ArrowDown className="h-3.5 w-3.5" />
+          </Button>
           <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground"
             onClick={() => { setNombre(dia.nombre); setEditingName(true) }}>
             <Pencil className="h-3.5 w-3.5" />
@@ -268,13 +303,13 @@ export function DayBlock({
       <div className={`grid transition-[grid-template-rows] duration-200 ease-out ${collapsed ? "[grid-template-rows:0fr]" : "[grid-template-rows:1fr]"}`}>
         <div className="overflow-hidden min-h-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-xs min-w-[1050px]">
+            <table className="w-full text-xs min-w-[850px] 2xl:min-w-[1050px]">
               <thead>
                 <tr className="border-b bg-muted/30">
                   <th className="px-2 py-2 text-left font-medium text-muted-foreground w-20">Cat.</th>
                   <th className="px-3 py-2 text-left font-medium text-muted-foreground">Ejercicio</th>
                   {SEMANAS.map((s) => (
-                    <th key={s} className="px-2 py-2 text-center font-medium text-muted-foreground w-40">
+                    <th key={s} className="px-2 py-2 text-center font-medium text-muted-foreground w-32 2xl:w-40">
                       Sem. {s}
                     </th>
                   ))}
@@ -309,14 +344,14 @@ export function DayBlock({
                           <CategoriaSelect value={p.categoria} onChange={(v) => setPendingField(p.tempId, "categoria", null, v)} />
                         </td>
                         <td className="px-3 py-1.5">
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5 min-w-0">
                             {p.ejercicio.video_url && (
                               <a href={p.ejercicio.video_url} target="_blank" rel="noopener noreferrer"
                                 className="text-red-500 hover:text-red-600 shrink-0">
                                 <Youtube className="h-3.5 w-3.5" />
                               </a>
                             )}
-                            <span className="font-medium">{p.ejercicio.nombre}</span>
+                            <span className="font-medium block max-w-[180px] truncate 2xl:max-w-none 2xl:overflow-visible 2xl:whitespace-normal 2xl:text-clip" title={p.ejercicio.nombre}>{p.ejercicio.nombre}</span>
                           </div>
                         </td>
                         {SEMANAS.map((s) => (
@@ -326,7 +361,7 @@ export function DayBlock({
                                 value={p.dosis[s] ?? ""}
                                 onChange={(e) => setPendingField(p.tempId, "dosis", s, e.target.value)}
                                 placeholder="Dosis"
-                                className="h-7 text-xs text-center px-1 placeholder:text-gray-300 min-w-0 flex-1"
+                                className="h-7 text-xs text-center px-1 placeholder:text-gray-300 min-w-[80px] md:min-w-0 flex-1"
                               />
                               <RpeSelect
                                 value={p.rpe[s] ?? ""}
@@ -350,6 +385,24 @@ export function DayBlock({
             </table>
           </div>
         </div>
+      </div>
+
+      {/* Botón Agregar — siempre visible */}
+      <div className="px-4 py-2.5 border-t bg-muted/20">
+        <Button
+          size="sm"
+          variant="ghost"
+          className="gap-1.5 text-xs text-[var(--primary-color)] hover:bg-[var(--primary-color)]/10 hover:text-[var(--primary-color)]"
+          onClick={(e) => {
+            e.stopPropagation()
+            onActivate()
+            setCollapsed(false)
+            onOpenLibrary()
+          }}
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Agregar ejercicio
+        </Button>
       </div>
     </div>
 
@@ -408,14 +461,14 @@ function SortableExerciseRow({
         </div>
       </td>
       <td className="px-3 py-1.5">
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 min-w-0">
           {ej.ejercicios.video_url && (
             <a href={ej.ejercicios.video_url} target="_blank" rel="noopener noreferrer"
               className="text-red-500 hover:text-red-600 shrink-0">
               <Youtube className="h-3.5 w-3.5" />
             </a>
           )}
-          <span className="font-medium">{ej.ejercicios.nombre}</span>
+          <span className="font-medium block max-w-[100px] truncate 2xl:max-w-none 2xl:overflow-visible 2xl:whitespace-normal 2xl:text-clip" title={ej.ejercicios.nombre}>{ej.ejercicios.nombre}</span>
         </div>
       </td>
       {SEMANAS.map((s) => {
@@ -427,7 +480,7 @@ function SortableExerciseRow({
                 value={sem?.dosis ?? ""}
                 onChange={(e) => onSemanaChange(ej.id, s, "dosis", e.target.value)}
                 placeholder="Dosis"
-                className="h-7 text-xs text-center px-1 placeholder:text-gray-300 min-w-0 flex-1"
+                className="h-7 text-xs text-center px-1 placeholder:text-gray-300 min-w-[80px] md:min-w-0 flex-1"
               />
               <RpeSelect
                 value={sem?.rpe ?? ""}
@@ -451,8 +504,8 @@ function SortableExerciseRow({
 function RpeSelect({ value, onChange, exerciseName }: { value: string; onChange: (v: string) => void; exerciseName: string }) {
   return (
     <Select value={value || "none"} onValueChange={(v) => onChange(v === "none" ? "" : v)}>
-      <SelectTrigger className="h-7 w-14 text-xs px-1 shrink-0">
-        <SelectValue placeholder="RPE" />
+      <SelectTrigger className="h-7 w-10 text-xs px-1 shrink-0">
+        <SelectValue placeholder="-" />
       </SelectTrigger>
       <SelectContent>
         <div className="px-2 py-1.5 text-[10px] font-medium text-muted-foreground border-b mb-1 truncate max-w-[180px]">

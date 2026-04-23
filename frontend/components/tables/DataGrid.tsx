@@ -194,7 +194,7 @@ export function GenericDataGrid<T extends { id: string | number }>({
                                 }}
                               />
                             ) : (
-                              <Typography variant="body2" sx={{ mt: 0.5, textAlign: 'left', wordBreak: 'break-word', width: '100%' }}>
+                              <Typography component="div" variant="body2" sx={{ mt: 0.5, textAlign: 'left', wordBreak: 'break-word', width: '100%' }}>
                                 {cellContent || '-'}
                               </Typography>
                             )}

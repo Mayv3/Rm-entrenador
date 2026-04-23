@@ -1,29 +1,33 @@
 "use client"
 
 import { useState } from "react"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import axios from "axios"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { queryKeys } from "@/lib/query-keys"
-import { Search, Plus, Loader2, Dumbbell } from "lucide-react"
+import { Search, Plus, Loader2, Dumbbell, Check, ChevronDown, ChevronUp } from "lucide-react"
 import type { Ejercicio } from "@/types/planificaciones"
 
 interface ExerciseLibrarySheetProps {
   open: boolean
   onOpenChange: (v: boolean) => void
   onSelect: (ejercicio: Ejercicio) => void
+  dayName?: string | null
 }
 
-export function ExerciseLibrarySheet({ open, onOpenChange, onSelect }: ExerciseLibrarySheetProps) {
+export function ExerciseLibrarySheet({ open, onOpenChange, onSelect, dayName }: ExerciseLibrarySheetProps) {
+  const queryClient = useQueryClient()
   const [search, setSearch] = useState("")
   const [newNombre, setNewNombre] = useState("")
   const [newGrupo, setNewGrupo] = useState("")
   const [newVideo, setNewVideo] = useState("")
   const [creating, setCreating] = useState(false)
   const [showCreateForm, setShowCreateForm] = useState(false)
+  const [lastAddedId, setLastAddedId] = useState<number | null>(null)
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
 
   const { data: ejercicios = [], refetch } = useQuery<Ejercicio[]>({
     queryKey: queryKeys.ejercicios,
@@ -33,13 +37,22 @@ export function ExerciseLibrarySheet({ open, onOpenChange, onSelect }: ExerciseL
     },
   })
 
-  const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+  const normalize = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()
   const filtered = ejercicios.filter((e) =>
     normalize(e.nombre).includes(normalize(search)) ||
     normalize(e.grupo_muscular ?? "").includes(normalize(search))
   )
 
   const grupos = Array.from(new Set(ejercicios.map((e) => e.grupo_muscular).filter(Boolean))) as string[]
+
+  const toggleGroup = (grupo: string) =>
+    setCollapsedGroups((prev) => ({ ...prev, [grupo]: !prev[grupo] }))
+
+  const handleSelect = (ej: Ejercicio) => {
+    onSelect(ej)
+    setLastAddedId(ej.id)
+    setTimeout(() => setLastAddedId(null), 1200)
+  }
 
   const handleCreate = async () => {
     if (!newNombre.trim()) return
@@ -51,11 +64,12 @@ export function ExerciseLibrarySheet({ open, onOpenChange, onSelect }: ExerciseL
         video_url: newVideo.trim() || null,
       })
       await refetch()
+      await queryClient.invalidateQueries({ queryKey: queryKeys.ejercicios })
       setNewNombre("")
       setNewGrupo("")
       setNewVideo("")
       setShowCreateForm(false)
-      onSelect(res.data)
+      handleSelect(res.data)
     } catch (err) {
       console.error(err)
     } finally {
@@ -65,81 +79,84 @@ export function ExerciseLibrarySheet({ open, onOpenChange, onSelect }: ExerciseL
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-md flex flex-col gap-0 p-0">
-        <SheetHeader className="px-5 pt-5 pb-4 border-b">
-          <SheetTitle>Librería de ejercicios</SheetTitle>
+      <SheetContent side="left" className="w-80 sm:max-w-sm flex flex-col gap-0 p-0">
+        <SheetHeader className="px-5 pt-5 pb-4 border-b shrink-0">
+          <SheetTitle className="text-base">Agregar ejercicio</SheetTitle>
+          {dayName && (
+            <p className="text-xs text-[var(--primary-color)] font-medium">
+              Día: {dayName}
+            </p>
+          )}
           <div className="relative mt-1">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
             <Input
-              placeholder="Buscar ejercicio o grupo muscular..."
-              className="pl-8"
+              placeholder="Buscar..."
+              className="pl-8 h-9 text-sm"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              autoFocus={open}
             />
           </div>
         </SheetHeader>
 
-        <div className="flex-1 overflow-y-auto px-5 py-3 space-y-1">
+        <div className="flex-1 overflow-y-auto py-2">
           {filtered.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">No se encontraron ejercicios</p>
+            <p className="text-sm text-muted-foreground text-center py-10">Sin resultados</p>
+          ) : search ? (
+            <div className="px-3 space-y-0.5">
+              {filtered.map((ej) => (
+                <ExerciseButton key={ej.id} ej={ej} isAdded={lastAddedId === ej.id} onSelect={handleSelect} />
+              ))}
+            </div>
           ) : (
-            <>
-              {grupos
-                .filter((g) => filtered.some((e) => e.grupo_muscular === g))
-                .map((grupo) => (
-                  <div key={grupo} className="mb-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1 px-1">
-                      {grupo}
-                    </p>
-                    {filtered
-                      .filter((e) => e.grupo_muscular === grupo)
-                      .map((ej) => (
-                        <button
-                          key={ej.id}
-                          onClick={() => { onSelect(ej); onOpenChange(false) }}
-                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left hover:bg-muted transition-colors group"
-                        >
-                          <Dumbbell className="h-4 w-4 text-muted-foreground shrink-0" />
-                          <span className="text-sm flex-1">{ej.nombre}</span>
-                          <Plus className="h-4 w-4 text-[var(--primary-color)] opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </button>
-                      ))}
+            grupos
+              .filter((g) => filtered.some((e) => e.grupo_muscular === g))
+              .map((grupo) => {
+                const items = filtered.filter((e) => e.grupo_muscular === grupo)
+                const isCollapsed = collapsedGroups[grupo]
+                return (
+                  <div key={grupo}>
+                    <button
+                      onClick={() => toggleGroup(grupo)}
+                      className="w-full flex items-center justify-between px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <span>{grupo}</span>
+                      <span className="flex items-center gap-1 normal-case font-normal">
+                        {items.length}
+                        {isCollapsed ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
+                      </span>
+                    </button>
+                    {!isCollapsed && (
+                      <div className="px-3 space-y-0.5 pb-1">
+                        {items.map((ej) => (
+                          <ExerciseButton key={ej.id} ej={ej} isAdded={lastAddedId === ej.id} onSelect={handleSelect} />
+                        ))}
+                      </div>
+                    )}
                   </div>
-                ))}
+                )
+              })
+          )}
 
-              {filtered.filter((e) => !e.grupo_muscular).length > 0 && (
-                <div className="mb-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1 px-1">
-                    Sin categoría
-                  </p>
-                  {filtered
-                    .filter((e) => !e.grupo_muscular)
-                    .map((ej) => (
-                      <button
-                        key={ej.id}
-                        onClick={() => { onSelect(ej); onOpenChange(false) }}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left hover:bg-muted transition-colors group"
-                      >
-                        <Dumbbell className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <span className="text-sm flex-1">{ej.nombre}</span>
-                        <Plus className="h-4 w-4 text-[var(--primary-color)] opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </button>
-                    ))}
-                </div>
-              )}
-            </>
+          {filtered.filter((e) => !e.grupo_muscular).length > 0 && !search && (
+            <div>
+              <p className="px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Sin categoría
+              </p>
+              <div className="px-3 space-y-0.5 pb-1">
+                {filtered.filter((e) => !e.grupo_muscular).map((ej) => (
+                  <ExerciseButton key={ej.id} ej={ej} isAdded={lastAddedId === ej.id} onSelect={handleSelect} />
+                ))}
+              </div>
+            </div>
           )}
         </div>
 
-        <div className="border-t px-5 py-4">
+        <div className="border-t px-4 py-3 shrink-0">
           {!showCreateForm ? (
-            <Button
-              variant="outline"
-              className="w-full gap-2"
-              onClick={() => setShowCreateForm(true)}
-            >
+            <Button variant="outline" className="w-full gap-2 text-sm" onClick={() => setShowCreateForm(true)}>
               <Plus className="h-4 w-4" />
-              Crear ejercicio personalizado
+              Crear ejercicio
             </Button>
           ) : (
             <div className="space-y-3">
@@ -151,6 +168,7 @@ export function ExerciseLibrarySheet({ open, onOpenChange, onSelect }: ExerciseL
                     placeholder="ej: Press banca inclinado"
                     value={newNombre}
                     onChange={(e) => setNewNombre(e.target.value)}
+                    autoFocus
                   />
                 </div>
                 <div>
@@ -188,5 +206,25 @@ export function ExerciseLibrarySheet({ open, onOpenChange, onSelect }: ExerciseL
         </div>
       </SheetContent>
     </Sheet>
+  )
+}
+
+function ExerciseButton({ ej, isAdded, onSelect }: { ej: Ejercicio; isAdded: boolean; onSelect: (e: Ejercicio) => void }) {
+  return (
+    <button
+      onClick={() => onSelect(ej)}
+      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all group ${
+        isAdded
+          ? "bg-[var(--primary-color)]/10 text-[var(--primary-color)]"
+          : "hover:bg-muted"
+      }`}
+    >
+      <Dumbbell className="h-3.5 w-3.5 shrink-0 text-muted-foreground group-hover:text-foreground" />
+      <span className="text-sm flex-1 leading-tight">{ej.nombre}</span>
+      {isAdded
+        ? <Check className="h-3.5 w-3.5 shrink-0 text-[var(--primary-color)]" />
+        : <Plus className="h-3.5 w-3.5 shrink-0 text-[var(--primary-color)] opacity-0 group-hover:opacity-100 transition-opacity" />
+      }
+    </button>
   )
 }

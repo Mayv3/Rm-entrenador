@@ -6,10 +6,16 @@ import logoRodrigoEntrenador from "../../assets/LOGO-RODRIGO-VERDE.png";
 import { Button } from "@/components/ui/button";
 import { LogOut, Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
+import { useEffect, useState } from "react";
 
 export function DashboardHeader() {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("isAuthenticated");
@@ -29,7 +35,7 @@ export function DashboardHeader() {
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             className="text-muted-foreground"
           >
-            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            {mounted && theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
           <Button
             variant="ghost"

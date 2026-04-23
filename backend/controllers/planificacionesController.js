@@ -205,11 +205,28 @@ export async function getPlanificacionById(req, res) {
 
 export async function createPlanificacion(req, res) {
   const { nombre, alumno_id } = req.body;
-  if (!nombre) return res.status(400).json({ error: "El nombre es obligatorio" });
+
+  let nombreFinal = typeof nombre === "string" ? nombre.trim() : "";
+  const alumnoId = alumno_id ?? null;
+
+  if (!nombreFinal && alumnoId) {
+    const { data: alumno, error: alumnoError } = await supabase
+      .from("alumnos")
+      .select("nombre")
+      .eq("id", alumnoId)
+      .single();
+
+    if (alumnoError) return res.status(500).json({ error: alumnoError.message });
+    nombreFinal = `Plan de ${alumno?.nombre ?? "Alumno"}`;
+  }
+
+  if (!nombreFinal) {
+    return res.status(400).json({ error: "Debes enviar nombre o alumno_id" });
+  }
 
   const { data, error } = await supabase
     .from("planificaciones")
-    .insert([{ nombre, alumno_id: alumno_id ?? null, semanas: 6, estado: "borrador" }])
+    .insert([{ nombre: nombreFinal, alumno_id: alumnoId, semanas: 6, estado: "borrador" }])
     .select()
     .single();
 
@@ -312,11 +329,20 @@ export async function createDia(req, res) {
 
 export async function updateDia(req, res) {
   const { diaId } = req.params;
-  const { nombre, orden } = req.body;
+  const { nombre, orden, numero_dia } = req.body;
+
+  const updates = {};
+  if (typeof nombre === "string") updates.nombre = nombre;
+  if (typeof orden === "number") updates.orden = orden;
+  if (typeof numero_dia === "number") updates.numero_dia = numero_dia;
+
+  if (Object.keys(updates).length === 0) {
+    return res.status(400).json({ error: "No hay campos para actualizar" });
+  }
 
   const { data, error } = await supabase
     .from("planificacion_dias")
-    .update({ nombre, orden })
+    .update(updates)
     .eq("id", diaId)
     .select()
     .single();
@@ -328,11 +354,42 @@ export async function updateDia(req, res) {
 
 export async function deleteDia(req, res) {
   const { diaId } = req.params;
+
+  const { data: dia, error: diaError } = await supabase
+    .from("planificacion_dias")
+    .select("id, hoja_id")
+    .eq("id", diaId)
+    .single();
+
+  if (diaError) return res.status(500).json({ error: diaError.message });
+  if (!dia) return res.status(404).json({ error: "Día no encontrado" });
+
   const { error } = await supabase
     .from("planificacion_dias")
     .delete()
     .eq("id", diaId);
   if (error) return res.status(500).json({ error: error.message });
+
+  const { data: diasRestantes, error: restantesError } = await supabase
+    .from("planificacion_dias")
+    .select("id")
+    .eq("hoja_id", dia.hoja_id)
+    .order("orden", { ascending: true })
+    .order("id", { ascending: true });
+
+  if (restantesError) return res.status(500).json({ error: restantesError.message });
+
+  for (const [index, diaRestante] of (diasRestantes ?? []).entries()) {
+    const numeroDia = index + 1;
+    const orden = index;
+    const { error: updateError } = await supabase
+      .from("planificacion_dias")
+      .update({ numero_dia: numeroDia, orden })
+      .eq("id", diaRestante.id);
+
+    if (updateError) return res.status(500).json({ error: updateError.message });
+  }
+
   invalidatePlanes()
   res.json({ ok: true });
 }

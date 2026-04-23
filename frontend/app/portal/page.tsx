@@ -21,6 +21,7 @@ import { es } from "date-fns/locale"
 import { AntroView, ParsedAntro } from "@/components/antropometrias/antro-view"
 import { AntroAnualChart } from "@/components/antropometrias/antro-anual-chart"
 import { AntroCompareDialog } from "@/components/antropometrias/antro-compare-dialog"
+import { StudentPlanificacionSection } from "@/components/portal/student-planificacion-section"
 
 interface Student {
   id: number
@@ -370,6 +371,8 @@ export default function PortalPage() {
             </a>
           )}
         </div>
+
+        <StudentPlanificacionSection studentId={student.id} />
 
         {/* Antropometrías */}
         <div className="flex flex-col gap-2">

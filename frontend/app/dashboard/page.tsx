@@ -18,7 +18,11 @@ import { PlanificacionesSection } from "@/components/training-plans/planificacio
 import { useTheme } from "next-themes";
 
 function PortalSection({ copied, setCopied }: { copied: boolean; setCopied: (v: boolean) => void }) {
-  const portalUrl = typeof window !== "undefined" ? `${window.location.origin}/portal/login` : "/portal/login"
+  const [portalUrl, setPortalUrl] = useState("/portal/login");
+
+  useEffect(() => {
+    setPortalUrl(`${window.location.origin}/portal/login`);
+  }, []);
 
   const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(portalUrl)
@@ -77,8 +81,11 @@ function PortalSection({ copied, setCopied }: { copied: boolean; setCopied: (v: 
 export default function Dashboard() {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<"students" | "payments" | "planes" | "portal" | "antropometrias" | "nutricion" | "estadisticas" | "planificaciones">("students");
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     const isAuthenticated = localStorage.getItem("isAuthenticated");
@@ -107,45 +114,63 @@ export default function Dashboard() {
     <div className="flex min-h-screen">
 
       {/* ── Sidebar desktop ── */}
-      <aside className="hidden md:flex w-52 flex-col fixed left-0 top-0 h-full border-r bg-background z-30">
-        <div className="flex items-center justify-center p-5 border-b">
-          <Image src={logoRodrigoEntrenador} alt="Logo" width={110} />
+      <aside className="hidden md:flex w-14 hover:w-52 flex-col fixed left-0 top-0 h-full border-r bg-background z-30 transition-[width] duration-200 overflow-hidden group/sidebar">
+        {/* Logo */}
+        <div className="flex items-center border-b h-16 shrink-0 overflow-hidden">
+          <span className="flex items-center justify-center w-14 shrink-0 font-bold text-[var(--primary-color)] text-sm group-hover/sidebar:opacity-0 group-hover/sidebar:w-0 transition-all duration-150">
+            RM
+          </span>
+          <div className="opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-150 delay-75 flex items-center justify-center flex-1 px-4">
+            <Image src={logoRodrigoEntrenador} alt="Logo" width={110} />
+          </div>
         </div>
 
-        <nav className="flex-1 p-3 space-y-1">
+        <nav className="flex-1 p-2 space-y-0.5 overflow-hidden">
           {navItems.map(({ value, label, icon: Icon }) => (
             <button
               key={value}
               onClick={() => setActiveTab(value)}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === value
-                  ? "bg-[var(--primary-color)] text-white"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              className={`w-full flex items-center py-2 rounded-md font-medium transition-colors ${activeTab === value
+                ? "bg-[var(--primary-color)] text-white"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 }`}
             >
-              <Icon className="h-4 w-4" />
-              {label}
+              <span className="flex items-center justify-center w-10 shrink-0">
+                <Icon className="h-4 w-4" />
+              </span>
+              <span className="flex-1 text-left text-sm whitespace-nowrap opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-150 delay-75">
+                {label}
+              </span>
             </button>
           ))}
         </nav>
 
-        <div className="p-3 border-t space-y-1">
+        <div className="p-2 border-t space-y-0.5 shrink-0">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="w-full flex items-center gap-2 text-muted-foreground hover:text-foreground"
+            className="w-full flex items-center px-0 text-muted-foreground hover:text-foreground"
           >
-            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            {theme === "dark" ? "Modo claro" : "Modo oscuro"}
+            <span className="flex items-center justify-center w-10 shrink-0">
+              {mounted && theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </span>
+            <span className="flex-1 text-left text-sm whitespace-nowrap opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-150 delay-75">
+              {mounted && theme === "dark" ? "Modo claro" : "Modo oscuro"}
+            </span>
           </Button>
           <Button
             variant="ghost"
             size="sm"
             onClick={handleLogout}
-            className="w-full flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+            className="w-full flex items-center px-0 text-red-600 hover:text-red-700 hover:bg-red-50"
           >
-            <LogOut className="h-4 w-4" />
-            Cerrar Sesión
+            <span className="flex items-center justify-center w-10 shrink-0">
+              <LogOut className="h-4 w-4" />
+            </span>
+            <span className="flex-1 text-left text-sm whitespace-nowrap opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-150 delay-75">
+              Cerrar Sesión
+            </span>
           </Button>
         </div>
       </aside>
@@ -156,17 +181,17 @@ export default function Dashboard() {
       </div>
 
       {/* ── Contenido principal ── */}
-      <main className={`flex-1 md:ml-52 p-4 sm:p-6 mt-16 md:mt-0 pb-20 md:pb-0 overflow-x-hidden ${activeTab === "planificaciones" ? "md:overflow-y-hidden md:h-screen" : ""}`}>
+      <main className={`flex-1 md:ml-14 mt-16 md:mt-0 pb-20 md:pb-0 overflow-x-hidden ${activeTab === "planificaciones" ? "p-2 sm:p-3 md:overflow-y-hidden md:h-screen" : "p-4 sm:p-6"}`}>
         {/* Contenido */}
-        <div className={`w-full md:max-w-[85vw] md:mx-auto ${activeTab === "planificaciones" ? "" : "space-y-4"}`}>
+        <div className={`w-full md:mx-auto ${activeTab === "planificaciones" ? "md:h-full md:max-w-[78vw]" : "md:max-w-[95vw] space-y-4"}`}>
           {activeTab === "students" ? <StudentsTable />
             : activeTab === "payments" ? <PaymentsTable />
               : activeTab === "planes" ? <PlanesTable />
                 : activeTab === "antropometrias" ? <AntropometriasSection />
                   : activeTab === "nutricion" ? <NutricionSection />
                     : activeTab === "estadisticas" ? <EstadisticasSection />
-                    : activeTab === "planificaciones" ? <PlanificacionesSection />
-                      : <PortalSection copied={copied} setCopied={setCopied} />
+                      : activeTab === "planificaciones" ? <PlanificacionesSection />
+                        : <PortalSection copied={copied} setCopied={setCopied} />
           }
         </div>
       </main>
@@ -178,8 +203,8 @@ export default function Dashboard() {
             key={value}
             onClick={() => setActiveTab(value)}
             className={`flex-none flex flex-col items-center justify-center py-3 gap-1 px-4 min-w-[72px] transition-colors ${activeTab === value
-                ? "text-[var(--primary-color)]"
-                : "text-muted-foreground"
+              ? "text-[var(--primary-color)]"
+              : "text-muted-foreground"
               }`}
           >
             <Icon className="h-5 w-5 shrink-0" />
