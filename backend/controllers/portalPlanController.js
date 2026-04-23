@@ -148,6 +148,48 @@ export async function getPortalSesion(req, res) {
   return res.json({ sesion, registros: registros ?? [] });
 }
 
+export async function getPortalSesionesResumen(req, res) {
+  const planId = Number(req.params.planId);
+  const alumnoId = Number(req.query.alumno_id);
+  const hojaId = Number(req.query.hoja_id);
+
+  if (![planId, alumnoId, hojaId].every(Number.isFinite)) {
+    return res.status(400).json({ error: "Parámetros inválidos" });
+  }
+
+  const { data, error } = await supabase
+    .from("entrenamiento_sesiones")
+    .select("semana, dia_id, estado")
+    .eq("planificacion_id", planId)
+    .eq("alumno_id", alumnoId)
+    .eq("hoja_id", hojaId);
+
+  if (error) return res.status(500).json({ error: error.message });
+  return res.json({ sesiones: data ?? [] });
+}
+
+export async function getPortalSesionesSemana(req, res) {
+  const planId = Number(req.params.planId);
+  const alumnoId = Number(req.query.alumno_id);
+  const hojaId = Number(req.query.hoja_id);
+  const semana = Number(req.query.semana);
+
+  if (![planId, alumnoId, hojaId, semana].every(Number.isFinite)) {
+    return res.status(400).json({ error: "Parámetros inválidos" });
+  }
+
+  const { data, error } = await supabase
+    .from("entrenamiento_sesiones")
+    .select("id, dia_id, estado")
+    .eq("planificacion_id", planId)
+    .eq("alumno_id", alumnoId)
+    .eq("hoja_id", hojaId)
+    .eq("semana", semana);
+
+  if (error) return res.status(500).json({ error: error.message });
+  return res.json({ sesiones: data ?? [] });
+}
+
 export async function upsertPortalSesion(req, res) {
   const planId = Number(req.params.planId);
   const {

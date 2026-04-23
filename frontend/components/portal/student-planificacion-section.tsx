@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import axios from "axios"
 import { Input } from "@/components/ui/input"
@@ -104,6 +104,9 @@ export function StudentPlanificacionSection({ studentId }: { studentId: number }
   const [saveMessage, setSaveMessage] = useState<string>("")
   const [savedSuccess, setSavedSuccess] = useState(false)
   const [videoModal, setVideoModal] = useState<{ nombre: string; url: string } | null>(null)
+  const isDirty = useRef(false)
+  const saveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [diaManualCompletado, setDiaManualCompletado] = useState<boolean | null>(null)
 
   const { data: planData, isLoading: loadingPlan, isError: errorPlan } = useQuery<{ planificacion: PlanificacionPortal | null }>({
     queryKey: queryKeyPlan(studentId),
@@ -141,7 +144,7 @@ export function StudentPlanificacionSection({ studentId }: { studentId: number }
     [dias, diaSeleccionadoId]
   )
 
-  const ejerciciosDelDia = diaSeleccionado?.ejercicios ?? []
+  const ejerciciosDelDia = useMemo(() => diaSeleccionado?.ejercicios ?? [], [diaSeleccionado])
 
   const { data: sessionData, isFetching: loadingSession } = useQuery<SsnData>({
     queryKey: queryKeySesion(
@@ -214,8 +217,64 @@ export function StudentPlanificacionSection({ studentId }: { studentId: number }
         notas: existing?.notas ?? "",
       }
     }
+    isDirty.current = false
     setRegistrosForm(next)
+    setDiaManualCompletado(sessionData?.sesion?.estado === "completado" ? true : null)
   }, [diaSeleccionado, ejerciciosDelDia, sessionData, semanaSeleccionada])
+
+  const allCompletedAuto = useMemo(() => {
+    if (ejerciciosDelDia.length === 0) return false
+    return ejerciciosDelDia.every((ej) => {
+      const row = registrosForm[ej.id]
+      return !!row?.peso_kg && !!row?.repeticiones && !!row?.rpe
+    })
+  }, [ejerciciosDelDia, registrosForm])
+
+  const allCompleted = diaManualCompletado !== null ? diaManualCompletado : allCompletedAuto
+
+  const { data: sesionesSemana, refetch: refetchSesionesSemana } = useQuery<{ sesiones: { id: number; dia_id: number; estado: string }[] }>({
+    queryKey: ["portalSesionesSemana", planificacion?.id, studentId, hojaActiva?.id, semanaSeleccionada],
+    queryFn: async () => {
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/portal/planificaciones/${planificacion!.id}/sesiones/semana`, {
+        params: { alumno_id: studentId, hoja_id: hojaActiva!.id, semana: semanaSeleccionada },
+      })
+      return res.data
+    },
+    enabled: !!planificacion && !!hojaActiva && !!semanaSeleccionada && diaSeleccionadoId === null,
+  })
+
+  const sesionesMapSemana = useMemo(
+    () => new Map((sesionesSemana?.sesiones ?? []).map((s) => [s.dia_id, s])),
+    [sesionesSemana]
+  )
+
+  const { data: sesionesResumen, refetch: refetchResumen } = useQuery<{ sesiones: { semana: number; dia_id: number; estado: string }[] }>({
+    queryKey: ["portalSesionesResumen", planificacion?.id, studentId, hojaActiva?.id],
+    queryFn: async () => {
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/portal/planificaciones/${planificacion!.id}/sesiones/resumen`, {
+        params: { alumno_id: studentId, hoja_id: hojaActiva!.id },
+      })
+      return res.data
+    },
+    enabled: !!planificacion && !!hojaActiva && semanaSeleccionada === null,
+  })
+
+  const semanaCompletadaMap = useMemo(() => {
+    const map = new Map<number, boolean>()
+    if (!sesionesResumen || !hojaActiva) return map
+    const totalDias = (hojaActiva.dias ?? []).length
+    if (totalDias === 0) return map
+    const porSemana = new Map<number, number>()
+    for (const s of sesionesResumen.sesiones) {
+      if (s.estado === "completado") {
+        porSemana.set(s.semana, (porSemana.get(s.semana) ?? 0) + 1)
+      }
+    }
+    for (const [semana, count] of porSemana) {
+      map.set(semana, count >= totalDias)
+    }
+    return map
+  }, [sesionesResumen, hojaActiva])
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -234,14 +293,14 @@ export function StudentPlanificacionSection({ studentId }: { studentId: number }
         hoja_id: hojaActiva.id,
         dia_id: diaSeleccionado.id,
         semana: semanaSeleccionada,
-        estado: "abierta",
+        estado: allCompleted ? "completado" : "abierta",
         registros,
       })
     },
     onSuccess: async () => {
+      isDirty.current = false
       setSavedSuccess(true)
-      setSaveMessage("Entrenamiento guardado")
-      setTimeout(() => setSavedSuccess(false), 3000)
+      setSaveMessage("")
       if (!planificacion || !hojaActiva || !diaSeleccionado || !semanaSeleccionada) return
       await queryClient.invalidateQueries({
         queryKey: queryKeySesion(planificacion.id, studentId, hojaActiva.id, diaSeleccionado.id, semanaSeleccionada),
@@ -252,19 +311,53 @@ export function StudentPlanificacionSection({ studentId }: { studentId: number }
     },
   })
 
+  const saveMutateRef = useRef(saveMutation.mutate)
+  saveMutateRef.current = saveMutation.mutate
+  const saveIsPendingRef = useRef(saveMutation.isPending)
+  saveIsPendingRef.current = saveMutation.isPending
+
+  useEffect(() => {
+    if (!diaSeleccionado || !semanaSeleccionada) return
+    const interval = setInterval(() => {
+      if (isDirty.current && !saveIsPendingRef.current) {
+        saveMutateRef.current()
+      }
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [diaSeleccionado, semanaSeleccionada])
+
+  const prevAllCompletedAuto = useRef(false)
+  useEffect(() => {
+    if (allCompletedAuto && !prevAllCompletedAuto.current && isDirty.current && !saveIsPendingRef.current) {
+      saveMutateRef.current()
+    }
+    prevAllCompletedAuto.current = allCompletedAuto
+  }, [allCompletedAuto])
+
   const handleFieldChange = (planEjId: number, field: keyof FormRow, value: string) => {
+    isDirty.current = true
     setSaveMessage("")
     setSavedSuccess(false)
-    setRegistrosForm((prev) => ({
-      ...prev,
-      [planEjId]: {
-        peso_kg: prev[planEjId]?.peso_kg ?? "",
-        repeticiones: prev[planEjId]?.repeticiones ?? "",
-        rpe: prev[planEjId]?.rpe ?? "",
-        notas: prev[planEjId]?.notas ?? "",
-        [field]: value,
-      },
-    }))
+    setRegistrosForm((prev) => {
+      const updated = {
+        ...prev,
+        [planEjId]: {
+          peso_kg: prev[planEjId]?.peso_kg ?? "",
+          repeticiones: prev[planEjId]?.repeticiones ?? "",
+          rpe: prev[planEjId]?.rpe ?? "",
+          notas: prev[planEjId]?.notas ?? "",
+          [field]: value,
+        },
+      }
+      const row = updated[planEjId]
+      if (row.peso_kg && row.repeticiones && row.rpe) {
+        if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current)
+        saveDebounceRef.current = setTimeout(() => {
+          if (!saveIsPendingRef.current) saveMutateRef.current()
+        }, 800)
+      }
+      return updated
+    })
   }
 
   if (loadingPlan) {
@@ -317,18 +410,28 @@ export function StudentPlanificacionSection({ studentId }: { studentId: number }
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-500 mb-3">Seleccioná una semana</p>
           <div className="grid grid-cols-2 gap-2.5">
-            {Array.from({ length: totalSemanas }, (_, i) => i + 1).map((semana) => (
-              <button
-                key={semana}
-                onClick={() => setSemanaSeleccionada(semana)}
-                className="group relative rounded-2xl border border-white/[0.07] bg-white/[0.03] hover:bg-white/[0.06] hover:border-green-500/30 transition-all duration-200 p-4 text-left overflow-hidden"
-              >
-                <div className="absolute inset-0 bg-gradient-to-br from-green-500/0 group-hover:from-green-500/5 to-transparent transition-all duration-200" />
-                <span className="block text-[10px] font-semibold uppercase tracking-widest text-zinc-500 group-hover:text-green-500/70 transition-colors">Semana</span>
-                <span className="block text-3xl font-black text-white mt-0.5 leading-none">{semana}</span>
-                <ChevronRight className="absolute right-3 bottom-3.5 h-4 w-4 text-zinc-600 group-hover:text-green-500/50 transition-colors" />
-              </button>
-            ))}
+            {Array.from({ length: totalSemanas }, (_, i) => i + 1).map((semana) => {
+              const completada = semanaCompletadaMap.get(semana) === true
+              return (
+                <button
+                  key={semana}
+                  onClick={() => setSemanaSeleccionada(semana)}
+                  className={`group relative rounded-2xl border active:scale-95 transition-all duration-150 p-4 text-left overflow-hidden ${
+                    completada
+                      ? "border-green-500/40 bg-green-500/[0.07] hover:bg-green-500/[0.11]"
+                      : "border-white/[0.07] bg-white/[0.03] hover:bg-white/[0.06] hover:border-green-500/30 active:bg-green-500/20 active:border-green-500/60"
+                  }`}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-br from-green-500/0 group-hover:from-green-500/5 to-transparent transition-all duration-200" />
+                  <span className={`block text-[10px] font-semibold uppercase tracking-widest transition-colors ${completada ? "text-green-500/70" : "text-zinc-500 group-hover:text-green-500/70"}`}>Semana</span>
+                  <span className="block text-3xl font-black text-white mt-0.5 leading-none">{semana}</span>
+                  {completada
+                    ? <CheckCircle2 className="absolute right-3 bottom-3.5 h-4 w-4 text-green-400" />
+                    : <ChevronRight className="absolute right-3 bottom-3.5 h-4 w-4 text-zinc-600 group-hover:text-green-500/50 transition-colors" />
+                  }
+                </button>
+              )
+            })}
           </div>
         </div>
       </div>
@@ -341,7 +444,7 @@ export function StudentPlanificacionSection({ studentId }: { studentId: number }
       <div className="space-y-5">
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setSemanaSeleccionada(null)}
+            onClick={() => { setSemanaSeleccionada(null); setDiaSeleccionadoId(null); setRegistrosForm({}); setSaveMessage(""); setSavedSuccess(false); isDirty.current = false; refetchResumen() }}
             className="h-8 w-8 rounded-xl bg-white/[0.05] hover:bg-white/[0.08] flex items-center justify-center transition-colors"
           >
             <ChevronLeft className="h-4 w-4 text-zinc-400" />
@@ -360,16 +463,29 @@ export function StudentPlanificacionSection({ studentId }: { studentId: number }
               <button
                 key={dia.id}
                 onClick={() => setDiaSeleccionadoId(dia.id)}
-                className="group w-full rounded-2xl border border-white/[0.07] bg-white/[0.03] hover:bg-white/[0.06] hover:border-green-500/25 transition-all duration-200 p-4 text-left flex items-center gap-4 overflow-hidden relative"
+                className={`group w-full rounded-2xl border transition-all duration-150 p-4 text-left flex items-center gap-4 overflow-hidden relative active:scale-95 ${
+                  sesionesMapSemana.get(dia.id)?.estado === "completado"
+                    ? "border-green-500/30 bg-green-500/[0.05] hover:bg-green-500/[0.08]"
+                    : "border-white/[0.07] bg-white/[0.03] hover:bg-white/[0.06] hover:border-green-500/25 active:bg-green-500/20 active:border-green-500/60"
+                }`}
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-green-500/0 group-hover:from-green-500/[0.04] to-transparent transition-all duration-200" />
-                <div className="h-10 w-10 rounded-xl bg-zinc-800 group-hover:bg-green-500/15 flex items-center justify-center transition-colors flex-shrink-0">
-                  <span className="text-base font-black text-zinc-300 group-hover:text-green-400 transition-colors">{dia.numero_dia}</span>
+                <div className={`h-10 w-10 rounded-xl flex items-center justify-center transition-colors flex-shrink-0 ${
+                  sesionesMapSemana.get(dia.id)?.estado === "completado"
+                    ? "bg-green-500/20"
+                    : "bg-zinc-800 group-hover:bg-green-500/15"
+                }`}>
+                  {sesionesMapSemana.get(dia.id)?.estado === "completado"
+                    ? <CheckCircle2 className="h-5 w-5 text-green-400" />
+                    : <span className="text-base font-black text-zinc-300 group-hover:text-green-400 transition-colors">{dia.numero_dia}</span>
+                  }
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-white truncate">DIA {dia.numero_dia} - {dia.nombre}</p>
-                  <p className="text-[11px] text-zinc-500 mt-0.5">
-                    {dia.ejercicios.length} ejercicio{dia.ejercicios.length !== 1 ? "s" : ""}
+                  <p className={`text-[11px] mt-0.5 ${sesionesMapSemana.get(dia.id)?.estado === "completado" ? "text-green-500/70" : "text-zinc-500"}`}>
+                    {sesionesMapSemana.get(dia.id)?.estado === "completado"
+                      ? "Completado"
+                      : `${dia.ejercicios.length} ejercicio${dia.ejercicios.length !== 1 ? "s" : ""}`}
                   </p>
                 </div>
                 <ChevronRight className="h-4 w-4 text-zinc-600 group-hover:text-green-500/50 transition-colors flex-shrink-0" />
@@ -392,6 +508,8 @@ export function StudentPlanificacionSection({ studentId }: { studentId: number }
             setRegistrosForm({})
             setSaveMessage("")
             setSavedSuccess(false)
+            isDirty.current = false
+            refetchSesionesSemana()
           }}
           className="h-8 w-8 rounded-xl bg-white/[0.05] hover:bg-white/[0.08] flex items-center justify-center transition-colors flex-shrink-0"
         >
@@ -403,7 +521,27 @@ export function StudentPlanificacionSection({ studentId }: { studentId: number }
             Día {diaSeleccionado?.numero_dia} · {diaSeleccionado?.nombre}
           </p>
         </div>
-        {loadingSession && <Loader2 className="h-3.5 w-3.5 animate-spin text-zinc-500 flex-shrink-0" />}
+        {loadingSession
+          ? <Loader2 className="h-3.5 w-3.5 animate-spin text-zinc-500 flex-shrink-0" />
+          : (
+            <button
+              onClick={() => {
+                const next = !allCompleted
+                setDiaManualCompletado(next)
+                isDirty.current = true
+                setTimeout(() => saveMutateRef.current(), 0)
+              }}
+              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold border transition-all flex-shrink-0 ${
+                allCompleted
+                  ? "bg-green-500/15 border-green-500/30 text-green-400"
+                  : "bg-white/[0.04] border-white/[0.08] text-zinc-500 hover:text-zinc-300"
+              }`}
+            >
+              <CheckCircle2 className={`h-3.5 w-3.5 ${allCompleted ? "text-green-400" : "text-zinc-600"}`} />
+              {allCompleted ? "Completado" : "Marcar"}
+            </button>
+          )
+        }
       </div>
 
       {/* Exercise cards */}
@@ -594,15 +732,27 @@ export function StudentPlanificacionSection({ studentId }: { studentId: number }
       <div className="sticky bottom-0 pt-2">
         <div className="rounded-t-2xl border border-b-0 border-white/[0.07] bg-zinc-950/90 backdrop-blur-xl px-5 py-4 flex items-center gap-4">
           <div className="flex-1 min-w-0">
-            {savedSuccess ? (
+            {savedSuccess && allCompleted ? (
               <span className="flex items-center gap-2 text-sm font-semibold text-green-400">
                 <CheckCircle2 className="h-4 w-4" />
-                Guardado correctamente
+                Día completado
               </span>
+            ) : savedSuccess ? (
+              <span className="flex items-center gap-2 text-sm font-semibold text-green-400">
+                <CheckCircle2 className="h-4 w-4" />
+                Guardado
+              </span>
+            ) : isDirty.current ? (
+              <span className="text-sm text-zinc-400">Cambios sin guardar…</span>
             ) : loadingSession ? (
               <span className="text-sm text-zinc-500">Cargando sesión…</span>
             ) : saveMessage ? (
               <span className="text-sm text-red-400">{saveMessage}</span>
+            ) : allCompleted ? (
+              <span className="flex items-center gap-2 text-sm font-semibold text-green-400">
+                <CheckCircle2 className="h-4 w-4" />
+                Día completado
+              </span>
             ) : (
               <span className="text-sm text-zinc-400">Completá tus marcas y guardá</span>
             )}
