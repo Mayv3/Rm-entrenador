@@ -3,6 +3,7 @@
 import { useSession, signOut } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
+import Link from "next/link"
 import { useTheme } from "next-themes"
 import { useQuery } from "@tanstack/react-query"
 import axios from "axios"
@@ -21,7 +22,6 @@ import { es } from "date-fns/locale"
 import { AntroView, ParsedAntro } from "@/components/antropometrias/antro-view"
 import { AntroAnualChart } from "@/components/antropometrias/antro-anual-chart"
 import { AntroCompareDialog } from "@/components/antropometrias/antro-compare-dialog"
-import { StudentPlanificacionSection } from "@/components/portal/student-planificacion-section"
 
 interface Student {
   id: number
@@ -349,30 +349,37 @@ export default function PortalPage() {
         </button>
 
         {/* Acciones */}
-        <div className="flex gap-3">
+        <div className="grid grid-cols-2 gap-3">
           <a
             href="https://wa.me/543516671026"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg bg-[var(--primary-color)] text-white text-sm font-medium"
+            className="flex items-center justify-center gap-2 py-2.5 rounded-lg bg-[var(--primary-color)] text-white text-sm font-medium"
           >
             <MessageSquare className="h-4 w-4" />
             WhatsApp
           </a>
+
+          <Link
+            href="/portal/mi-plan-app"
+            className="flex items-center justify-center gap-2 py-2.5 rounded-lg bg-violet-600 text-white text-sm font-medium"
+          >
+            <Dumbbell className="h-4 w-4" />
+            Mi plan app
+          </Link>
+
           {student.plan && (
             <a
               href={student.plan}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg bg-blue-500 text-white text-sm font-medium"
+              className="col-span-2 flex items-center justify-center gap-2 py-2.5 rounded-lg bg-blue-500 text-white text-sm font-medium"
             >
               <FileText className="h-4 w-4" />
-              Mi plan
+              Mi plan PDF
             </a>
           )}
         </div>
-
-        <StudentPlanificacionSection studentId={student.id} />
 
         {/* Antropometrías */}
         <div className="flex flex-col gap-2">
