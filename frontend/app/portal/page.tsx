@@ -526,13 +526,7 @@ export default function PortalPage() {
           />
           <div className="w-full max-w-md bg-[#0a0a0a] h-full flex flex-col animate-slide-in-right shadow-2xl border-l border-white/[0.06]">
             {/* Header */}
-            <div className="border-b border-white/[0.06] bg-[#0a0a0a]/80 backdrop-blur-xl px-4 py-3.5 flex items-center justify-between flex-shrink-0">
-              <div className="flex items-center gap-2">
-                <div className="h-6 w-6 rounded-lg bg-green-500/15 flex items-center justify-center">
-                  <Dumbbell className="h-3.5 w-3.5 text-green-400" />
-                </div>
-                <span className="text-sm font-semibold text-white">Mi plan app</span>
-              </div>
+            <div className="border-b border-white/[0.06] bg-[#0a0a0a]/80 backdrop-blur-xl px-4 py-3.5 flex items-center justify-end flex-shrink-0">
               <button
                 onClick={() => closeMiPlan()}
                 className="h-8 w-8 rounded-xl bg-white/[0.05] hover:bg-white/[0.08] flex items-center justify-center transition-colors"

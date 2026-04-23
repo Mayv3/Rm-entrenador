@@ -120,6 +120,13 @@ export function StudentPlanificacionSection({
   const [diaManualCompletado, setDiaManualCompletado] = useState<boolean | null>(null)
   const [openPicker, setOpenPicker] = useState<{ ejId: number; field: "repeticiones" | "rpe" } | null>(null)
 
+  useEffect(() => {
+    if (!openPicker) return
+    const close = () => setOpenPicker(null)
+    const timer = setTimeout(() => document.addEventListener("click", close), 0)
+    return () => { clearTimeout(timer); document.removeEventListener("click", close) }
+  }, [openPicker])
+
   const { data: planData, isLoading: loadingPlan, isError: errorPlan } = useQuery<{ planificacion: PlanificacionPortal | null }>({
     queryKey: queryKeyPlan(studentId),
     queryFn: async () => {
@@ -709,8 +716,7 @@ export function StudentPlanificacionSection({
                         </button>
                         {openPicker?.ejId === ej.id && openPicker.field === "repeticiones" && (
                           <>
-                            <div className="fixed inset-0 z-30" onClick={() => setOpenPicker(null)} />
-                            <div className="absolute left-0 right-0 top-full mt-1 z-40 rounded-xl border border-white/[0.1] bg-zinc-900 shadow-2xl overflow-hidden">
+                            <div className="absolute left-0 right-0 top-full mt-1 z-40 rounded-xl border border-white/[0.1] bg-zinc-900 shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
                               <div className="max-h-48 overflow-y-auto">
                                 {Array.from({ length: 20 }, (_, i) => i + 1).map((n) => (
                                   <button
@@ -747,8 +753,7 @@ export function StudentPlanificacionSection({
                         </button>
                         {openPicker?.ejId === ej.id && openPicker.field === "rpe" && (
                           <>
-                            <div className="fixed inset-0 z-30" onClick={() => setOpenPicker(null)} />
-                            <div className="absolute left-0 right-0 top-full mt-1 z-40 rounded-xl border border-white/[0.1] bg-zinc-900 shadow-2xl overflow-hidden">
+                            <div className="absolute left-0 right-0 top-full mt-1 z-40 rounded-xl border border-white/[0.1] bg-zinc-900 shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
                               {Array.from({ length: 6 }, (_, i) => 10 - i).map((n) => (
                                 <button
                                   key={n}
@@ -823,8 +828,8 @@ export function StudentPlanificacionSection({
       )}
 
       {/* Save bar */}
-      <div className="sticky bottom-0 pt-2">
-        <div className="rounded-t-2xl border border-b-0 border-white/[0.07] bg-zinc-950/90 backdrop-blur-xl px-5 py-4 flex items-center gap-4">
+      <div className="sticky bottom-4 pt-2">
+        <div className="rounded-2xl border border-white/[0.1] bg-zinc-800/90 backdrop-blur-xl px-5 py-4 flex items-center gap-4">
           <div className="flex-1 min-w-0">
             {savedSuccess && allCompleted ? (
               <span className="flex items-center gap-2 text-sm font-semibold text-green-400">
