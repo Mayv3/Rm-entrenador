@@ -2,7 +2,7 @@
 
 import { useSession, signOut } from "next-auth/react"
 import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useTheme } from "next-themes"
 import { useQuery } from "@tanstack/react-query"
@@ -13,7 +13,8 @@ import { Loader } from "@/components/ui/loader"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { FileText, LogOut, MessageSquare, ArrowLeft, Loader2, Download, Eye, TrendingUp, GitCompareArrows, Salad, Dumbbell, ArrowRight } from "lucide-react"
+import { FileText, LogOut, MessageSquare, ArrowLeft, Loader2, Download, Eye, TrendingUp, GitCompareArrows, Salad, Dumbbell, ArrowRight, X } from "lucide-react"
+import { StudentPlanificacionSection } from "@/components/portal/student-planificacion-section"
 import { supabase } from "@/lib/supabase-client"
 import { determineSubscriptionStatus, formatDate, getStatusColor } from "@/lib/payment-utils"
 import { usePlanes, Plan } from "@/hooks/use-planes"
@@ -159,6 +160,14 @@ export default function PortalPage() {
   const [showCompare, setShowCompare] = useState(false)
   const [showPlanes, setShowPlanes] = useState(false)
   const [expandedPlan, setExpandedPlan] = useState<number | null>(null)
+  const [showMiPlan, setShowMiPlan] = useState(false)
+  const miPlanHistoryDepth = useRef(0)
+
+  function closeMiPlan() {
+    const depth = miPlanHistoryDepth.current
+    if (depth > 0) history.go(-depth)
+    setShowMiPlan(false)
+  }
 
   async function handleSelectAntro(antro: AntroRecord) {
     setParsingId(antro.id)
@@ -360,13 +369,13 @@ export default function PortalPage() {
             WhatsApp
           </a>
 
-          <Link
-            href="/portal/mi-plan-app"
+          <button
+            onClick={() => setShowMiPlan(true)}
             className="flex items-center justify-center gap-2 py-2.5 rounded-lg bg-violet-600 text-white text-sm font-medium"
           >
             <Dumbbell className="h-4 w-4" />
             Mi plan app
-          </Link>
+          </button>
 
           {student.plan && (
             <a
@@ -507,6 +516,43 @@ export default function PortalPage() {
         )}
 
       </main>
+
+      {/* Mi Plan Sidebar */}
+      {showMiPlan && (
+        <div className="fixed inset-0 z-50 flex">
+          <div
+            className="flex-1 bg-black/50 backdrop-blur-sm"
+            onClick={() => closeMiPlan()}
+          />
+          <div className="w-full max-w-md bg-[#0a0a0a] h-full flex flex-col animate-slide-in-right shadow-2xl border-l border-white/[0.06]">
+            {/* Header */}
+            <div className="border-b border-white/[0.06] bg-[#0a0a0a]/80 backdrop-blur-xl px-4 py-3.5 flex items-center justify-between flex-shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="h-6 w-6 rounded-lg bg-green-500/15 flex items-center justify-center">
+                  <Dumbbell className="h-3.5 w-3.5 text-green-400" />
+                </div>
+                <span className="text-sm font-semibold text-white">Mi plan app</span>
+              </div>
+              <button
+                onClick={() => closeMiPlan()}
+                className="h-8 w-8 rounded-xl bg-white/[0.05] hover:bg-white/[0.08] flex items-center justify-center transition-colors"
+              >
+                <X className="h-4 w-4 text-zinc-400" />
+              </button>
+            </div>
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto px-4 py-6">
+              {student && (
+                <StudentPlanificacionSection
+                  studentId={student.id}
+                  onRequestClose={() => setShowMiPlan(false)}
+                  historyDepthRef={miPlanHistoryDepth}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal Planes disponibles */}
       <Dialog open={showPlanes} onOpenChange={setShowPlanes}>

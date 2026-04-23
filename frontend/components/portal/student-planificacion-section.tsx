@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import React, { useEffect, useMemo, useRef, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import axios from "axios"
 import { Input } from "@/components/ui/input"
@@ -95,7 +95,15 @@ const queryKeyPlan = (studentId: number) => ["portalPlanificacion", studentId] a
 const queryKeySesion = (planId: number, studentId: number, hojaId: number, diaId: number, semana: number) =>
   ["portalSesion", planId, studentId, hojaId, diaId, semana] as const
 
-export function StudentPlanificacionSection({ studentId }: { studentId: number }) {
+export function StudentPlanificacionSection({
+  studentId,
+  onRequestClose,
+  historyDepthRef,
+}: {
+  studentId: number
+  onRequestClose?: () => void
+  historyDepthRef?: React.MutableRefObject<number>
+}) {
   const queryClient = useQueryClient()
   const [semanaSeleccionada, setSemanaSeleccionada] = useState<number | null>(null)
   const [diaSeleccionadoId, setDiaSeleccionadoId] = useState<number | null>(null)
@@ -105,6 +113,10 @@ export function StudentPlanificacionSection({ studentId }: { studentId: number }
   const [videoModal, setVideoModal] = useState<{ nombre: string; url: string } | null>(null)
   const isDirty = useRef(false)
   const saveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const onRequestCloseRef = useRef(onRequestClose)
+  onRequestCloseRef.current = onRequestClose
+  const refetchResumenRef = useRef<(() => void) | null>(null)
+  const refetchSesionesSemanaRef = useRef<(() => void) | null>(null)
   const [diaManualCompletado, setDiaManualCompletado] = useState<boolean | null>(null)
   const [openPicker, setOpenPicker] = useState<{ ejId: number; field: "repeticiones" | "rpe" } | null>(null)
 
@@ -232,7 +244,7 @@ export function StudentPlanificacionSection({ studentId }: { studentId: number }
 
   const allCompleted = diaManualCompletado !== null ? diaManualCompletado : allCompletedAuto
 
-  const { data: sesionesSemana, refetch: refetchSesionesSemana } = useQuery<{ sesiones: { id: number; dia_id: number; estado: string }[] }>({
+  const { data: sesionesSemana, refetch: _refetchSesionesSemana } = useQuery<{ sesiones: { id: number; dia_id: number; estado: string }[] }>({
     queryKey: ["portalSesionesSemana", planificacion?.id, studentId, hojaActiva?.id, semanaSeleccionada],
     queryFn: async () => {
       const res = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/portal/planificaciones/${planificacion!.id}/sesiones/semana`, {
@@ -248,7 +260,7 @@ export function StudentPlanificacionSection({ studentId }: { studentId: number }
     [sesionesSemana]
   )
 
-  const { data: sesionesResumen, refetch: refetchResumen } = useQuery<{ sesiones: { semana: number; dia_id: number; estado: string }[] }>({
+  const { data: sesionesResumen, refetch: _refetchResumen } = useQuery<{ sesiones: { semana: number; dia_id: number; estado: string }[] }>({
     queryKey: ["portalSesionesResumen", planificacion?.id, studentId, hojaActiva?.id],
     queryFn: async () => {
       const res = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/portal/planificaciones/${planificacion!.id}/sesiones/resumen`, {
@@ -258,6 +270,43 @@ export function StudentPlanificacionSection({ studentId }: { studentId: number }
     },
     enabled: !!planificacion && !!hojaActiva && semanaSeleccionada === null,
   })
+
+  // Keep refetch refs up to date
+  refetchSesionesSemanaRef.current = _refetchSesionesSemana
+  refetchResumenRef.current = _refetchResumen
+
+  // History API: push state on mount, handle back button
+  useEffect(() => {
+    history.pushState({ planNav: "weeks" }, "")
+    if (historyDepthRef) historyDepthRef.current = 1
+
+    function handlePopState(e: PopStateEvent) {
+      if (historyDepthRef) historyDepthRef.current = Math.max(0, historyDepthRef.current - 1)
+      const nav = (e.state as { planNav?: string; semana?: number } | null)
+      if (nav?.planNav === "days") {
+        setSemanaSeleccionada(nav.semana ?? null)
+        setDiaSeleccionadoId(null)
+        setRegistrosForm({})
+        setSaveMessage("")
+        setSavedSuccess(false)
+        isDirty.current = false
+        refetchSesionesSemanaRef.current?.()
+      } else if (nav?.planNav === "weeks") {
+        setSemanaSeleccionada(null)
+        setDiaSeleccionadoId(null)
+        setRegistrosForm({})
+        setSaveMessage("")
+        setSavedSuccess(false)
+        isDirty.current = false
+        refetchResumenRef.current?.()
+      } else {
+        onRequestCloseRef.current?.()
+      }
+    }
+
+    window.addEventListener("popstate", handlePopState)
+    return () => window.removeEventListener("popstate", handlePopState)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const semanaCompletadaMap = useMemo(() => {
     const map = new Map<number, boolean>()
@@ -302,9 +351,17 @@ export function StudentPlanificacionSection({ studentId }: { studentId: number }
       setSavedSuccess(true)
       setSaveMessage("")
       if (!planificacion || !hojaActiva || !diaSeleccionado || !semanaSeleccionada) return
-      await queryClient.invalidateQueries({
-        queryKey: queryKeySesion(planificacion.id, studentId, hojaActiva.id, diaSeleccionado.id, semanaSeleccionada),
-      })
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: queryKeySesion(planificacion.id, studentId, hojaActiva.id, diaSeleccionado.id, semanaSeleccionada),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["portalSesionesSemana", planificacion.id, studentId, hojaActiva.id, semanaSeleccionada],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["portalSesionesResumen", planificacion.id, studentId, hojaActiva.id],
+        }),
+      ])
     },
     onError: () => {
       setSaveMessage("No se pudo guardar")
@@ -415,7 +472,11 @@ export function StudentPlanificacionSection({ studentId }: { studentId: number }
               return (
                 <button
                   key={semana}
-                  onClick={() => setSemanaSeleccionada(semana)}
+                  onClick={() => {
+                    history.pushState({ planNav: "days", semana }, "")
+                    if (historyDepthRef) historyDepthRef.current++
+                    setSemanaSeleccionada(semana)
+                  }}
                   className={`group relative rounded-2xl border active:scale-95 transition-all duration-150 p-4 text-left overflow-hidden ${
                     completada
                       ? "border-green-500/40 bg-green-500/[0.07] hover:bg-green-500/[0.11]"
@@ -444,7 +505,7 @@ export function StudentPlanificacionSection({ studentId }: { studentId: number }
       <div className="space-y-5">
         <div className="flex items-center gap-2">
           <button
-            onClick={() => { setSemanaSeleccionada(null); setDiaSeleccionadoId(null); setRegistrosForm({}); setSaveMessage(""); setSavedSuccess(false); isDirty.current = false; refetchResumen() }}
+            onClick={() => history.back()}
             className="h-8 w-8 rounded-xl bg-white/[0.05] hover:bg-white/[0.08] flex items-center justify-center transition-colors"
           >
             <ChevronLeft className="h-4 w-4 text-zinc-400" />
@@ -462,7 +523,11 @@ export function StudentPlanificacionSection({ studentId }: { studentId: number }
             {dias.map((dia) => (
               <button
                 key={dia.id}
-                onClick={() => setDiaSeleccionadoId(dia.id)}
+                onClick={() => {
+                  history.pushState({ planNav: "exercises" }, "")
+                  if (historyDepthRef) historyDepthRef.current++
+                  setDiaSeleccionadoId(dia.id)
+                }}
                 className={`group w-full rounded-2xl border transition-all duration-150 p-4 text-left flex items-center gap-4 overflow-hidden relative active:scale-95 ${
                   sesionesMapSemana.get(dia.id)?.estado === "completado"
                     ? "border-green-500/30 bg-green-500/[0.05] hover:bg-green-500/[0.08]"
@@ -503,14 +568,7 @@ export function StudentPlanificacionSection({ studentId }: { studentId: number }
       {/* Header */}
       <div className="flex items-center gap-2">
         <button
-          onClick={() => {
-            setDiaSeleccionadoId(null)
-            setRegistrosForm({})
-            setSaveMessage("")
-            setSavedSuccess(false)
-            isDirty.current = false
-            refetchSesionesSemana()
-          }}
+          onClick={() => history.back()}
           className="h-8 w-8 rounded-xl bg-white/[0.05] hover:bg-white/[0.08] flex items-center justify-center transition-colors flex-shrink-0"
         >
           <ChevronLeft className="h-4 w-4 text-zinc-400" />
