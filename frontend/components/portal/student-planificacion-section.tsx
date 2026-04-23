@@ -19,7 +19,6 @@ import {
   RotateCcw,
   StickyNote,
   Trophy,
-  ChevronDown,
   Play,
   X,
   Save,
@@ -107,6 +106,7 @@ export function StudentPlanificacionSection({ studentId }: { studentId: number }
   const isDirty = useRef(false)
   const saveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [diaManualCompletado, setDiaManualCompletado] = useState<boolean | null>(null)
+  const [openPicker, setOpenPicker] = useState<{ ejId: number; field: "repeticiones" | "rpe" } | null>(null)
 
   const { data: planData, isLoading: loadingPlan, isError: errorPlan } = useQuery<{ planificacion: PlanificacionPortal | null }>({
     queryKey: queryKeyPlan(studentId),
@@ -641,17 +641,36 @@ export function StudentPlanificacionSection({ studentId }: { studentId: number }
                         Reps
                       </label>
                       <div className="relative">
-                        <select
-                          value={row.repeticiones}
-                          onChange={(e) => handleFieldChange(ej.id, "repeticiones", e.target.value)}
-                          className="w-full h-12 rounded-xl bg-zinc-900/80 border border-white/[0.08] focus:border-green-500/50 text-base font-bold text-white text-center appearance-none cursor-pointer px-2 outline-none"
+                        <button
+                          onClick={() => setOpenPicker(openPicker?.ejId === ej.id && openPicker.field === "repeticiones" ? null : { ejId: ej.id, field: "repeticiones" })}
+                          className={`w-full h-12 rounded-xl border text-base font-bold text-center transition-all flex items-center justify-center gap-1 ${
+                            row.repeticiones ? "bg-zinc-800 border-green-500/30 text-white" : "bg-zinc-900/80 border-white/[0.08] text-zinc-500"
+                          }`}
                         >
-                          <option value="" className="bg-zinc-900 text-zinc-500">—</option>
-                          {Array.from({ length: 20 }, (_, i) => i + 1).map((n) => (
-                            <option key={n} value={n} className="bg-zinc-900 text-white">{n}</option>
-                          ))}
-                        </select>
-                        <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-zinc-500" />
+                          {row.repeticiones || "—"}
+                        </button>
+                        {openPicker?.ejId === ej.id && openPicker.field === "repeticiones" && (
+                          <>
+                            <div className="fixed inset-0 z-30" onClick={() => setOpenPicker(null)} />
+                            <div className="absolute left-0 right-0 top-full mt-1 z-40 rounded-xl border border-white/[0.1] bg-zinc-900 shadow-2xl overflow-hidden">
+                              <div className="max-h-48 overflow-y-auto">
+                                {Array.from({ length: 20 }, (_, i) => i + 1).map((n) => (
+                                  <button
+                                    key={n}
+                                    onClick={() => { handleFieldChange(ej.id, "repeticiones", String(n)); setOpenPicker(null) }}
+                                    className={`w-full px-4 py-2.5 text-sm font-semibold text-left transition-colors ${
+                                      row.repeticiones === String(n)
+                                        ? "bg-green-500/20 text-green-400"
+                                        : "text-zinc-300 hover:bg-white/[0.06]"
+                                    }`}
+                                  >
+                                    {n} reps
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
                     <div className="space-y-1.5">
@@ -660,17 +679,34 @@ export function StudentPlanificacionSection({ studentId }: { studentId: number }
                         RPE
                       </label>
                       <div className="relative">
-                        <select
-                          value={row.rpe}
-                          onChange={(e) => handleFieldChange(ej.id, "rpe", e.target.value)}
-                          className="w-full h-12 rounded-xl bg-zinc-900/80 border border-white/[0.08] focus:border-green-500/50 text-base font-bold text-white text-center appearance-none cursor-pointer px-2 outline-none"
+                        <button
+                          onClick={() => setOpenPicker(openPicker?.ejId === ej.id && openPicker.field === "rpe" ? null : { ejId: ej.id, field: "rpe" })}
+                          className={`w-full h-12 rounded-xl border text-base font-bold text-center transition-all flex items-center justify-center gap-1 ${
+                            row.rpe ? "bg-zinc-800 border-green-500/30 text-white" : "bg-zinc-900/80 border-white/[0.08] text-zinc-500"
+                          }`}
                         >
-                          <option value="" className="bg-zinc-900 text-zinc-500">—</option>
-                          {Array.from({ length: 6 }, (_, i) => 10 - i).map((n) => (
-                            <option key={n} value={n} className="bg-zinc-900 text-white">{n}</option>
-                          ))}
-                        </select>
-                        <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-zinc-500" />
+                          {row.rpe || "—"}
+                        </button>
+                        {openPicker?.ejId === ej.id && openPicker.field === "rpe" && (
+                          <>
+                            <div className="fixed inset-0 z-30" onClick={() => setOpenPicker(null)} />
+                            <div className="absolute left-0 right-0 top-full mt-1 z-40 rounded-xl border border-white/[0.1] bg-zinc-900 shadow-2xl overflow-hidden">
+                              {Array.from({ length: 6 }, (_, i) => 10 - i).map((n) => (
+                                <button
+                                  key={n}
+                                  onClick={() => { handleFieldChange(ej.id, "rpe", String(n)); setOpenPicker(null) }}
+                                  className={`w-full px-4 py-2.5 text-sm font-semibold text-left transition-colors ${
+                                    row.rpe === String(n)
+                                      ? "bg-green-500/20 text-green-400"
+                                      : "text-zinc-300 hover:bg-white/[0.06]"
+                                  }`}
+                                >
+                                  RPE {n}
+                                </button>
+                              ))}
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
