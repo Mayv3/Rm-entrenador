@@ -132,7 +132,7 @@ const muiSelectSx = (hasValue: boolean) => ({
   "& .MuiSelect-select": { textAlign: "center", paddingRight: "28px !important" },
 })
 
-const muiMenuProps = (maxHeight: number) => ({
+const muiMenuProps = (maxHeight: number, scrollToIndex?: number) => ({
   PaperProps: {
     sx: {
       backgroundColor: "#18181b",
@@ -151,6 +151,12 @@ const muiMenuProps = (maxHeight: number) => ({
       },
     },
   },
+  TransitionProps: scrollToIndex !== undefined ? {
+    onEntered: (node: HTMLElement) => {
+      const list = node.querySelector("ul")
+      if (list) list.scrollTop = scrollToIndex * 48
+    },
+  } : undefined,
 })
 
 const queryKeyPlan = (studentId: number) => ["portalPlanificacion", studentId] as const
@@ -925,7 +931,7 @@ export function StudentPlanificacionSection({
                                 fullWidth
                                 renderValue={(v) => <span style={{ fontWeight: 700, fontSize: "1rem" }}>{v || "—"}</span>}
                                 sx={muiSelectSx(!!serie.repeticiones)}
-                                MenuProps={muiMenuProps(88)}
+                                MenuProps={muiMenuProps(192, 11)}
                               >
                                 {Array.from({ length: 20 }, (_, i) => i + 1).map((n) => (
                                   <MenuItem key={n} value={n}>{n} reps</MenuItem>
@@ -945,7 +951,7 @@ export function StudentPlanificacionSection({
                                 fullWidth
                                 renderValue={(v) => <span style={{ fontWeight: 700, fontSize: "1rem" }}>{v || "—"}</span>}
                                 sx={muiSelectSx(!!serie.rpe)}
-                                MenuProps={muiMenuProps(88)}
+                                MenuProps={muiMenuProps(192)}
                               >
                                 {Array.from({ length: 6 }, (_, i) => 10 - i).map((n) => (
                                   <MenuItem key={n} value={n}>RPE {n}</MenuItem>
