@@ -1,8 +1,6 @@
 "use client"
 
 import React, { useEffect, useMemo, useRef, useState } from "react"
-import Select from "@mui/material/Select"
-import MenuItem from "@mui/material/MenuItem"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import axios from "axios"
 import { Input } from "@/components/ui/input"
@@ -118,46 +116,6 @@ const EMPTY_FORM_ROW = (): FormRow => ({
   notas: "",
 })
 
-const muiSelectSx = (hasValue: boolean) => ({
-  height: 48,
-  borderRadius: "12px",
-  backgroundColor: hasValue ? "rgba(255,255,255,0.07)" : "rgba(24,24,27,0.8)",
-  color: hasValue ? "#fff" : "rgba(255,255,255,0.25)",
-  "& .MuiOutlinedInput-notchedOutline": {
-    borderColor: hasValue ? "rgba(34,197,94,0.3)" : "rgba(255,255,255,0.08)",
-  },
-  "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(34,197,94,0.5)" },
-  "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(34,197,94,0.6)" },
-  "& .MuiSelect-icon": { color: "rgba(255,255,255,0.25)" },
-  "& .MuiSelect-select": { textAlign: "center", paddingRight: "28px !important" },
-})
-
-const muiMenuProps = (maxHeight: number, scrollToIndex?: number) => ({
-  PaperProps: {
-    sx: {
-      backgroundColor: "#18181b",
-      border: "1px solid rgba(255,255,255,0.1)",
-      borderRadius: "12px",
-      boxShadow: "0 20px 60px rgba(0,0,0,0.8)",
-      maxHeight,
-      "& .MuiMenuItem-root": {
-        color: "#d4d4d8",
-        fontWeight: 600,
-        fontSize: "0.875rem",
-        justifyContent: "center",
-        "&:hover": { backgroundColor: "rgba(255,255,255,0.06)" },
-        "&.Mui-selected": { backgroundColor: "rgba(34,197,94,0.15)", color: "#4ade80" },
-        "&.Mui-selected:hover": { backgroundColor: "rgba(34,197,94,0.22)" },
-      },
-    },
-  },
-  TransitionProps: scrollToIndex !== undefined ? {
-    onEntered: (node: HTMLElement) => {
-      const list = node.querySelector("ul")
-      if (list) list.scrollTop = scrollToIndex * 48
-    },
-  } : undefined,
-})
 
 const queryKeyPlan = (studentId: number) => ["portalPlanificacion", studentId] as const
 const queryKeySesion = (planId: number, studentId: number, hojaId: number, diaId: number, semana: number) =>
@@ -191,6 +149,15 @@ export function StudentPlanificacionSection({
   const exerciseCardRefs = useRef<Map<number, HTMLDivElement>>(new Map())
   const [movilidadIdx, setMovilidadIdx] = useState(0)
   const movilidadScrollRef = useRef<HTMLDivElement | null>(null)
+  const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map())
+
+  const focusNextInput = (ejId: number, serieIdx: number, field: keyof SerieRow) => {
+    const fields: (keyof SerieRow)[] = ["peso_kg", "repeticiones", "rpe"]
+    const currentIdx = fields.indexOf(field)
+    if (currentIdx < fields.length - 1) {
+      inputRefs.current.get(`${ejId}-${serieIdx}-${fields[currentIdx + 1]}`)?.focus()
+    }
+  }
 
   const getActiveSerie = (ejId: number) => activeSerieMap[ejId] ?? 0
 
@@ -911,10 +878,14 @@ export function StudentPlanificacionSection({
                                 Peso kg
                               </label>
                               <Input
+                                ref={(el) => { if (el) inputRefs.current.set(`${ej.id}-${serieIdx}-peso_kg`, el) }}
                                 type="number"
                                 placeholder="0"
+                                min={0}
+                                max={500}
                                 value={serie.peso_kg}
                                 onChange={(e) => handleSerieChange(ej.id, serieIdx, "peso_kg", e.target.value)}
+                                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNextInput(ej.id, serieIdx, "peso_kg") } }}
                                 className="bg-zinc-900/80 border-white/[0.08] focus:border-green-500/50 focus:ring-green-500/20 text-white placeholder:text-zinc-600 h-12 text-base font-bold text-center rounded-xl"
                               />
                             </div>
@@ -923,40 +894,34 @@ export function StudentPlanificacionSection({
                                 <RotateCcw className="h-2.5 w-2.5" />
                                 Reps
                               </label>
-                              <Select
-                                value={serie.repeticiones || ""}
-                                onChange={(e) => handleSerieChange(ej.id, serieIdx, "repeticiones", String(e.target.value))}
-                                displayEmpty
-                                size="small"
-                                fullWidth
-                                renderValue={(v) => <span style={{ fontWeight: 700, fontSize: "1rem" }}>{v || "—"}</span>}
-                                sx={muiSelectSx(!!serie.repeticiones)}
-                                MenuProps={muiMenuProps(192, 11)}
-                              >
-                                {Array.from({ length: 20 }, (_, i) => i + 1).map((n) => (
-                                  <MenuItem key={n} value={n}>{n} reps</MenuItem>
-                                ))}
-                              </Select>
+                              <Input
+                                ref={(el) => { if (el) inputRefs.current.set(`${ej.id}-${serieIdx}-repeticiones`, el) }}
+                                type="number"
+                                placeholder="0"
+                                min={1}
+                                max={20}
+                                value={serie.repeticiones}
+                                onChange={(e) => handleSerieChange(ej.id, serieIdx, "repeticiones", e.target.value)}
+                                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNextInput(ej.id, serieIdx, "repeticiones") } }}
+                                className="bg-zinc-900/80 border-white/[0.08] focus:border-green-500/50 focus:ring-green-500/20 text-white placeholder:text-zinc-600 h-12 text-base font-bold text-center rounded-xl"
+                              />
                             </div>
                             <div className="space-y-1.5">
                               <label className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
                                 <Flame className="h-2.5 w-2.5" />
                                 RPE
                               </label>
-                              <Select
-                                value={serie.rpe || ""}
-                                onChange={(e) => handleSerieChange(ej.id, serieIdx, "rpe", String(e.target.value))}
-                                displayEmpty
-                                size="small"
-                                fullWidth
-                                renderValue={(v) => <span style={{ fontWeight: 700, fontSize: "1rem" }}>{v || "—"}</span>}
-                                sx={muiSelectSx(!!serie.rpe)}
-                                MenuProps={muiMenuProps(192)}
-                              >
-                                {Array.from({ length: 6 }, (_, i) => 10 - i).map((n) => (
-                                  <MenuItem key={n} value={n}>RPE {n}</MenuItem>
-                                ))}
-                              </Select>
+                              <Input
+                                ref={(el) => { if (el) inputRefs.current.set(`${ej.id}-${serieIdx}-rpe`, el) }}
+                                type="number"
+                                placeholder="0"
+                                min={1}
+                                max={10}
+                                value={serie.rpe}
+                                onChange={(e) => handleSerieChange(ej.id, serieIdx, "rpe", e.target.value)}
+                                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNextInput(ej.id, serieIdx, "rpe") } }}
+                                className="bg-zinc-900/80 border-white/[0.08] focus:border-green-500/50 focus:ring-green-500/20 text-white placeholder:text-zinc-600 h-12 text-base font-bold text-center rounded-xl"
+                              />
                             </div>
                           </div>
 
