@@ -479,23 +479,6 @@ export function StudentPlanificacionSection({
   const saveIsPendingRef = useRef(saveMutation.isPending)
   saveIsPendingRef.current = saveMutation.isPending
 
-  useEffect(() => {
-    if (!diaSeleccionado || !semanaSeleccionada) return
-    const interval = setInterval(() => {
-      if (isDirty.current && !saveIsPendingRef.current) {
-        saveMutateRef.current()
-      }
-    }, 5000)
-    return () => clearInterval(interval)
-  }, [diaSeleccionado, semanaSeleccionada])
-
-  const prevAllCompletedAuto = useRef(false)
-  useEffect(() => {
-    if (allCompletedAuto && !prevAllCompletedAuto.current && isDirty.current && !saveIsPendingRef.current) {
-      saveMutateRef.current()
-    }
-    prevAllCompletedAuto.current = allCompletedAuto
-  }, [allCompletedAuto])
 
   const handleSerieChange = (planEjId: number, serieIdx: number, field: keyof SerieRow, value: string) => {
     isDirty.current = true
