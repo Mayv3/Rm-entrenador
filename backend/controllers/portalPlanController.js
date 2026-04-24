@@ -65,8 +65,17 @@ async function getPlanificacionCompleta(planId) {
     semanas = semanasData ?? [];
   }
 
+  const { data: movilidadData } = await supabase
+    .from("planificacion_movilidad")
+    .select("*")
+    .in("hoja_id", hojaIds)
+    .order("orden", { ascending: true });
+
+  const movilidad = movilidadData ?? [];
+
   const hojasCompletas = hojas.map((hoja) => ({
     ...hoja,
+    movilidad: movilidad.filter((m) => m.hoja_id === hoja.id),
     dias: dias
       .filter((d) => d.hoja_id === hoja.id)
       .map((dia) => ({
@@ -256,24 +265,19 @@ export async function upsertPortalSesion(req, res) {
         (s) => Number(s.semana) === semanaNum
       );
 
+      const seriesArr = Array.isArray(reg.series) ? reg.series : [];
+      const s0 = seriesArr[0] ?? {};
+      const toNum = (v) => (v === "" || v === null || v === undefined ? null : Number(v));
+
       return {
         sesion_id: sesion.id,
         planificacion_ejercicio_id: planEjId,
         ejercicio_id: Number(planEj.ejercicio_id),
-        peso_kg:
-          reg.peso_kg === "" || reg.peso_kg === null || reg.peso_kg === undefined
-            ? null
-            : Number(reg.peso_kg),
-        repeticiones:
-          reg.repeticiones === "" || reg.repeticiones === null || reg.repeticiones === undefined
-            ? null
-            : Number(reg.repeticiones),
-        rpe:
-          reg.rpe === "" || reg.rpe === null || reg.rpe === undefined
-            ? null
-            : Number(reg.rpe),
+        peso_kg: toNum(s0.peso_kg ?? reg.peso_kg),
+        repeticiones: toNum(s0.repeticiones ?? reg.repeticiones),
+        rpe: toNum(s0.rpe ?? reg.rpe),
         notas: reg.notas?.trim() ? reg.notas.trim() : null,
-        series: Array.isArray(reg.series) ? reg.series : [],
+        series: seriesArr,
         ejercicio_nombre_snapshot: planEj.ejercicios?.nombre ?? "Ejercicio",
         categoria_snapshot: planEj.categoria ?? null,
         prescripcion_dosis: prescripcionSemana?.dosis ?? null,

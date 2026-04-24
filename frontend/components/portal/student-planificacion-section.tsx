@@ -1,6 +1,8 @@
 "use client"
 
 import React, { useEffect, useMemo, useRef, useState } from "react"
+import Select from "@mui/material/Select"
+import MenuItem from "@mui/material/MenuItem"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import axios from "axios"
 import { Input } from "@/components/ui/input"
@@ -54,11 +56,19 @@ interface PlanDiaPortal {
   ejercicios: PlanEjercicioPortal[]
 }
 
+interface MovilidadItem {
+  id: number
+  nombre: string
+  imagen_url: string | null
+  orden: number
+}
+
 interface PlanHojaPortal {
   id: number
   nombre: string
   numero: number
   estado: string
+  movilidad: MovilidadItem[]
   dias: PlanDiaPortal[]
 }
 
@@ -70,6 +80,12 @@ interface PlanificacionPortal {
   hojas: PlanHojaPortal[]
 }
 
+interface SerieRegistro {
+  peso_kg: number | null
+  repeticiones: number | null
+  rpe: number | null
+}
+
 interface RegistroSesion {
   id: number
   planificacion_ejercicio_id: number
@@ -77,6 +93,7 @@ interface RegistroSesion {
   repeticiones: number | null
   rpe: number | null
   notas: string | null
+  series: SerieRegistro[] | null
 }
 
 interface SsnData {
@@ -84,12 +101,57 @@ interface SsnData {
   registros: RegistroSesion[]
 }
 
-type FormRow = {
+type SerieRow = {
   peso_kg: string
   repeticiones: string
   rpe: string
+}
+
+type FormRow = {
+  series: [SerieRow, SerieRow, SerieRow]
   notas: string
 }
+
+const EMPTY_SERIE: SerieRow = { peso_kg: "", repeticiones: "", rpe: "" }
+const EMPTY_FORM_ROW = (): FormRow => ({
+  series: [{ ...EMPTY_SERIE }, { ...EMPTY_SERIE }, { ...EMPTY_SERIE }],
+  notas: "",
+})
+
+const muiSelectSx = (hasValue: boolean) => ({
+  height: 48,
+  borderRadius: "12px",
+  backgroundColor: hasValue ? "rgba(255,255,255,0.07)" : "rgba(24,24,27,0.8)",
+  color: hasValue ? "#fff" : "rgba(255,255,255,0.25)",
+  "& .MuiOutlinedInput-notchedOutline": {
+    borderColor: hasValue ? "rgba(34,197,94,0.3)" : "rgba(255,255,255,0.08)",
+  },
+  "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(34,197,94,0.5)" },
+  "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(34,197,94,0.6)" },
+  "& .MuiSelect-icon": { color: "rgba(255,255,255,0.25)" },
+  "& .MuiSelect-select": { textAlign: "center", paddingRight: "28px !important" },
+})
+
+const muiMenuProps = (maxHeight: number) => ({
+  PaperProps: {
+    sx: {
+      backgroundColor: "#18181b",
+      border: "1px solid rgba(255,255,255,0.1)",
+      borderRadius: "12px",
+      boxShadow: "0 20px 60px rgba(0,0,0,0.8)",
+      maxHeight,
+      "& .MuiMenuItem-root": {
+        color: "#d4d4d8",
+        fontWeight: 600,
+        fontSize: "0.875rem",
+        justifyContent: "center",
+        "&:hover": { backgroundColor: "rgba(255,255,255,0.06)" },
+        "&.Mui-selected": { backgroundColor: "rgba(34,197,94,0.15)", color: "#4ade80" },
+        "&.Mui-selected:hover": { backgroundColor: "rgba(34,197,94,0.22)" },
+      },
+    },
+  },
+})
 
 const queryKeyPlan = (studentId: number) => ["portalPlanificacion", studentId] as const
 const queryKeySesion = (planId: number, studentId: number, hojaId: number, diaId: number, semana: number) =>
@@ -118,14 +180,25 @@ export function StudentPlanificacionSection({
   const refetchResumenRef = useRef<(() => void) | null>(null)
   const refetchSesionesSemanaRef = useRef<(() => void) | null>(null)
   const [diaManualCompletado, setDiaManualCompletado] = useState<boolean | null>(null)
-  const [openPicker, setOpenPicker] = useState<{ ejId: number; field: "repeticiones" | "rpe" } | null>(null)
+  const [activeSerieMap, setActiveSerieMap] = useState<Record<number, number>>({})
+  const serieScrollRefs = useRef<Map<number, HTMLDivElement>>(new Map())
+  const exerciseCardRefs = useRef<Map<number, HTMLDivElement>>(new Map())
+  const [movilidadIdx, setMovilidadIdx] = useState(0)
+  const movilidadScrollRef = useRef<HTMLDivElement | null>(null)
 
-  useEffect(() => {
-    if (!openPicker) return
-    const close = () => setOpenPicker(null)
-    const timer = setTimeout(() => document.addEventListener("click", close), 0)
-    return () => { clearTimeout(timer); document.removeEventListener("click", close) }
-  }, [openPicker])
+  const getActiveSerie = (ejId: number) => activeSerieMap[ejId] ?? 0
+
+  const scrollToSerie = (ejId: number, idx: number) => {
+    const el = serieScrollRefs.current.get(ejId)
+    if (el) el.scrollTo({ left: idx * el.clientWidth, behavior: "smooth" })
+    setActiveSerieMap((prev) => ({ ...prev, [ejId]: idx }))
+  }
+
+  const handleSerieScroll = (ejId: number, el: HTMLDivElement) => {
+    const idx = Math.round(el.scrollLeft / el.clientWidth)
+    setActiveSerieMap((prev) => (prev[ejId] === idx ? prev : { ...prev, [ejId]: idx }))
+  }
+
 
   const { data: planData, isLoading: loadingPlan, isError: errorPlan } = useQuery<{ planificacion: PlanificacionPortal | null }>({
     queryKey: queryKeyPlan(studentId),
@@ -229,12 +302,29 @@ export function StudentPlanificacionSection({
     const next: Record<number, FormRow> = {}
     for (const ej of ejerciciosDelDia) {
       const existing = registrosMap.get(ej.id)
-      next[ej.id] = {
-        peso_kg: existing?.peso_kg?.toString() ?? "",
-        repeticiones: existing?.repeticiones?.toString() ?? "",
-        rpe: existing?.rpe?.toString() ?? "",
-        notas: existing?.notas ?? "",
-      }
+      const savedSeries = Array.isArray(existing?.series) && existing.series.length > 0
+        ? existing.series
+        : []
+      const series: [SerieRow, SerieRow, SerieRow] = [0, 1, 2].map((i) => {
+        const s = savedSeries[i]
+        if (s) {
+          return {
+            peso_kg: s.peso_kg?.toString() ?? "",
+            repeticiones: s.repeticiones?.toString() ?? "",
+            rpe: s.rpe?.toString() ?? "",
+          }
+        }
+        // fallback para registros guardados con el formato anterior (campos top-level)
+        if (i === 0 && existing) {
+          return {
+            peso_kg: existing.peso_kg?.toString() ?? "",
+            repeticiones: existing.repeticiones?.toString() ?? "",
+            rpe: existing.rpe?.toString() ?? "",
+          }
+        }
+        return { ...EMPTY_SERIE }
+      }) as [SerieRow, SerieRow, SerieRow]
+      next[ej.id] = { series, notas: existing?.notas ?? "" }
     }
     isDirty.current = false
     setRegistrosForm(next)
@@ -245,7 +335,7 @@ export function StudentPlanificacionSection({
     if (ejerciciosDelDia.length === 0) return false
     return ejerciciosDelDia.every((ej) => {
       const row = registrosForm[ej.id]
-      return !!row?.peso_kg && !!row?.repeticiones && !!row?.rpe
+      return (row?.series ?? []).every((s) => !!s.peso_kg && !!s.repeticiones && !!s.rpe)
     })
   }, [ejerciciosDelDia, registrosForm])
 
@@ -336,13 +426,22 @@ export function StudentPlanificacionSection({
     mutationFn: async () => {
       if (!planificacion || !hojaActiva || !diaSeleccionado || !semanaSeleccionada) return
 
-      const registros = ejerciciosDelDia.map((ej) => ({
-        planificacion_ejercicio_id: ej.id,
-        peso_kg: registrosForm[ej.id]?.peso_kg ?? "",
-        repeticiones: registrosForm[ej.id]?.repeticiones ?? "",
-        rpe: registrosForm[ej.id]?.rpe ?? "",
-        notas: registrosForm[ej.id]?.notas ?? "",
-      }))
+      const registros = ejerciciosDelDia.map((ej) => {
+        const row = registrosForm[ej.id] ?? EMPTY_FORM_ROW()
+        const s0 = row.series[0]
+        return {
+          planificacion_ejercicio_id: ej.id,
+          peso_kg: s0.peso_kg,
+          repeticiones: s0.repeticiones,
+          rpe: s0.rpe,
+          notas: row.notas,
+          series: row.series.map((s) => ({
+            peso_kg: s.peso_kg === "" ? null : Number(s.peso_kg),
+            repeticiones: s.repeticiones === "" ? null : Number(s.repeticiones),
+            rpe: s.rpe === "" ? null : Number(s.rpe),
+          })),
+        }
+      })
 
       await axios.put(`${process.env.NEXT_PUBLIC_URL_BACKEND}/portal/planificaciones/${planificacion.id}/sesiones`, {
         alumno_id: studentId,
@@ -398,29 +497,53 @@ export function StudentPlanificacionSection({
     prevAllCompletedAuto.current = allCompletedAuto
   }, [allCompletedAuto])
 
-  const handleFieldChange = (planEjId: number, field: keyof FormRow, value: string) => {
+  const handleSerieChange = (planEjId: number, serieIdx: number, field: keyof SerieRow, value: string) => {
     isDirty.current = true
     setSaveMessage("")
     setSavedSuccess(false)
     setRegistrosForm((prev) => {
-      const updated = {
-        ...prev,
-        [planEjId]: {
-          peso_kg: prev[planEjId]?.peso_kg ?? "",
-          repeticiones: prev[planEjId]?.repeticiones ?? "",
-          rpe: prev[planEjId]?.rpe ?? "",
-          notas: prev[planEjId]?.notas ?? "",
-          [field]: value,
-        },
+      const old = prev[planEjId] ?? EMPTY_FORM_ROW()
+      const newSeries = old.series.map((s, i) =>
+        i === serieIdx ? { ...s, [field]: value } : s
+      ) as [SerieRow, SerieRow, SerieRow]
+      const updated = { ...prev, [planEjId]: { ...old, series: newSeries } }
+
+      const thisSerie = newSeries[serieIdx]
+      const serieFilled = !!thisSerie.peso_kg && !!thisSerie.repeticiones && !!thisSerie.rpe
+      const wasAlreadyFilled = !!old.series[serieIdx].peso_kg && !!old.series[serieIdx].repeticiones && !!old.series[serieIdx].rpe
+
+      if (serieFilled && !wasAlreadyFilled) {
+        setTimeout(() => {
+          if (serieIdx < 2) {
+            scrollToSerie(planEjId, serieIdx + 1)
+          } else {
+            const ejIdx = ejerciciosDelDia.findIndex((e) => e.id === planEjId)
+            if (ejIdx !== -1 && ejIdx < ejerciciosDelDia.length - 1) {
+              const nextEjId = ejerciciosDelDia[ejIdx + 1].id
+              exerciseCardRefs.current.get(nextEjId)?.scrollIntoView({ behavior: "smooth", block: "start" })
+            }
+          }
+        }, 400)
       }
-      const row = updated[planEjId]
-      if (row.peso_kg && row.repeticiones && row.rpe) {
+
+      const allSeriesFilled = newSeries.every((s) => !!s.peso_kg && !!s.repeticiones && !!s.rpe)
+      if (allSeriesFilled) {
         if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current)
         saveDebounceRef.current = setTimeout(() => {
           if (!saveIsPendingRef.current) saveMutateRef.current()
         }, 800)
       }
       return updated
+    })
+  }
+
+  const handleNotasChange = (planEjId: number, value: string) => {
+    isDirty.current = true
+    setSaveMessage("")
+    setSavedSuccess(false)
+    setRegistrosForm((prev) => {
+      const old = prev[planEjId] ?? EMPTY_FORM_ROW()
+      return { ...prev, [planEjId]: { ...old, notas: value } }
     })
   }
 
@@ -609,16 +732,89 @@ export function StudentPlanificacionSection({
         }
       </div>
 
+      {/* Movilidad */}
+      {(hojaActiva?.movilidad ?? []).length > 0 && (() => {
+        const movilidad = hojaActiva!.movilidad
+        const total = movilidad.length
+        const mov = movilidad[movilidadIdx]
+        return (
+          <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02]">
+            {/* Header */}
+            <div className="px-4 pt-3 pb-2 flex items-center gap-2 border-b border-white/[0.05]">
+              <span className="text-[10px] font-black uppercase tracking-widest text-amber-400 flex-shrink-0">Movilidad</span>
+              <span className="text-[10px] text-zinc-500 flex-shrink-0">·</span>
+              <span className="text-[11px] font-semibold text-zinc-200 truncate flex-1">{mov.nombre}</span>
+              <span className="text-[10px] font-semibold text-zinc-500 flex-shrink-0">{movilidadIdx + 1}/{total}</span>
+            </div>
+
+            {/* Scroll carousel */}
+            <div
+              ref={movilidadScrollRef}
+              className="flex overflow-x-auto snap-x snap-mandatory pt-4 pb-2"
+              style={{ scrollbarWidth: "none" }}
+              onScroll={(e) => {
+                const idx = Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth)
+                setMovilidadIdx(idx)
+              }}
+            >
+              {movilidad.map((item, i) => (
+                <div key={item.id} className="snap-start flex-shrink-0 w-full px-4">
+                  {item.imagen_url ? (
+                    <img
+                      src={item.imagen_url}
+                      alt={item.nombre}
+                      className="w-full aspect-video rounded-xl object-cover bg-zinc-800"
+                    />
+                  ) : (
+                    <div className="w-full aspect-video rounded-xl bg-amber-500/10 flex items-center justify-center">
+                      <span className="text-5xl font-black text-amber-400">{i + 1}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+
+            {/* Dots */}
+            {total > 1 && (
+              <div className="flex justify-center gap-1.5 pb-3">
+                {movilidad.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => {
+                      setMovilidadIdx(i)
+                      movilidadScrollRef.current?.scrollTo({ left: i * movilidadScrollRef.current.clientWidth, behavior: "smooth" })
+                    }}
+                    className={`rounded-full transition-all ${
+                      i === movilidadIdx ? "w-4 h-1.5 bg-amber-400" : "w-1.5 h-1.5 bg-zinc-600"
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      })()}
+
       {/* Exercise cards */}
       {ejerciciosDelDia.length === 0 ? (
         <p className="text-sm text-zinc-400 text-center py-8">Este día no tiene ejercicios asignados.</p>
       ) : (
         <div className="space-y-3">
-          {ejerciciosDelDia.map((ej, idx) => {
+          {ejerciciosDelDia.map((ej) => {
             const semanaPlan = ej.semanas.find((s) => s.semana === semanaSeleccionada)
-            const row = registrosForm[ej.id] ?? { peso_kg: "", repeticiones: "", rpe: "", notas: "" }
-            const isFilled = !!row.peso_kg && !!row.repeticiones && !!row.rpe
+            const row = registrosForm[ej.id] ?? EMPTY_FORM_ROW()
+            const isFilled = row.series.every((s) => !!s.peso_kg && !!s.repeticiones && !!s.rpe)
             const regAnterior = registrosAnterioresMap.get(ej.id) ?? null
+            const anteriorSeries: SerieRegistro[] | null = (() => {
+              if (!regAnterior) return null
+              if (Array.isArray(regAnterior.series) && regAnterior.series.length > 0) return regAnterior.series
+              // fallback: registros guardados con formato anterior (campos top-level)
+              if (regAnterior.peso_kg !== null || regAnterior.repeticiones !== null || regAnterior.rpe !== null) {
+                return [{ peso_kg: regAnterior.peso_kg, repeticiones: regAnterior.repeticiones, rpe: regAnterior.rpe }]
+              }
+              return null
+            })()
             const catStyle = CATEGORIA_ROW_STYLE[ej.categoria] ?? {}
             const catColor = catStyle.color as string | undefined
             const catBg = catStyle.backgroundColor as string | undefined
@@ -626,30 +822,25 @@ export function StudentPlanificacionSection({
             return (
               <div
                 key={ej.id}
+                ref={(el) => { if (el) exerciseCardRefs.current.set(ej.id, el) }}
                 className="rounded-2xl border border-white/[0.07] transition-all duration-200"
               >
-                {/* Category color strip */}
+                {/* Category + name + video strip */}
                 <div
                   className="px-4 pt-3 pb-2 flex items-center gap-2 rounded-t-2xl"
                   style={{ backgroundColor: catBg ? `color-mix(in srgb, ${catBg} 60%, transparent)` : undefined }}
                 >
                   <span
-                    className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md"
+                    className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md flex-shrink-0"
                     style={{ color: catColor, backgroundColor: catBg }}
                   >
                     {ej.categoria}
                   </span>
-                  {isFilled && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-green-500/10 border border-green-500/20 px-2 py-0.5 text-[10px] font-semibold text-green-400 ml-auto">
-                      <CheckCircle2 className="h-2.5 w-2.5" />
-                      Completado
-                    </span>
-                  )}
-                </div>
-
-                {/* Exercise header */}
-                <div className="px-4 pt-2 pb-3 flex items-center gap-2.5">
-                  {ej.ejercicios?.video_url ? (
+                  <span className="text-[10px] text-zinc-500 flex-shrink-0">·</span>
+                  <p className="text-[11px] font-semibold text-zinc-200 truncate flex-1 min-w-0">
+                    {ej.ejercicios?.nombre ?? "Ejercicio"}
+                  </p>
+                  {ej.ejercicios?.video_url && (
                     <button
                       onClick={() => setVideoModal({ nombre: ej.ejercicios!.nombre, url: ej.ejercicios!.video_url! })}
                       className="h-7 w-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-opacity hover:opacity-80"
@@ -657,124 +848,176 @@ export function StudentPlanificacionSection({
                     >
                       <Play className="h-3 w-3" fill="currentColor" />
                     </button>
-                  ) : (
-                    <div
-                      className="h-7 w-7 rounded-lg flex items-center justify-center flex-shrink-0 opacity-25"
-                      style={{ backgroundColor: catBg, color: catColor }}
-                    >
-                      <Play className="h-3 w-3" fill="currentColor" />
-                    </div>
                   )}
-                  <p className="text-xs font-semibold text-white leading-snug flex-1 min-w-0">
-                    {ej.ejercicios?.nombre ?? "Ejercicio"}
-                  </p>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    {semanaPlan?.dosis && (
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 px-3 py-1 text-xs font-bold text-blue-400">
+                  {isFilled && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-green-500/10 border border-green-500/20 px-2 py-0.5 text-[10px] font-semibold text-green-400 flex-shrink-0">
+                      <CheckCircle2 className="h-2.5 w-2.5" />
+                      Completado
+                    </span>
+                  )}
+                </div>
+
+                {/* Dosis / RPE prescrito — 50/50 */}
+                {(semanaPlan?.dosis || typeof semanaPlan?.rpe === "number") && (
+                  <div className="px-4 pt-2 pb-1 grid grid-cols-2 gap-2">
+                    {semanaPlan?.dosis ? (
+                      <span className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-500/10 border border-blue-500/20 px-3 py-2 text-xs font-bold text-blue-400">
                         <CalendarDays className="h-3 w-3" />
                         {semanaPlan.dosis}
                       </span>
-                    )}
-                    {typeof semanaPlan?.rpe === "number" && (
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-500/10 border border-orange-500/20 px-3 py-1 text-xs font-bold text-orange-400">
+                    ) : <div />}
+                    {typeof semanaPlan?.rpe === "number" ? (
+                      <span className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-orange-500/10 border border-orange-500/20 px-3 py-2 text-xs font-bold text-orange-400">
                         <Flame className="h-3 w-3" />
                         RPE {semanaPlan.rpe}
                       </span>
-                    )}
+                    ) : <div />}
                   </div>
-                </div>
+                )}
 
-                {/* Inputs */}
-                <div className="px-4 pb-4 space-y-3">
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="space-y-1.5">
-                      <label className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-                        <Weight className="h-2.5 w-2.5" />
-                        Peso kg
-                      </label>
-                      <Input
-                        type="number"
-                        placeholder="0"
-                        value={row.peso_kg}
-                        onChange={(e) => handleFieldChange(ej.id, "peso_kg", e.target.value)}
-                        className="bg-zinc-900/80 border-white/[0.08] focus:border-green-500/50 focus:ring-green-500/20 text-white placeholder:text-zinc-600 h-12 text-base font-bold text-center rounded-xl"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-                        <RotateCcw className="h-2.5 w-2.5" />
-                        Reps
-                      </label>
-                      <div className="relative">
+                {/* Serie pills + scroll */}
+                <div className="pb-4">
+                  {/* S1/S2/S3 pills — 33% cada una */}
+                  <div className="grid grid-cols-3 gap-2 px-4 mt-4 mb-3">
+                    {([0, 1, 2] as const).map((i) => {
+                      const s = row.series[i]
+                      const filled = !!s.peso_kg && !!s.repeticiones && !!s.rpe
+                      const active = getActiveSerie(ej.id) === i
+                      return (
                         <button
-                          onClick={() => setOpenPicker(openPicker?.ejId === ej.id && openPicker.field === "repeticiones" ? null : { ejId: ej.id, field: "repeticiones" })}
-                          className={`w-full h-12 rounded-xl border text-base font-bold text-center transition-all flex items-center justify-center gap-1 ${
-                            row.repeticiones ? "bg-zinc-800 border-green-500/30 text-white" : "bg-zinc-900/80 border-white/[0.08] text-zinc-500"
+                          key={i}
+                          onClick={() => scrollToSerie(ej.id, i)}
+                          className={`flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all border ${
+                            filled
+                              ? "bg-green-500/20 border-green-500/40 text-white"
+                              : active
+                              ? "bg-white/[0.08] border-white/[0.15] text-white"
+                              : "bg-transparent border-white/[0.06] text-zinc-500"
                           }`}
                         >
-                          {row.repeticiones || "—"}
+                          Serie {i + 1}
+                          {filled && <span className="h-2 w-2 rounded-full bg-green-400 flex-shrink-0" />}
                         </button>
-                        {openPicker?.ejId === ej.id && openPicker.field === "repeticiones" && (
-                          <>
-                            <div className="absolute left-0 right-0 top-full mt-1 z-40 rounded-xl border border-white/[0.1] bg-zinc-900 shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
-                              <div className="max-h-48 overflow-y-auto">
+                      )
+                    })}
+                  </div>
+
+                  {/* Horizontal scroll container */}
+                  <div
+                    ref={(el) => { if (el) serieScrollRefs.current.set(ej.id, el) }}
+                    className="flex overflow-x-auto snap-x snap-mandatory"
+                    style={{ scrollbarWidth: "none" }}
+                    onScroll={(e) => handleSerieScroll(ej.id, e.currentTarget)}
+                  >
+                    {([0, 1, 2] as const).map((serieIdx) => {
+                      const serie = row.series[serieIdx]
+                      const anteriorSerie = anteriorSeries?.[serieIdx] ?? null
+                      return (
+                        <div key={serieIdx} className="snap-start flex-shrink-0 w-full px-4 space-y-3">
+                          {/* 3-col grid: peso / reps / rpe */}
+                          <div className="grid grid-cols-3 gap-2">
+                            <div className="space-y-1.5">
+                              <label className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                                <Weight className="h-2.5 w-2.5" />
+                                Peso kg
+                              </label>
+                              <Input
+                                type="number"
+                                placeholder="0"
+                                value={serie.peso_kg}
+                                onChange={(e) => handleSerieChange(ej.id, serieIdx, "peso_kg", e.target.value)}
+                                className="bg-zinc-900/80 border-white/[0.08] focus:border-green-500/50 focus:ring-green-500/20 text-white placeholder:text-zinc-600 h-12 text-base font-bold text-center rounded-xl"
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                                <RotateCcw className="h-2.5 w-2.5" />
+                                Reps
+                              </label>
+                              <Select
+                                value={serie.repeticiones || ""}
+                                onChange={(e) => handleSerieChange(ej.id, serieIdx, "repeticiones", String(e.target.value))}
+                                displayEmpty
+                                size="small"
+                                fullWidth
+                                renderValue={(v) => <span style={{ fontWeight: 700, fontSize: "1rem" }}>{v || "—"}</span>}
+                                sx={muiSelectSx(!!serie.repeticiones)}
+                                MenuProps={muiMenuProps(88)}
+                              >
                                 {Array.from({ length: 20 }, (_, i) => i + 1).map((n) => (
-                                  <button
-                                    key={n}
-                                    onClick={() => { handleFieldChange(ej.id, "repeticiones", String(n)); setOpenPicker(null) }}
-                                    className={`w-full px-4 py-3 text-sm font-semibold text-left transition-colors ${
-                                      row.repeticiones === String(n)
-                                        ? "bg-green-500/20 text-green-400"
-                                        : "text-zinc-300 hover:bg-white/[0.06]"
-                                    }`}
-                                  >
-                                    {n} reps
-                                  </button>
+                                  <MenuItem key={n} value={n}>{n} reps</MenuItem>
                                 ))}
+                              </Select>
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                                <Flame className="h-2.5 w-2.5" />
+                                RPE
+                              </label>
+                              <Select
+                                value={serie.rpe || ""}
+                                onChange={(e) => handleSerieChange(ej.id, serieIdx, "rpe", String(e.target.value))}
+                                displayEmpty
+                                size="small"
+                                fullWidth
+                                renderValue={(v) => <span style={{ fontWeight: 700, fontSize: "1rem" }}>{v || "—"}</span>}
+                                sx={muiSelectSx(!!serie.rpe)}
+                                MenuProps={muiMenuProps(88)}
+                              >
+                                {Array.from({ length: 6 }, (_, i) => 10 - i).map((n) => (
+                                  <MenuItem key={n} value={n}>RPE {n}</MenuItem>
+                                ))}
+                              </Select>
+                            </div>
+                          </div>
+
+                          {/* Semana anterior para esta serie */}
+                          {semanaAnterior && (
+                            <div className="rounded-xl overflow-hidden border border-violet-500/15 bg-gradient-to-r from-violet-500/[0.07] to-transparent">
+                              <div className="flex items-center gap-1.5 px-3 pt-2 pb-1">
+                                <div className="h-1 w-1 rounded-full bg-violet-400" />
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-violet-400">
+                                  Semana {semanaAnterior} · S{serieIdx + 1}
+                                </span>
                               </div>
+                              {anteriorSerie && (anteriorSerie.peso_kg !== null || anteriorSerie.repeticiones !== null || anteriorSerie.rpe !== null) ? (
+                                <div className="flex items-stretch divide-x divide-white/[0.06] pb-2 px-1">
+                                  {anteriorSerie.peso_kg !== null && (
+                                    <div className="flex flex-col items-center flex-1 py-1 px-2">
+                                      <span className="text-[9px] font-semibold uppercase tracking-wider text-zinc-500">Peso</span>
+                                      <span className="text-base font-black text-white leading-tight">{anteriorSerie.peso_kg}</span>
+                                      <span className="text-[9px] text-zinc-500">kg</span>
+                                    </div>
+                                  )}
+                                  {anteriorSerie.repeticiones !== null && (
+                                    <div className="flex flex-col items-center flex-1 py-1 px-2">
+                                      <span className="text-[9px] font-semibold uppercase tracking-wider text-zinc-500">Reps</span>
+                                      <span className="text-base font-black text-white leading-tight">{anteriorSerie.repeticiones}</span>
+                                      <span className="text-[9px] text-zinc-500">rep</span>
+                                    </div>
+                                  )}
+                                  {anteriorSerie.rpe !== null && (
+                                    <div className="flex flex-col items-center flex-1 py-1 px-2">
+                                      <span className="text-[9px] font-semibold uppercase tracking-wider text-zinc-500">RPE</span>
+                                      <span className="text-base font-black text-white leading-tight">{anteriorSerie.rpe}</span>
+                                      <span className="text-[9px] text-zinc-500">/10</span>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="flex items-center justify-center pb-2 px-1 h-[52px]">
+                                  <p className="text-[10px] text-zinc-500">Sin registros en esta serie</p>
+                                </div>
+                              )}
                             </div>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-                        <Flame className="h-2.5 w-2.5" />
-                        RPE
-                      </label>
-                      <div className="relative">
-                        <button
-                          onClick={() => setOpenPicker(openPicker?.ejId === ej.id && openPicker.field === "rpe" ? null : { ejId: ej.id, field: "rpe" })}
-                          className={`w-full h-12 rounded-xl border text-base font-bold text-center transition-all flex items-center justify-center gap-1 ${
-                            row.rpe ? "bg-zinc-800 border-green-500/30 text-white" : "bg-zinc-900/80 border-white/[0.08] text-zinc-500"
-                          }`}
-                        >
-                          {row.rpe || "—"}
-                        </button>
-                        {openPicker?.ejId === ej.id && openPicker.field === "rpe" && (
-                          <>
-                            <div className="absolute left-0 right-0 top-full mt-1 z-40 rounded-xl border border-white/[0.1] bg-zinc-900 shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
-                              {Array.from({ length: 6 }, (_, i) => 10 - i).map((n) => (
-                                <button
-                                  key={n}
-                                  onClick={() => { handleFieldChange(ej.id, "rpe", String(n)); setOpenPicker(null) }}
-                                  className={`w-full px-4 py-3 text-sm font-semibold text-left transition-colors ${
-                                    row.rpe === String(n)
-                                      ? "bg-green-500/20 text-green-400"
-                                      : "text-zinc-300 hover:bg-white/[0.06]"
-                                  }`}
-                                >
-                                  RPE {n}
-                                </button>
-                              ))}
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    </div>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
 
-                  <div className="space-y-1.5">
+                  {/* Notas */}
+                  <div className="px-4 pt-3 space-y-1.5">
                     <label className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
                       <StickyNote className="h-2.5 w-2.5" />
                       Notas
@@ -783,43 +1026,9 @@ export function StudentPlanificacionSection({
                       placeholder="Opcional…"
                       className="min-h-16 resize-none bg-zinc-900/80 border-white/[0.08] focus:border-green-500/50 focus:ring-green-500/20 text-white placeholder:text-zinc-600 text-sm rounded-xl"
                       value={row.notas}
-                      onChange={(e) => handleFieldChange(ej.id, "notas", e.target.value)}
+                      onChange={(e) => handleNotasChange(ej.id, e.target.value)}
                     />
                   </div>
-
-                  {regAnterior && (regAnterior.peso_kg !== null || regAnterior.repeticiones !== null || regAnterior.rpe !== null) && (
-                    <div className="rounded-xl overflow-hidden border border-violet-500/15 bg-gradient-to-r from-violet-500/[0.07] to-transparent">
-                      <div className="flex items-center gap-1.5 px-3 pt-2 pb-1">
-                        <div className="h-1 w-1 rounded-full bg-violet-400" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-violet-400">
-                          Semana {semanaAnterior}
-                        </span>
-                      </div>
-                      <div className="flex items-stretch divide-x divide-white/[0.06] pb-2 px-1">
-                        {regAnterior.peso_kg !== null && (
-                          <div className="flex flex-col items-center flex-1 py-1 px-2">
-                            <span className="text-[9px] font-semibold uppercase tracking-wider text-zinc-500">Peso</span>
-                            <span className="text-base font-black text-white leading-tight">{regAnterior.peso_kg}</span>
-                            <span className="text-[9px] text-zinc-500">kg</span>
-                          </div>
-                        )}
-                        {regAnterior.repeticiones !== null && (
-                          <div className="flex flex-col items-center flex-1 py-1 px-2">
-                            <span className="text-[9px] font-semibold uppercase tracking-wider text-zinc-500">Reps</span>
-                            <span className="text-base font-black text-white leading-tight">{regAnterior.repeticiones}</span>
-                            <span className="text-[9px] text-zinc-500">rep</span>
-                          </div>
-                        )}
-                        {regAnterior.rpe !== null && (
-                          <div className="flex flex-col items-center flex-1 py-1 px-2">
-                            <span className="text-[9px] font-semibold uppercase tracking-wider text-zinc-500">RPE</span>
-                            <span className="text-base font-black text-white leading-tight">{regAnterior.rpe}</span>
-                            <span className="text-[9px] text-zinc-500">/10</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
             )
@@ -828,7 +1037,7 @@ export function StudentPlanificacionSection({
       )}
 
       {/* Save bar */}
-      <div className="sticky bottom-4 pt-2">
+      <div className="sticky bottom-4 pt-2 z-50">
         <div className="rounded-2xl border border-white/[0.1] bg-zinc-800/90 backdrop-blur-xl px-5 py-4 flex items-center gap-4">
           <div className="flex-1 min-w-0">
             {savedSuccess && allCompleted ? (
