@@ -150,6 +150,17 @@ export function StudentPlanificacionSection({
   const [movilidadIdx, setMovilidadIdx] = useState(0)
   const movilidadScrollRef = useRef<HTMLDivElement | null>(null)
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map())
+  const serieAdvanceDebounceRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+
+  const clampSerieValue = (field: keyof SerieRow, value: string): string => {
+    if (value === "") return ""
+    const num = parseInt(value, 10)
+    if (isNaN(num)) return ""
+    if (field === "peso_kg") return String(Math.min(500, Math.max(0, num)))
+    if (field === "repeticiones") return String(Math.min(30, Math.max(1, num)))
+    if (field === "rpe") return String(Math.min(10, Math.max(1, num)))
+    return value
+  }
 
   const focusNextInput = (ejId: number, serieIdx: number, field: keyof SerieRow) => {
     const fields: (keyof SerieRow)[] = ["peso_kg", "repeticiones", "rpe"]
@@ -454,22 +465,28 @@ export function StudentPlanificacionSection({
 
 
   const handleSerieChange = (planEjId: number, serieIdx: number, field: keyof SerieRow, value: string) => {
+    const clamped = clampSerieValue(field, value)
     isDirty.current = true
     setSaveMessage("")
     setSavedSuccess(false)
     setRegistrosForm((prev) => {
       const old = prev[planEjId] ?? EMPTY_FORM_ROW()
       const newSeries = old.series.map((s, i) =>
-        i === serieIdx ? { ...s, [field]: value } : s
+        i === serieIdx ? { ...s, [field]: clamped } : s
       ) as [SerieRow, SerieRow, SerieRow]
       const updated = { ...prev, [planEjId]: { ...old, series: newSeries } }
 
       const thisSerie = newSeries[serieIdx]
       const serieFilled = !!thisSerie.peso_kg && !!thisSerie.repeticiones && !!thisSerie.rpe
-      const wasAlreadyFilled = !!old.series[serieIdx].peso_kg && !!old.series[serieIdx].repeticiones && !!old.series[serieIdx].rpe
 
-      if (serieFilled && !wasAlreadyFilled) {
-        setTimeout(() => {
+      // Debounce advance so typing "10" in RPE doesn't jump before the second digit
+      const advanceKey = `${planEjId}-${serieIdx}`
+      const pending = serieAdvanceDebounceRef.current.get(advanceKey)
+      if (pending) clearTimeout(pending)
+
+      if (serieFilled) {
+        const t = setTimeout(() => {
+          serieAdvanceDebounceRef.current.delete(advanceKey)
           if (serieIdx < 2) {
             scrollToSerie(planEjId, serieIdx + 1)
           } else {
@@ -479,7 +496,8 @@ export function StudentPlanificacionSection({
               exerciseCardRefs.current.get(nextEjId)?.scrollIntoView({ behavior: "smooth", block: "start" })
             }
           }
-        }, 400)
+        }, 700)
+        serieAdvanceDebounceRef.current.set(advanceKey, t)
       }
 
       const allSeriesFilled = newSeries.every((s) => !!s.peso_kg && !!s.repeticiones && !!s.rpe)
@@ -899,7 +917,7 @@ export function StudentPlanificacionSection({
                                 type="number"
                                 placeholder="0"
                                 min={1}
-                                max={20}
+                                max={30}
                                 value={serie.repeticiones}
                                 onChange={(e) => handleSerieChange(ej.id, serieIdx, "repeticiones", e.target.value)}
                                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNextInput(ej.id, serieIdx, "repeticiones") } }}
