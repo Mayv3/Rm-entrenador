@@ -516,7 +516,7 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
       </div>
 
       {/* ─── Tabs de hojas ─── */}
-      <div className="flex items-center gap-2 overflow-x-auto md:overflow-visible flex-nowrap md:flex-wrap border-b pb-3 px-0.5">
+      <div className="flex items-center gap-2 overflow-x-auto md:overflow-visible flex-nowrap md:flex-wrap border-b pb-3 px-0.5 relative">
         {[...plan.hojas].reverse().map((hoja) => {
           const esVisible = plan.hoja_activa_id === hoja.id
           const esActiva = activeHojaId === hoja.id
@@ -560,6 +560,15 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
             </div>
           )
         })}
+
+        <Button
+          onClick={handleGuardar}
+          disabled={!isDirty || saveStatus === "saving"}
+          className={`md:flex hidden shrink-0 gap-1.5 ml-auto bg-[var(--primary-color)] hover:bg-[var(--primary-color)]/90 text-white transition-opacity duration-300 ${isDirty ? "opacity-100" : "opacity-40"}`}
+        >
+          {saveStatus === "saving" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          {saveStatus === "saving" ? "Guardando..." : "Guardar"}
+        </Button>
       </div>
 
       <div className="flex items-center gap-2.5 pt-0.5">
@@ -585,13 +594,9 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
         </Button>
       </div>
 
-      <div className="flex-1 min-h-0 min-w-0 flex gap-4 items-start">
-        <div className="hidden md:block w-80 lg:w-96 shrink-0 sticky top-4" style={{ maxHeight: "calc(100vh - 180px)" }}>
-          <ExerciseLibraryPanel onSelect={handleExerciseSelect} selectedDayName={activeDay?.nombre ?? null} />
-        </div>
-
+      <div className="flex-1 min-h-0 min-w-0 flex gap-4">
         {/* ─── Días ─── */}
-        <div className="flex-1 min-h-0 min-w-0 space-y-4 overflow-y-auto pb-4">
+        <div className="flex-1 min-h-0 min-w-0 space-y-4 overflow-y-auto pb-4 pr-1">
 
           {/* Aviso unsaved — solo desktop */}
           {isDirty && (
@@ -663,14 +668,6 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
               className="shrink-0 w-full md:w-auto bg-[var(--primary-color)] hover:bg-[var(--primary-color)]/90 text-white gap-2">
               <Plus className="h-4 w-4" />
               Agregar día
-            </Button>
-            <Button
-              onClick={handleGuardar}
-              disabled={!isDirty || saveStatus === "saving"}
-              className={`md:flex hidden shrink-0 gap-1.5 bg-[var(--primary-color)] hover:bg-[var(--primary-color)]/90 text-white transition-opacity duration-300 ${isDirty ? "opacity-100" : "opacity-40"}`}
-            >
-              {saveStatus === "saving" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              {saveStatus === "saving" ? "Guardando..." : "Guardar"}
             </Button>
           </div>
         </div>
