@@ -454,6 +454,13 @@ export async function updateEjercicioEnDia(req, res) {
 
 export async function removeEjercicioDeDia(req, res) {
   const { planEjId } = req.params;
+
+  const { error: regError } = await supabase
+    .from("entrenamiento_registros")
+    .delete()
+    .eq("planificacion_ejercicio_id", planEjId);
+  if (regError) return res.status(500).json({ error: regError.message });
+
   const { error } = await supabase
     .from("planificacion_ejercicios")
     .delete()
@@ -690,6 +697,12 @@ export async function saveAll(req, res) {
   // 3. Deletes
   if (deletes.length > 0) {
     ops.push((async () => {
+      const { error: regError } = await supabase
+        .from("entrenamiento_registros")
+        .delete()
+        .in("planificacion_ejercicio_id", deletes)
+      if (regError) throw new Error(regError.message)
+
       const { error } = await supabase.from("planificacion_ejercicios").delete().in("id", deletes)
       if (error) throw new Error(error.message)
     })())
