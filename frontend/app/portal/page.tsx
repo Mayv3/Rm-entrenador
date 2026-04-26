@@ -374,7 +374,7 @@ export default function PortalPage() {
             className="flex items-center justify-center gap-2 py-2.5 rounded-lg bg-violet-600 text-white text-sm font-medium"
           >
             <Dumbbell className="h-4 w-4" />
-            Mi plan app
+            Mi planificación
           </button>
 
           {student.plan && (
@@ -385,7 +385,7 @@ export default function PortalPage() {
               className="col-span-2 flex items-center justify-center gap-2 py-2.5 rounded-lg bg-blue-500 text-white text-sm font-medium"
             >
               <FileText className="h-4 w-4" />
-              Mi plan PDF
+              Mi plan Excel
             </a>
           )}
         </div>
