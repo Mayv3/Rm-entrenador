@@ -592,6 +592,16 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
           <Eye className="h-3.5 w-3.5" />
           Preview
         </Button>
+
+        <Button
+          size="sm"
+          onClick={handleGuardar}
+          disabled={!isDirty || saveStatus === "saving"}
+          className={`md:hidden h-8 px-3 text-xs gap-1.5 shrink-0 bg-[var(--primary-color)] hover:bg-[var(--primary-color)]/90 text-white transition-opacity duration-300 ${isDirty ? "opacity-100" : "opacity-40"}`}
+        >
+          {saveStatus === "saving" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+          {saveStatus === "saving" ? "Guardando..." : "Guardar"}
+        </Button>
       </div>
 
       <div className="flex-1 min-h-0 min-w-0 flex gap-4">
