@@ -59,6 +59,7 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
   const [pendingDeletes, setPendingDeletes] = useState<number[]>([])
   const [isDirty, setIsDirty] = useState(false)
   const initialized = useRef(false)
+  const replacingEjIdRef = useRef<number | null>(null)
   // Movilidad local por hoja (preserva cambios no guardados al cambiar de hoja)
   const [movByHoja, setMovByHoja] = useState<Record<number, { nombre: string; imagen_url: string }[]>>({})
 
@@ -422,7 +423,49 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
     }
   }
 
-  const handleExerciseSelect = (ejercicio: Ejercicio) => {
+  const handleReplaceEj = (planEjId: number) => {
+    replacingEjIdRef.current = planEjId
+    setLibSheetOpen(true)
+  }
+
+  const handleExerciseSelect = async (ejercicio: Ejercicio) => {
+    const planEjId = replacingEjIdRef.current
+    if (planEjId !== null) {
+      replacingEjIdRef.current = null
+
+      // Optimistic: actualizar cache inmediatamente
+      setLibSheetOpen(false)
+      queryClient.setQueryData<Planificacion>(queryKeys.planificacionById(planId), (old) => {
+        if (!old) return old
+        return {
+          ...old,
+          hojas: old.hojas.map((h) => ({
+            ...h,
+            dias: h.dias.map((d) => ({
+              ...d,
+              ejercicios: d.ejercicios.map((ej) =>
+                ej.id === planEjId
+                  ? { ...ej, ejercicio_id: ejercicio.id, ejercicios: ejercicio }
+                  : ej
+              ),
+            })),
+          })),
+        }
+      })
+
+      // API en paralelo (no await, refetch al final para confirmar)
+      axios.put(`${process.env.NEXT_PUBLIC_URL_BACKEND}/planificaciones/ejercicios/${planEjId}`, {
+        ejercicio_id: ejercicio.id,
+      }).then(() => {
+        initialized.current = false
+        refetch()
+      }).catch((err) => {
+        console.error(err)
+        refetch()
+      })
+      return
+    }
+
     const activeHoja = plan?.hojas?.find((h) => h.id === activeHojaId) ?? plan?.hojas?.[0]
     const targetId = activeDayId ?? activeHoja?.dias?.[0]?.id ?? null
     if (!targetId) return
@@ -663,11 +706,13 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
                 onPendingChange={(p) => handlePendingChange(dia.id, p)}
                 onOrderChange={(ids) => handleOrderChange(dia.id, ids)}
                 onDeleteEj={handleDeleteEj}
+                onReplaceEj={handleReplaceEj}
                 canMoveUp={index > 0}
                 canMoveDown={index < activeHoja.dias.length - 1}
                 onMoveUp={() => handleMoveDia(dia.id, -1)}
                 onMoveDown={() => handleMoveDia(dia.id, 1)}
                 onOpenLibrary={() => {
+                  replacingEjIdRef.current = null
                   setActiveDayId(dia.id)
                   setMovilidadCollapseSignal((n) => n + 1)
                   setLibSheetOpen(true)
@@ -696,9 +741,13 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
 
       <ExerciseLibrarySheet
         open={libSheetOpen}
-        onOpenChange={setLibSheetOpen}
+        onOpenChange={(v) => {
+          if (!v) replacingEjIdRef.current = null
+          setLibSheetOpen(v)
+        }}
         onSelect={handleExerciseSelect}
         dayName={activeDay?.nombre ?? null}
+        title={replacingEjIdRef.current != null ? "Reemplazar ejercicio" : undefined}
       />
 
       {/* ─── Preview ─── */}

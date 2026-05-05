@@ -143,8 +143,8 @@ export function StudentPlanificacionSection({
   onRequestCloseRef.current = onRequestClose
   const refetchResumenRef = useRef<(() => void) | null>(null)
   const refetchSesionesSemanaRef = useRef<(() => void) | null>(null)
-  const [diaManualCompletado, setDiaManualCompletado] = useState<boolean | null>(null)
   const [skippedEjIds, setSkippedEjIds] = useState<Set<number>>(new Set())
+  const justSavedRef = useRef(false)
   const [activeSerieMap, setActiveSerieMap] = useState<Record<number, number>>({})
   const serieScrollRefs = useRef<Map<number, HTMLDivElement>>(new Map())
   const exerciseCardRefs = useRef<Map<number, HTMLDivElement>>(new Map())
@@ -282,6 +282,11 @@ export function StudentPlanificacionSection({
       return
     }
 
+    if (justSavedRef.current) {
+      justSavedRef.current = false
+      return
+    }
+
     const registrosMap = new Map(
       (sessionData?.registros ?? []).map((r) => [r.planificacion_ejercicio_id, r])
     )
@@ -315,7 +320,6 @@ export function StudentPlanificacionSection({
     }
     isDirty.current = false
     setRegistrosForm(next)
-    setDiaManualCompletado(sessionData?.sesion?.estado === "completado" ? true : null)
 
     const skipped = new Set<number>()
     for (const ej of ejerciciosDelDia) {
@@ -342,7 +346,7 @@ export function StudentPlanificacionSection({
     })
   }, [ejerciciosDelDia, registrosForm, skippedEjIds])
 
-  const allCompleted = diaManualCompletado !== null ? diaManualCompletado : allCompletedAuto
+  const allCompleted = allCompletedAuto
 
   const { data: sesionesSemana, refetch: _refetchSesionesSemana } = useQuery<{ sesiones: { id: number; dia_id: number; estado: string }[] }>({
     queryKey: ["portalSesionesSemana", planificacion?.id, studentId, hojaActiva?.id, semanaSeleccionada],
@@ -497,6 +501,7 @@ export function StudentPlanificacionSection({
     onSuccess: async () => {
       dirtyEjIds.current.clear()
       isDirty.current = false
+      justSavedRef.current = true
       setSavedSuccess(true)
       setSaveMessage("")
       if (!planificacion || !hojaActiva || !diaSeleccionado || !semanaSeleccionada) return
@@ -644,9 +649,9 @@ export function StudentPlanificacionSection({
       } else {
         next.add(planEjId)
       }
-      setRegistrosForm((f) => ({ ...f, [planEjId]: EMPTY_FORM_ROW() }))
       return next
     })
+    setRegistrosForm((f) => ({ ...f, [planEjId]: EMPTY_FORM_ROW() }))
     dirtyEjIds.current.add(planEjId)
     scheduleSave(planEjId)
   }
@@ -815,24 +820,12 @@ export function StudentPlanificacionSection({
         </div>
         {loadingSession
           ? <Loader2 className="h-3.5 w-3.5 animate-spin text-zinc-500 flex-shrink-0" />
-          : (
-            <button
-              onClick={() => {
-                const next = !allCompleted
-                setDiaManualCompletado(next)
-                isDirty.current = true
-                setTimeout(() => saveMutateRef.current(), 0)
-              }}
-              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold border transition-all flex-shrink-0 ${
-                allCompleted
-                  ? "bg-green-500/15 border-green-500/30 text-green-400"
-                  : "bg-white/[0.04] border-white/[0.08] text-zinc-500 hover:text-zinc-300"
-              }`}
-            >
-              <CheckCircle2 className={`h-3.5 w-3.5 ${allCompleted ? "text-green-400" : "text-zinc-600"}`} />
-              {allCompleted ? "Completado" : "Marcar"}
-            </button>
-          )
+          : allCompleted ? (
+            <span className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold border bg-green-500/15 border-green-500/30 text-green-400 flex-shrink-0">
+              <CheckCircle2 className="h-3.5 w-3.5 text-green-400" />
+              Completado
+            </span>
+          ) : null
         }
       </div>
 

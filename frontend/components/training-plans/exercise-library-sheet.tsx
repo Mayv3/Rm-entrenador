@@ -16,9 +16,10 @@ interface ExerciseLibrarySheetProps {
   onOpenChange: (v: boolean) => void
   onSelect: (ejercicio: Ejercicio) => void
   dayName?: string | null
+  title?: string
 }
 
-export function ExerciseLibrarySheet({ open, onOpenChange, onSelect, dayName }: ExerciseLibrarySheetProps) {
+export function ExerciseLibrarySheet({ open, onOpenChange, onSelect, dayName, title }: ExerciseLibrarySheetProps) {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState("")
   const [newNombre, setNewNombre] = useState("")
@@ -81,7 +82,7 @@ export function ExerciseLibrarySheet({ open, onOpenChange, onSelect, dayName }: 
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="left" className="w-80 sm:max-w-sm flex flex-col gap-0 p-0">
         <SheetHeader className="px-5 pt-5 pb-4 border-b shrink-0">
-          <SheetTitle className="text-base">Agregar ejercicio</SheetTitle>
+          <SheetTitle className="text-base">{title ?? "Agregar ejercicio"}</SheetTitle>
           {dayName && (
             <p className="text-xs text-[var(--primary-color)] font-medium">
               Día: {dayName}

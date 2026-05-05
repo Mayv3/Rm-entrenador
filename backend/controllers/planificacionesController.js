@@ -440,16 +440,26 @@ export async function addEjercicioADia(req, res) {
 
 export async function updateEjercicioEnDia(req, res) {
   const { planEjId } = req.params;
-  const { categoria, orden } = req.body;
+  const { categoria, orden, ejercicio_id } = req.body;
+
+  const updates = {};
+  if (categoria !== undefined) updates.categoria = categoria;
+  if (orden !== undefined) updates.orden = orden;
+  if (ejercicio_id !== undefined) updates.ejercicio_id = ejercicio_id;
+
+  if (Object.keys(updates).length === 0) {
+    return res.status(400).json({ error: "No hay campos para actualizar" });
+  }
 
   const { data, error } = await supabase
     .from("planificacion_ejercicios")
-    .update({ categoria, orden })
+    .update(updates)
     .eq("id", planEjId)
-    .select()
+    .select("*, ejercicios(id, nombre, grupo_muscular, video_url)")
     .single();
 
   if (error) return res.status(500).json({ error: error.message });
+  invalidatePlanes()
   res.json(data);
 }
 

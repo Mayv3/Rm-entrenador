@@ -46,6 +46,7 @@ interface DayBlockProps {
   onPendingChange: (pending: PendingEjercicio[]) => void
   onOrderChange: (orderedIds: number[]) => void
   onDeleteEj: (planEjId: number) => void
+  onReplaceEj: (planEjId: number) => void
   onOpenLibrary: () => void
   canMoveUp: boolean
   canMoveDown: boolean
@@ -55,7 +56,7 @@ interface DayBlockProps {
 
 export function DayBlock({
   dia, planId, localData, pending, isActive, onActivate, onDeleted,
-  onSemanaChange, onCategoriaChange, onPendingChange, onOrderChange, onDeleteEj, onOpenLibrary,
+  onSemanaChange, onCategoriaChange, onPendingChange, onOrderChange, onDeleteEj, onReplaceEj, onOpenLibrary,
   canMoveUp, canMoveDown, onMoveUp, onMoveDown,
 }: DayBlockProps) {
   const queryClient = useQueryClient()
@@ -335,6 +336,7 @@ export function DayBlock({
                         onSemanaChange={onSemanaChange}
                         onCategoriaChange={handleCategoriaForRow}
                         onDelete={handleDeleteSaved}
+                        onReplace={onReplaceEj}
                       />
                     ))}
 
@@ -425,13 +427,14 @@ export function DayBlock({
 }
 
 function SortableExerciseRow({
-  ej, localData, onSemanaChange, onCategoriaChange, onDelete,
+  ej, localData, onSemanaChange, onCategoriaChange, onDelete, onReplace,
 }: {
   ej: PlanEjercicio
   localData: Record<number, EjercicioLocal>
   onSemanaChange: (planEjId: number, semana: number, field: "dosis" | "rpe", value: string) => void
   onCategoriaChange: (planEjId: number, categoria: string) => void
   onDelete: (planEjId: number) => void
+  onReplace: (planEjId: number) => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: ej.id })
 
@@ -492,10 +495,17 @@ function SortableExerciseRow({
         )
       })}
       <td className="px-2 py-1.5 text-center">
-        <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive hover:text-destructive"
-          onClick={() => onDelete(ej.id)}>
-          <Trash2 className="h-3 w-3" />
-        </Button>
+        <div className="flex items-center gap-0.5">
+          <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+            onClick={() => onReplace(ej.id)}
+            title="Reemplazar ejercicio">
+            <Pencil className="h-3 w-3" />
+          </Button>
+          <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+            onClick={() => onDelete(ej.id)}>
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        </div>
       </td>
     </tr>
   )
