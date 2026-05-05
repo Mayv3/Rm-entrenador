@@ -21,6 +21,10 @@ import {
   Play,
   X,
   SkipForward,
+  Moon,
+  BatteryWarning,
+  Frown,
+  Activity,
 } from "lucide-react"
 
 interface PlanSemana {
@@ -94,7 +98,7 @@ interface RegistroSesion {
 }
 
 interface SsnData {
-  sesion: { id: number; estado: string | null } | null
+  sesion: { id: number; estado: string | null; dormi_mal?: boolean; comi_mal?: boolean; enfermo?: boolean; otro?: boolean } | null
   registros: RegistroSesion[]
 }
 
@@ -144,6 +148,11 @@ export function StudentPlanificacionSection({
   const refetchResumenRef = useRef<(() => void) | null>(null)
   const refetchSesionesSemanaRef = useRef<(() => void) | null>(null)
   const [skippedEjIds, setSkippedEjIds] = useState<Set<number>>(new Set())
+  const [dormiMal, setDormiMal] = useState(false)
+  const [comiMal, setComiMal] = useState(false)
+  const [enfermo, setEnfermo] = useState(false)
+  const [otro, setOtro] = useState(false)
+  const [checkinMostrado, setCheckinMostrado] = useState(false)
   const justSavedRef = useRef(false)
   const [activeSerieMap, setActiveSerieMap] = useState<Record<number, number>>({})
   const serieScrollRefs = useRef<Map<number, HTMLDivElement>>(new Map())
@@ -201,6 +210,7 @@ export function StudentPlanificacionSection({
     setDiaSeleccionadoId(null)
     setRegistrosForm({})
     setSkippedEjIds(new Set())
+    setCheckinMostrado(false)
     setSaveMessage("")
     setSavedSuccess(false)
   }, [planificacion?.id])
@@ -279,6 +289,7 @@ export function StudentPlanificacionSection({
     if (!diaSeleccionado || !semanaSeleccionada) {
       setRegistrosForm({})
       setSkippedEjIds(new Set())
+      setCheckinMostrado(false)
       return
     }
 
@@ -320,6 +331,11 @@ export function StudentPlanificacionSection({
     }
     isDirty.current = false
     setRegistrosForm(next)
+    setDormiMal(!!sessionData?.sesion?.dormi_mal)
+    setComiMal(!!sessionData?.sesion?.comi_mal)
+    setEnfermo(!!sessionData?.sesion?.enfermo)
+    setOtro(!!sessionData?.sesion?.otro)
+    setCheckinMostrado(!!sessionData?.sesion)
 
     const skipped = new Set<number>()
     for (const ej of ejerciciosDelDia) {
@@ -410,6 +426,7 @@ export function StudentPlanificacionSection({
         setDiaSeleccionadoId(null)
         setRegistrosForm({})
         setSkippedEjIds(new Set())
+        setCheckinMostrado(false)
         setSaveMessage("")
         setSavedSuccess(false)
         isDirty.current = false
@@ -419,6 +436,7 @@ export function StudentPlanificacionSection({
         setDiaSeleccionadoId(null)
         setRegistrosForm({})
         setSkippedEjIds(new Set())
+        setCheckinMostrado(false)
         setSaveMessage("")
         setSavedSuccess(false)
         isDirty.current = false
@@ -496,6 +514,10 @@ export function StudentPlanificacionSection({
         semana: semanaSeleccionada,
         estado: allCompleted ? "completado" : "abierta",
         registros,
+        dormi_mal: dormiMal,
+        comi_mal: comiMal,
+        enfermo: enfermo,
+        otro: otro,
       })
     },
     onSuccess: async () => {
@@ -527,8 +549,8 @@ export function StudentPlanificacionSection({
           }
         })
         const sesionActualizada = old.sesion
-          ? { ...old.sesion, estado: allCompleted ? "completado" : old.sesion.estado ?? "abierta" }
-          : { id: 0, estado: allCompleted ? "completado" : "abierta" }
+          ? { ...old.sesion, estado: allCompleted ? "completado" : old.sesion.estado ?? "abierta", dormi_mal: dormiMal, comi_mal: comiMal, enfermo, otro }
+          : { id: 0, estado: allCompleted ? "completado" : "abierta", dormi_mal: dormiMal, comi_mal: comiMal, enfermo, otro }
         return { ...old, sesion: sesionActualizada, registros: registrosActualizados }
       })
 
@@ -625,6 +647,33 @@ export function StudentPlanificacionSection({
       }
       return updated
     })
+  }
+
+  const handleToggleEstado = (field: "dormiMal" | "comiMal" | "enfermo" | "otro") => {
+    const setters = { dormiMal: setDormiMal, comiMal: setComiMal, enfermo: setEnfermo, otro: setOtro }
+    setters[field]((prev) => !prev)
+  }
+
+  const handleEstoyPerfecto = () => {
+    setDormiMal(false)
+    setComiMal(false)
+    setEnfermo(false)
+    setOtro(false)
+    setCheckinMostrado(true)
+    isDirty.current = true
+    if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current)
+    saveDebounceRef.current = setTimeout(() => {
+      if (!saveIsPendingRef.current) saveMutateRef.current()
+    }, 300)
+  }
+
+  const handleConfirmar = () => {
+    setCheckinMostrado(true)
+    isDirty.current = true
+    if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current)
+    saveDebounceRef.current = setTimeout(() => {
+      if (!saveIsPendingRef.current) saveMutateRef.current()
+    }, 300)
   }
 
   const handleNotasChange = (planEjId: number, value: string) => {
@@ -829,76 +878,191 @@ export function StudentPlanificacionSection({
         }
       </div>
 
-      {/* Movilidad */}
-      {(hojaActiva?.movilidad ?? []).length > 0 && (() => {
-        const movilidad = hojaActiva!.movilidad
-        const total = movilidad.length
-        const mov = movilidad[movilidadIdx]
-        return (
-          <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02]">
-            {/* Header */}
-            <div className="px-4 pt-3 pb-2 flex items-center gap-2 border-b border-white/[0.05]">
-              <span className="text-[10px] font-black uppercase tracking-widest text-amber-400 flex-shrink-0">Movilidad</span>
-              <span className="text-[10px] text-zinc-500 flex-shrink-0">·</span>
-              <span className="text-[11px] font-semibold text-zinc-200 truncate flex-1">{mov.nombre}</span>
-              <span className="text-[10px] font-semibold text-zinc-500 flex-shrink-0">{movilidadIdx + 1}/{total}</span>
-            </div>
-
-            {/* Scroll carousel */}
-            <div
-              ref={movilidadScrollRef}
-              className="flex overflow-x-auto snap-x snap-mandatory pt-4 pb-2"
-              style={{ scrollbarWidth: "none" }}
-              onScroll={(e) => {
-                const idx = Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth)
-                setMovilidadIdx(idx)
-              }}
-            >
-              {movilidad.map((item, i) => (
-                <div key={item.id} className="snap-start flex-shrink-0 w-full px-4">
-                  {item.imagen_url ? (
-                    <img
-                      src={item.imagen_url}
-                      alt={item.nombre}
-                      className="w-full aspect-video rounded-xl object-cover bg-zinc-800"
-                    />
-                  ) : (
-                    <div className="w-full aspect-video rounded-xl bg-amber-500/10 flex items-center justify-center">
-                      <span className="text-5xl font-black text-amber-400">{i + 1}</span>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-
-
-            {/* Dots */}
-            {total > 1 && (
-              <div className="flex justify-center gap-1.5 pb-3">
-                {movilidad.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => {
-                      setMovilidadIdx(i)
-                      movilidadScrollRef.current?.scrollTo({ left: i * movilidadScrollRef.current.clientWidth, behavior: "smooth" })
-                    }}
-                    className={`rounded-full transition-all ${
-                      i === movilidadIdx ? "w-4 h-1.5 bg-amber-400" : "w-1.5 h-1.5 bg-zinc-600"
-                    }`}
-                  />
-                ))}
-              </div>
-            )}
+      {loadingSession ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-6 w-6 animate-spin text-zinc-500" />
+        </div>
+      ) : !checkinMostrado ? (
+        /* ── Check-in inicial ── */
+        <div className="flex-1 flex flex-col items-center justify-center min-h-[60vh] gap-6 px-4">
+          <div className="text-center space-y-1 mb-2">
+            <p className="text-sm font-semibold text-zinc-300">¿Cómo estás hoy?</p>
+            <p className="text-[11px] text-zinc-500">Seleccioná lo que corresponda</p>
           </div>
-        )
-      })()}
 
-      {/* Exercise cards */}
-      {ejerciciosDelDia.length === 0 ? (
-        <p className="text-sm text-zinc-400 text-center py-8">Este día no tiene ejercicios asignados.</p>
+          <div className="grid grid-cols-2 gap-3 w-full max-w-sm">
+            <button
+              onClick={() => handleToggleEstado("dormiMal")}
+              className={`flex flex-col items-center justify-center gap-2 py-5 rounded-2xl text-xs font-semibold border transition-all ${
+                dormiMal
+                  ? "bg-indigo-500/15 border-indigo-500/30 text-indigo-400"
+                  : "bg-white/[0.03] border-white/[0.06] text-zinc-500 hover:border-indigo-500/20 hover:text-zinc-300"
+              }`}
+            >
+              <Moon className="h-6 w-6" />
+              Dormí mal
+            </button>
+            <button
+              onClick={() => handleToggleEstado("comiMal")}
+              className={`flex flex-col items-center justify-center gap-2 py-5 rounded-2xl text-xs font-semibold border transition-all ${
+                comiMal
+                  ? "bg-amber-500/15 border-amber-500/30 text-amber-400"
+                  : "bg-white/[0.03] border-white/[0.06] text-zinc-500 hover:border-amber-500/20 hover:text-zinc-300"
+              }`}
+            >
+              <BatteryWarning className="h-6 w-6" />
+              Mucha fatiga
+            </button>
+            <button
+              onClick={() => handleToggleEstado("enfermo")}
+              className={`flex flex-col items-center justify-center gap-2 py-5 rounded-2xl text-xs font-semibold border transition-all ${
+                enfermo
+                  ? "bg-cyan-500/15 border-cyan-500/30 text-cyan-400"
+                  : "bg-white/[0.03] border-white/[0.06] text-zinc-500 hover:border-cyan-500/20 hover:text-zinc-300"
+              }`}
+            >
+              <Frown className="h-6 w-6" />
+              Poca motivación
+            </button>
+            <button
+              onClick={() => handleToggleEstado("otro")}
+              className={`flex flex-col items-center justify-center gap-2 py-5 rounded-2xl text-xs font-semibold border transition-all ${
+                otro
+                  ? "bg-rose-500/15 border-rose-500/30 text-rose-400"
+                  : "bg-white/[0.03] border-white/[0.06] text-zinc-500 hover:border-rose-500/20 hover:text-zinc-300"
+              }`}
+            >
+              <Activity className="h-6 w-6" />
+              Dolor muscular
+            </button>
+          </div>
+
+          <button
+            onClick={dormiMal || comiMal || enfermo || otro ? handleConfirmar : handleEstoyPerfecto}
+            className="w-full max-w-sm py-4 rounded-2xl bg-green-500/15 border border-green-500/30 text-green-400 text-sm font-bold hover:bg-green-500/20 transition-all active:scale-[0.98]"
+          >
+            {dormiMal || comiMal || enfermo || otro ? "Confirmar" : "¡Estoy perfecto!"}
+          </button>
+        </div>
       ) : (
-        <div className="space-y-3">
-          {ejerciciosDelDia.map((ej) => {
+        <>
+          {/* Estado del dia */}
+          <div className="grid grid-cols-4 gap-2">
+            <button
+              onClick={() => handleToggleEstado("dormiMal")}
+              className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-[10px] font-semibold border transition-all ${
+                dormiMal
+                  ? "bg-indigo-500/15 border-indigo-500/30 text-indigo-400"
+                  : "bg-white/[0.03] border-white/[0.06] text-zinc-600 hover:border-indigo-500/20 hover:text-zinc-400"
+              }`}
+            >
+              <Moon className="h-3.5 w-3.5" />
+              Dormí mal
+            </button>
+            <button
+              onClick={() => handleToggleEstado("comiMal")}
+              className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-[10px] font-semibold border transition-all ${
+                comiMal
+                  ? "bg-amber-500/15 border-amber-500/30 text-amber-400"
+                  : "bg-white/[0.03] border-white/[0.06] text-zinc-600 hover:border-amber-500/20 hover:text-zinc-400"
+              }`}
+            >
+              <BatteryWarning className="h-3.5 w-3.5" />
+              Fatiga
+            </button>
+            <button
+              onClick={() => handleToggleEstado("enfermo")}
+              className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-[10px] font-semibold border transition-all ${
+                enfermo
+                  ? "bg-cyan-500/15 border-cyan-500/30 text-cyan-400"
+                  : "bg-white/[0.03] border-white/[0.06] text-zinc-600 hover:border-cyan-500/20 hover:text-zinc-400"
+              }`}
+            >
+              <Frown className="h-3.5 w-3.5" />
+              Motivación
+            </button>
+            <button
+              onClick={() => handleToggleEstado("otro")}
+              className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-[10px] font-semibold border transition-all ${
+                otro
+                  ? "bg-rose-500/15 border-rose-500/30 text-rose-400"
+                  : "bg-white/[0.03] border-white/[0.06] text-zinc-600 hover:border-rose-500/20 hover:text-zinc-400"
+              }`}
+            >
+              <Activity className="h-3.5 w-3.5" />
+              Dolor
+            </button>
+          </div>
+
+          {/* Movilidad */}
+          {(hojaActiva?.movilidad ?? []).length > 0 && (() => {
+            const movilidad = hojaActiva!.movilidad
+            const total = movilidad.length
+            const mov = movilidad[movilidadIdx]
+            return (
+              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02]">
+                {/* Header */}
+                <div className="px-4 pt-3 pb-2 flex items-center gap-2 border-b border-white/[0.05]">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-amber-400 flex-shrink-0">Movilidad</span>
+                  <span className="text-[10px] text-zinc-500 flex-shrink-0">·</span>
+                  <span className="text-[11px] font-semibold text-zinc-200 truncate flex-1">{mov.nombre}</span>
+                  <span className="text-[10px] font-semibold text-zinc-500 flex-shrink-0">{movilidadIdx + 1}/{total}</span>
+                </div>
+
+                {/* Scroll carousel */}
+                <div
+                  ref={movilidadScrollRef}
+                  className="flex overflow-x-auto snap-x snap-mandatory pt-4 pb-2"
+                  style={{ scrollbarWidth: "none" }}
+                  onScroll={(e) => {
+                    const idx = Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth)
+                    setMovilidadIdx(idx)
+                  }}
+                >
+                  {movilidad.map((item, i) => (
+                    <div key={item.id} className="snap-start flex-shrink-0 w-full px-4">
+                      {item.imagen_url ? (
+                        <img
+                          src={item.imagen_url}
+                          alt={item.nombre}
+                          className="w-full aspect-video rounded-xl object-cover bg-zinc-800"
+                        />
+                      ) : (
+                        <div className="w-full aspect-video rounded-xl bg-amber-500/10 flex items-center justify-center">
+                          <span className="text-5xl font-black text-amber-400">{i + 1}</span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Dots */}
+                {total > 1 && (
+                  <div className="flex justify-center gap-1.5 pb-3">
+                    {movilidad.map((_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => {
+                          setMovilidadIdx(i)
+                          movilidadScrollRef.current?.scrollTo({ left: i * movilidadScrollRef.current.clientWidth, behavior: "smooth" })
+                        }}
+                        className={`rounded-full transition-all ${
+                          i === movilidadIdx ? "w-4 h-1.5 bg-amber-400" : "w-1.5 h-1.5 bg-zinc-600"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })()}
+
+          {/* Exercise cards */}
+          {ejerciciosDelDia.length === 0 ? (
+            <p className="text-sm text-zinc-400 text-center py-8">Este día no tiene ejercicios asignados.</p>
+          ) : (
+            <div className="space-y-3">
+              {ejerciciosDelDia.map((ej) => {
             const semanaPlan = ej.semanas.find((s) => s.semana === semanaSeleccionada)
             const row = registrosForm[ej.id] ?? EMPTY_FORM_ROW()
             const isFilled = row.series.every((s) => !!s.peso_kg && !!s.repeticiones && !!s.rpe)
@@ -1139,16 +1303,20 @@ export function StudentPlanificacionSection({
                     </label>
                     <Textarea
                       placeholder="Opcional…"
+                      maxLength={100}
                       className="min-h-16 resize-none bg-zinc-900/80 border-white/[0.08] focus:border-green-500/50 focus:ring-green-500/20 text-white placeholder:text-zinc-600 text-sm rounded-xl"
                       value={row.notas}
                       onChange={(e) => handleNotasChange(ej.id, e.target.value)}
                     />
+                    <span className="text-[9px] text-zinc-600 text-right block">{row.notas.length}/100</span>
                   </div>
                 </div>
               </div>
             )
           })}
         </div>
+      )}
+        </>
       )}
 
       {/* Floating save status */}

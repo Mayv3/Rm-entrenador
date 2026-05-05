@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader } from "@/components/ui/loader"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { queryKeys } from "@/lib/query-keys"
-import { ArrowLeft, Plus, Loader2, Save, Eye, EyeOff, Trash2, TrendingUp } from "lucide-react"
+import { ArrowLeft, Plus, Loader2, Save, Eye, EyeOff, Trash2, TrendingUp, AlertTriangle, CheckCircle2, StickyNote } from "lucide-react"
 import { DayBlock } from "./day-block"
 import { ExerciseLibraryPanel } from "./exercise-library-panel"
 import { ExerciseLibrarySheet } from "./exercise-library-sheet"
@@ -958,6 +958,8 @@ function PlanProgresoDialog({
 }) {
   const [data, setData] = useState<{ sesiones: any[]; registros: any[] } | null>(null)
   const [loading, setLoading] = useState(false)
+  const [estadoPopover, setEstadoPopover] = useState<string | null>(null)
+  const [comentarioModal, setComentarioModal] = useState<{ ejercicio: string; comentario: string } | null>(null)
 
   useEffect(() => {
     if (!open || !plan.alumno_id) return
@@ -1034,17 +1036,51 @@ function PlanProgresoDialog({
                           <th className="px-4 py-2.5 text-left font-medium text-muted-foreground w-14">#</th>
                           <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Ejercicio</th>
                           <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Cat.</th>
-                          {SEMANAS_PREVIEW.map((s) => (
-                            <th key={s} className={`px-0 py-2.5 text-center font-semibold w-[144px] ${s > 1 ? "border-l-2 border-border" : ""}`}>
-                              <div className="mb-1">S{s}</div>
-                              <div className="flex text-[10px] font-normal text-muted-foreground">
-                                <span className="w-6"></span>
-                                <span className="flex-1 text-center">kg</span>
-                                <span className="flex-1 text-center">reps</span>
-                                <span className="flex-1 text-center">rpe</span>
-                              </div>
-                            </th>
-                          ))}
+                          {SEMANAS_PREVIEW.map((s) => {
+                            const sesion = sesionMap.get(`${dia.id}-${s}`)
+                            const flags: { key: string; label: string; color: string; bg: string }[] = [
+                              { key: "dormi_mal", label: "Dormí mal", color: "text-indigo-400", bg: "bg-indigo-500/15" },
+                              { key: "comi_mal", label: "Fatiga", color: "text-amber-400", bg: "bg-amber-500/15" },
+                              { key: "enfermo", label: "Motivación", color: "text-cyan-400", bg: "bg-cyan-500/15" },
+                              { key: "otro", label: "Dolor", color: "text-rose-400", bg: "bg-rose-500/15" },
+                            ]
+                            const active = sesion ? flags.filter((f) => !!sesion[f.key]) : []
+                            const popoverKey = `${dia.id}-${s}`
+                            return (
+                              <th key={s} className={`px-0 py-2.5 text-center font-semibold w-[144px] relative ${s > 1 ? "border-l-2 border-border" : ""}`}>
+                                <div className="flex items-center justify-center gap-1 mb-1">
+                                  <span>S{s}</span>
+                                  {sesion && (
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); setEstadoPopover(estadoPopover === popoverKey ? null : popoverKey) }}
+                                      className={`rounded-full p-0.5 transition-colors ${active.length > 0 ? "text-amber-400 hover:text-amber-300" : "text-muted-foreground/30 hover:text-muted-foreground/50"}`}
+                                    >
+                                      <AlertTriangle className="h-3 w-3" fill={active.length > 0 ? "currentColor" : "none"} />
+                                    </button>
+                                  )}
+                                </div>
+                                {estadoPopover === popoverKey && (
+                                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 z-20 rounded-lg border bg-popover p-2 shadow-md min-w-[130px]">
+                                    {active.length === 0 ? (
+                                      <span className="text-[10px] text-green-400">Perfecto</span>
+                                    ) : (
+                                      <div className="flex flex-col gap-1">
+                                        {active.map((f) => (
+                                          <span key={f.key} className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${f.bg} ${f.color}`}>{f.label}</span>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                                <div className="flex text-[10px] font-normal text-muted-foreground">
+                                  <span className="w-6"></span>
+                                  <span className="flex-1 text-center">kg</span>
+                                  <span className="flex-1 text-center">reps</span>
+                                  <span className="flex-1 text-center">rpe</span>
+                                </div>
+                              </th>
+                            )
+                          })}
                         </tr>
                       </thead>
                       <tbody className="divide-y">
@@ -1087,6 +1123,7 @@ function PlanProgresoDialog({
                                 }
 
                                 if (series.length === 0) {
+                                  const nota = registro.notas as string | null
                                   return (
                                     <td key={semana} className={`p-0 text-center align-middle ${borderSemana}`}>
                                       <div className="grid grid-cols-3 divide-x h-full min-h-[40px]">
@@ -1100,10 +1137,20 @@ function PlanProgresoDialog({
                                           {registro.rpe ?? "—"}
                                         </div>
                                       </div>
+                                      {nota && (
+                                        <button
+                                          onClick={(e) => { e.stopPropagation(); setComentarioModal({ ejercicio: ej.ejercicios.nombre, comentario: nota }) }}
+                                          className="px-1 pb-1 text-[9px] text-blue-400 hover:text-blue-300 italic flex items-center justify-center gap-0.5 w-full"
+                                        >
+                                          <StickyNote className="h-2.5 w-2.5" />
+                                          Comentario
+                                        </button>
+                                      )}
                                     </td>
                                   )
                                 }
 
+                                const nota = registro.notas as string | null
                                 return (
                                   <td key={semana} className={`p-0 text-center align-top ${borderSemana}`}>
                                     <div className="divide-y">
@@ -1126,6 +1173,15 @@ function PlanProgresoDialog({
                                         </div>
                                       ))}
                                     </div>
+                                    {nota && (
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); setComentarioModal({ ejercicio: ej.ejercicios.nombre, comentario: nota }) }}
+                                        className="px-1 py-0.5 text-[9px] text-blue-400 hover:text-blue-300 italic flex items-center justify-center gap-0.5 w-full border-t border-border/30"
+                                      >
+                                        <StickyNote className="h-2.5 w-2.5" />
+                                        Comentario
+                                      </button>
+                                    )}
                                   </td>
                                 )
                               })}
@@ -1140,6 +1196,23 @@ function PlanProgresoDialog({
             })
           )}
         </div>
+
+        {comentarioModal && (
+          <Dialog open={!!comentarioModal} onOpenChange={() => setComentarioModal(null)}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle className="text-sm flex items-center gap-1.5">
+                  <StickyNote className="h-4 w-4 text-blue-400" />
+                  Comentario del alumno
+                </DialogTitle>
+              </DialogHeader>
+              <p className="text-xs text-muted-foreground mb-1">{comentarioModal.ejercicio}</p>
+              <div className="rounded-lg border bg-muted/30 p-3 text-sm whitespace-pre-wrap">
+                {comentarioModal.comentario}
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
       </DialogContent>
     </Dialog>
   )

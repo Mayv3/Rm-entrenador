@@ -210,6 +210,10 @@ export async function upsertPortalSesion(req, res) {
     estado,
     fecha_entrenamiento,
     registros = [],
+    dormi_mal,
+    comi_mal,
+    enfermo,
+    otro,
   } = req.body;
 
   const alumnoId = Number(alumno_id);
@@ -257,6 +261,10 @@ export async function upsertPortalSesion(req, res) {
         semana: semanaNum,
         estado: estado ?? "abierta",
         fecha_entrenamiento: fecha_entrenamiento ?? null,
+        dormi_mal: dormi_mal ?? false,
+        comi_mal: comi_mal ?? false,
+        enfermo: enfermo ?? false,
+        otro: otro ?? false,
       },
       { onConflict: "alumno_id,planificacion_id,hoja_id,dia_id,semana" }
     )
