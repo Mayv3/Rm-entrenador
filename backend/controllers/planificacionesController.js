@@ -14,6 +14,7 @@ function invalidatePlanes(planId) {
   cache.del(KEYS.planificaciones)
   if (planId) cache.del(KEYS.plan(planId))
   else cache.delByPrefix("plan:")
+  cache.delByPrefix("ej_dia:")
 }
 
 // ─── EJERCICIOS ───────────────────────────────────────────────────────────────
@@ -775,6 +776,50 @@ export async function updateDosis(req, res) {
     return res.status(500).json({ error: error.message });
   }
   res.json(data);
+}
+
+// ─── PROGRESO DEL ALUMNO ───────────────────────────────────────────────────────
+
+export async function getProgresoPlanificacion(req, res) {
+  const { id } = req.params;
+  const planId = Number(id);
+
+  const { data: plan, error: planError } = await supabase
+    .from("planificaciones")
+    .select("id, alumno_id")
+    .eq("id", planId)
+    .single();
+
+  if (planError) return res.status(500).json({ error: planError.message });
+  if (!plan) return res.status(404).json({ error: "Planificacion no encontrada" });
+  if (!plan.alumno_id) {
+    return res.json({ sesiones: [], registros: [] });
+  }
+
+  const { data: sesiones, error: sesError } = await supabase
+    .from("entrenamiento_sesiones")
+    .select("*")
+    .eq("planificacion_id", planId)
+    .eq("alumno_id", plan.alumno_id)
+    .order("semana", { ascending: true });
+
+  if (sesError) return res.status(500).json({ error: sesError.message });
+
+  if (!sesiones || sesiones.length === 0) {
+    return res.json({ sesiones: [], registros: [] });
+  }
+
+  const sesionIds = sesiones.map((s) => s.id);
+
+  const { data: registros, error: regError } = await supabase
+    .from("entrenamiento_registros")
+    .select("*")
+    .in("sesion_id", sesionIds)
+    .order("id", { ascending: true });
+
+  if (regError) return res.status(500).json({ error: regError.message });
+
+  res.json({ sesiones, registros: registros ?? [] });
 }
 
 export async function updateDosisBulk(req, res) {

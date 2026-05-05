@@ -13,7 +13,7 @@ import {
   createHoja, updateHoja, deleteHoja,
   createDia, updateDia, deleteDia,
   addEjercicioADia, addEjerciciosADiaBulk, updateEjercicioEnDia, removeEjercicioDeDia,
-  updateDosis, updateDosisBulk, guardarPlanCompleto, bulkUpdateOrden, saveMovilidad, getEjerciciosMovilidad, saveAll,
+  updateDosis, updateDosisBulk, guardarPlanCompleto, bulkUpdateOrden, saveMovilidad, getEjerciciosMovilidad, saveAll, getProgresoPlanificacion,
 } from "./controllers/planificacionesController.js";
 import { getAntrosByAlumno, getAllAntrosCounts, createAntro, deleteAntro, updateAntroNombre, updateAntroFecha, getParsedAntro } from "./controllers/antropometriasController.js";
 import { getNutricionByAlumno, getAllNutricionCounts, createNutricion, deleteNutricion, updateNutricionNombre, updateNutricionHabitos } from "./controllers/nutricionController.js";
@@ -149,6 +149,9 @@ app.get("/ejercicios-movilidad", getEjerciciosMovilidad);
 // Dosis por semana (legacy, por si se necesita)
 app.put("/planificaciones/ejercicios/:planEjId/semanas/:semana", updateDosis);
 app.put("/planificaciones/ejercicios/:planEjId/semanas", updateDosisBulk);
+
+// Progreso del alumno (pesos cargados por ejercicio/dia/semana)
+app.get("/planificaciones/:id/progreso", getProgresoPlanificacion);
 
 // Portal alumno: planificacion + carga de entrenamiento
 app.get("/portal/alumnos/:alumnoId/planificacion", getPortalPlanificacion);

@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader } from "@/components/ui/loader"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { queryKeys } from "@/lib/query-keys"
-import { ArrowLeft, Plus, Loader2, Save, Eye, EyeOff, Trash2 } from "lucide-react"
+import { ArrowLeft, Plus, Loader2, Save, Eye, EyeOff, Trash2, TrendingUp } from "lucide-react"
 import { DayBlock } from "./day-block"
 import { ExerciseLibraryPanel } from "./exercise-library-panel"
 import { ExerciseLibrarySheet } from "./exercise-library-sheet"
@@ -46,6 +46,7 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
   const [hojaToDelete, setHojaToDelete] = useState<{ id: number; nombre: string } | null>(null)
   const [libSheetOpen, setLibSheetOpen] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
+  const [progresoOpen, setProgresoOpen] = useState(false)
   const [movilidadCollapseSignal, setMovilidadCollapseSignal] = useState(0)
 
   // Estado centralizado: dosis, rpe y categoría de todos los ejercicios ya guardados
@@ -595,6 +596,16 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
 
         <Button
           size="sm"
+          variant="outline"
+          onClick={() => setProgresoOpen(true)}
+          className="h-8 px-3 text-xs gap-1.5 shrink-0 bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/30"
+        >
+          <TrendingUp className="h-3.5 w-3.5" />
+          Progreso
+        </Button>
+
+        <Button
+          size="sm"
           onClick={handleGuardar}
           disabled={!isDirty || saveStatus === "saving"}
           className={`md:hidden h-8 px-3 text-xs gap-1.5 shrink-0 bg-[var(--primary-color)] hover:bg-[var(--primary-color)]/90 text-white transition-opacity duration-300 ${isDirty ? "opacity-100" : "opacity-40"}`}
@@ -698,6 +709,15 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
         localData={localData}
         pendingByDay={pendingByDay}
         movilidadItems={activeHoja ? (movByHoja[activeHoja.id] ?? activeHoja.movilidad.map((m) => ({ nombre: m.nombre, imagen_url: m.imagen_url ?? "" }))) : []}
+      />
+
+      <PlanProgresoDialog
+        open={progresoOpen}
+        onOpenChange={setProgresoOpen}
+        planId={planId}
+        plan={plan}
+        activeHoja={activeHoja}
+        localData={localData}
       />
 
       <Dialog open={!!hojaToDelete} onOpenChange={(open) => { if (!open) setHojaToDelete(null) }}>
@@ -870,6 +890,205 @@ function PlanPreviewDialog({
             })
               )}
             </>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function PlanProgresoDialog({
+  open, onOpenChange, planId, plan, activeHoja, localData,
+}: {
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  planId: number
+  plan: Planificacion
+  activeHoja: Planificacion["hojas"][number] | undefined
+  localData: Record<number, EjercicioLocal>
+}) {
+  const [data, setData] = useState<{ sesiones: any[]; registros: any[] } | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!open || !plan.alumno_id) return
+    setLoading(true)
+    axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/planificaciones/${planId}/progreso`)
+      .then((res) => setData(res.data))
+      .catch(console.error)
+      .finally(() => setLoading(false))
+  }, [open, planId, plan.alumno_id])
+
+  const dias = (activeHoja?.dias ?? plan.hojas.flatMap((h) => h.dias)).filter(
+    (d, i, arr) => arr.findIndex((x) => x.id === d.id) === i
+  )
+
+  if (!plan.alumno_id) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Progreso</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground text-center py-8">
+            Esta planificacion no tiene un alumno asignado.
+          </p>
+        </DialogContent>
+      </Dialog>
+    )
+  }
+
+  const sesionMap = new Map<string, any>()
+  data?.sesiones?.forEach((s: any) => {
+    sesionMap.set(`${s.dia_id}-${s.semana}`, s)
+  })
+
+  const registroMap = new Map<string, any>()
+  data?.registros?.forEach((r: any) => {
+    registroMap.set(`${r.sesion_id}-${r.planificacion_ejercicio_id}`, r)
+  })
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-6xl w-full flex flex-col p-0 max-h-[88vh]">
+        <DialogHeader className="px-6 pt-5 pb-4 border-b shrink-0">
+          <DialogTitle className="text-base flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-emerald-500" />
+            Progreso — {plan.alumnos?.nombre ?? `Alumno #${plan.alumno_id}`}
+            {activeHoja && <span className="text-muted-foreground font-normal">· {activeHoja.nombre}</span>}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="overflow-y-auto flex-1 px-6 py-5 space-y-8">
+          {loading ? (
+            <div className="flex items-center justify-center py-20"><Loader /></div>
+          ) : !data ? (
+            <p className="text-sm text-muted-foreground text-center py-10">Error al cargar datos.</p>
+          ) : dias.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-10">Sin dias en esta hoja.</p>
+          ) : (
+            dias.map((dia) => {
+              const ejercicios = [...dia.ejercicios].sort((a, b) => a.orden - b.orden)
+              if (ejercicios.length === 0) return null
+
+              return (
+                <div key={dia.id}>
+                  <h3 className="text-sm font-semibold mb-3">
+                    DIA {dia.numero_dia} — {dia.nombre}
+                    <span className="ml-2 text-xs font-normal text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
+                      {ejercicios.length}
+                    </span>
+                  </h3>
+
+                  <div className="overflow-x-auto rounded-xl border bg-card">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b bg-muted/40">
+                          <th className="px-4 py-2.5 text-left font-medium text-muted-foreground w-14">#</th>
+                          <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Ejercicio</th>
+                          <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Cat.</th>
+                          {SEMANAS_PREVIEW.map((s) => (
+                            <th key={s} className={`px-0 py-2.5 text-center font-semibold w-[144px] ${s > 1 ? "border-l-2 border-border" : ""}`}>
+                              <div className="mb-1">S{s}</div>
+                              <div className="flex text-[10px] font-normal text-muted-foreground">
+                                <span className="w-6"></span>
+                                <span className="flex-1 text-center">kg</span>
+                                <span className="flex-1 text-center">reps</span>
+                                <span className="flex-1 text-center">rpe</span>
+                              </div>
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {ejercicios.map((ej, idx) => {
+                          const categoria = localData[ej.id]?.categoria ?? ej.categoria
+                          return (
+                            <tr key={ej.id} style={CATEGORIA_ROW_STYLE[categoria]} className="hover:brightness-95 transition-colors">
+                              <td className="px-4 py-3 text-muted-foreground text-xs">{idx + 1}</td>
+                              <td className="px-4 py-3 font-medium">{ej.ejercicios.nombre}</td>
+                              <td className="px-4 py-3">
+                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${CATEGORIA_COLORS[categoria] ?? ""}`}>
+                                  {categoria}
+                                </span>
+                              </td>
+                              {SEMANAS_PREVIEW.map((semana) => {
+                                const sesion = sesionMap.get(`${dia.id}-${semana}`)
+                                const registro = sesion ? registroMap.get(`${sesion.id}-${ej.id}`) : null
+                                const borderSemana = semana > 1 ? "border-l-2 border-border" : ""
+
+                                if (!registro) {
+                                  return (
+                                    <td key={semana} className={`px-3 py-3 text-center ${borderSemana}`}>
+                                      <span className="text-muted-foreground/25 text-xs">—</span>
+                                    </td>
+                                  )
+                                }
+
+                                const series: any[] = registro.series ?? []
+
+                                const esSaltado = series.length > 0
+                                  ? series.every((s: any) => (s.peso_kg ?? 0) === 0)
+                                  : (registro.peso_kg ?? 0) === 0
+
+                                if (esSaltado) {
+                                  return (
+                                    <td key={semana} className={`px-3 py-2 text-center align-middle ${borderSemana}`}>
+                                      <span className="text-[10px] text-amber-400/70 font-medium italic">Saltado</span>
+                                    </td>
+                                  )
+                                }
+
+                                if (series.length === 0) {
+                                  return (
+                                    <td key={semana} className={`p-0 text-center align-middle ${borderSemana}`}>
+                                      <div className="grid grid-cols-3 divide-x h-full min-h-[40px]">
+                                        <div className="flex items-center justify-center px-2 font-bold text-sm tabular-nums">
+                                          {registro.peso_kg ?? "—"}
+                                        </div>
+                                        <div className="flex items-center justify-center px-2 text-xs text-muted-foreground tabular-nums">
+                                          {registro.repeticiones ?? "—"}
+                                        </div>
+                                        <div className="flex items-center justify-center px-2 text-xs text-muted-foreground/70 tabular-nums">
+                                          {registro.rpe ?? "—"}
+                                        </div>
+                                      </div>
+                                    </td>
+                                  )
+                                }
+
+                                return (
+                                  <td key={semana} className={`p-0 text-center align-top ${borderSemana}`}>
+                                    <div className="divide-y">
+                                      {series.map((s: any, si: number) => (
+                                        <div key={si} className="flex">
+                                          <div className="flex items-center justify-center w-6 text-[10px] text-muted-foreground/50 font-medium border-r">
+                                            S{si + 1}
+                                          </div>
+                                          <div className="grid grid-cols-3 divide-x flex-1">
+                                            <div className="flex items-center justify-center px-2 py-1.5 font-bold text-xs tabular-nums">
+                                              {s.peso_kg ?? "—"}
+                                            </div>
+                                            <div className="flex items-center justify-center px-2 py-1.5 text-[11px] text-muted-foreground tabular-nums">
+                                              {s.repeticiones ?? "—"}
+                                            </div>
+                                            <div className="flex items-center justify-center px-2 py-1.5 text-[11px] text-muted-foreground/70 tabular-nums">
+                                              {s.rpe ?? "—"}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </td>
+                                )
+                              })}
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )
+            })
           )}
         </div>
       </DialogContent>

@@ -5,7 +5,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import axios from "axios"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Button } from "@/components/ui/button"
 import { CATEGORIA_ROW_STYLE } from "@/types/planificaciones"
 import {
   Loader2,
@@ -21,7 +20,7 @@ import {
   Trophy,
   Play,
   X,
-  Save,
+  SkipForward,
 } from "lucide-react"
 
 interface PlanSemana {
@@ -138,12 +137,14 @@ export function StudentPlanificacionSection({
   const [savedSuccess, setSavedSuccess] = useState(false)
   const [videoModal, setVideoModal] = useState<{ nombre: string; url: string } | null>(null)
   const isDirty = useRef(false)
+  const dirtyEjIds = useRef(new Set<number>())
   const saveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const onRequestCloseRef = useRef(onRequestClose)
   onRequestCloseRef.current = onRequestClose
   const refetchResumenRef = useRef<(() => void) | null>(null)
   const refetchSesionesSemanaRef = useRef<(() => void) | null>(null)
   const [diaManualCompletado, setDiaManualCompletado] = useState<boolean | null>(null)
+  const [skippedEjIds, setSkippedEjIds] = useState<Set<number>>(new Set())
   const [activeSerieMap, setActiveSerieMap] = useState<Record<number, number>>({})
   const serieScrollRefs = useRef<Map<number, HTMLDivElement>>(new Map())
   const exerciseCardRefs = useRef<Map<number, HTMLDivElement>>(new Map())
@@ -199,6 +200,7 @@ export function StudentPlanificacionSection({
     setSemanaSeleccionada(null)
     setDiaSeleccionadoId(null)
     setRegistrosForm({})
+    setSkippedEjIds(new Set())
     setSaveMessage("")
     setSavedSuccess(false)
   }, [planificacion?.id])
@@ -276,6 +278,7 @@ export function StudentPlanificacionSection({
   useEffect(() => {
     if (!diaSeleccionado || !semanaSeleccionada) {
       setRegistrosForm({})
+      setSkippedEjIds(new Set())
       return
     }
 
@@ -313,15 +316,31 @@ export function StudentPlanificacionSection({
     isDirty.current = false
     setRegistrosForm(next)
     setDiaManualCompletado(sessionData?.sesion?.estado === "completado" ? true : null)
+
+    const skipped = new Set<number>()
+    for (const ej of ejerciciosDelDia) {
+      const existing = registrosMap.get(ej.id)
+      if (!existing) continue
+      const series = Array.isArray(existing.series) && existing.series.length > 0
+        ? existing.series
+        : null
+      if (series && series.every((s: any) => (s.peso_kg ?? 0) === 0 && (s.repeticiones ?? 0) === 0 && (s.rpe ?? 0) === 0)) {
+        skipped.add(ej.id)
+      } else if (!series && (existing.peso_kg ?? 0) === 0 && (existing.repeticiones ?? 0) === 0 && (existing.rpe ?? 0) === 0) {
+        skipped.add(ej.id)
+      }
+    }
+    setSkippedEjIds(skipped)
   }, [diaSeleccionado, ejerciciosDelDia, sessionData, semanaSeleccionada])
 
   const allCompletedAuto = useMemo(() => {
     if (ejerciciosDelDia.length === 0) return false
     return ejerciciosDelDia.every((ej) => {
+      if (skippedEjIds.has(ej.id)) return true
       const row = registrosForm[ej.id]
       return (row?.series ?? []).every((s) => !!s.peso_kg && !!s.repeticiones && !!s.rpe)
     })
-  }, [ejerciciosDelDia, registrosForm])
+  }, [ejerciciosDelDia, registrosForm, skippedEjIds])
 
   const allCompleted = diaManualCompletado !== null ? diaManualCompletado : allCompletedAuto
 
@@ -356,18 +375,37 @@ export function StudentPlanificacionSection({
   refetchSesionesSemanaRef.current = _refetchSesionesSemana
   refetchResumenRef.current = _refetchResumen
 
+  // Save on page close / refresh
+  useEffect(() => {
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      if (isDirty.current) {
+        if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current)
+        saveMutateRef.current()
+        e.preventDefault()
+        e.returnValue = ""
+      }
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload)
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   // History API: push state on mount, handle back button
   useEffect(() => {
     history.pushState({ planNav: "weeks" }, "")
     if (historyDepthRef) historyDepthRef.current = 1
 
     function handlePopState(e: PopStateEvent) {
+      if (isDirty.current) {
+        if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current)
+        saveMutateRef.current()
+      }
       if (historyDepthRef) historyDepthRef.current = Math.max(0, historyDepthRef.current - 1)
       const nav = (e.state as { planNav?: string; semana?: number } | null)
       if (nav?.planNav === "days") {
         setSemanaSeleccionada(nav.semana ?? null)
         setDiaSeleccionadoId(null)
         setRegistrosForm({})
+        setSkippedEjIds(new Set())
         setSaveMessage("")
         setSavedSuccess(false)
         isDirty.current = false
@@ -376,6 +414,7 @@ export function StudentPlanificacionSection({
         setSemanaSeleccionada(null)
         setDiaSeleccionadoId(null)
         setRegistrosForm({})
+        setSkippedEjIds(new Set())
         setSaveMessage("")
         setSavedSuccess(false)
         isDirty.current = false
@@ -410,7 +449,26 @@ export function StudentPlanificacionSection({
     mutationFn: async () => {
       if (!planificacion || !hojaActiva || !diaSeleccionado || !semanaSeleccionada) return
 
-      const registros = ejerciciosDelDia.map((ej) => {
+      const dirtyIds = new Set(dirtyEjIds.current)
+      const ejerciciosToSave = ejerciciosDelDia.filter((ej) => dirtyIds.has(ej.id) || dirtyIds.size === 0)
+      if (ejerciciosToSave.length === 0) return
+
+      const registros = ejerciciosToSave.map((ej) => {
+        const esSaltado = skippedEjIds.has(ej.id)
+        if (esSaltado) {
+          return {
+            planificacion_ejercicio_id: ej.id,
+            peso_kg: 0,
+            repeticiones: 0,
+            rpe: 0,
+            notas: null,
+            series: [
+              { peso_kg: 0, repeticiones: 0, rpe: 0 },
+              { peso_kg: 0, repeticiones: 0, rpe: 0 },
+              { peso_kg: 0, repeticiones: 0, rpe: 0 },
+            ],
+          }
+        }
         const row = registrosForm[ej.id] ?? EMPTY_FORM_ROW()
         const s0 = row.series[0]
         return {
@@ -437,21 +495,66 @@ export function StudentPlanificacionSection({
       })
     },
     onSuccess: async () => {
+      dirtyEjIds.current.clear()
       isDirty.current = false
       setSavedSuccess(true)
       setSaveMessage("")
       if (!planificacion || !hojaActiva || !diaSeleccionado || !semanaSeleccionada) return
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: queryKeySesion(planificacion.id, studentId, hojaActiva.id, diaSeleccionado.id, semanaSeleccionada),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: ["portalSesionesSemana", planificacion.id, studentId, hojaActiva.id, semanaSeleccionada],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: ["portalSesionesResumen", planificacion.id, studentId, hojaActiva.id],
-        }),
-      ])
+
+      const sesionKey = queryKeySesion(planificacion.id, studentId, hojaActiva.id, diaSeleccionado.id, semanaSeleccionada)
+
+      queryClient.setQueryData<SsnData>(sesionKey, (old) => {
+        if (!old) return undefined
+        const registrosActualizados = (old.registros ?? []).map((r) => {
+          const formRow = registrosForm[r.planificacion_ejercicio_id]
+          if (!formRow) return r
+          return {
+            ...r,
+            peso_kg: formRow.series[0].peso_kg === "" ? null : Number(formRow.series[0].peso_kg),
+            repeticiones: formRow.series[0].repeticiones === "" ? null : Number(formRow.series[0].repeticiones),
+            rpe: formRow.series[0].rpe === "" ? null : Number(formRow.series[0].rpe),
+            notas: formRow.notas || null,
+            series: formRow.series.map((s) => ({
+              peso_kg: s.peso_kg === "" ? null : Number(s.peso_kg),
+              repeticiones: s.repeticiones === "" ? null : Number(s.repeticiones),
+              rpe: s.rpe === "" ? null : Number(s.rpe),
+            })),
+          }
+        })
+        const sesionActualizada = old.sesion
+          ? { ...old.sesion, estado: allCompleted ? "completado" : old.sesion.estado ?? "abierta" }
+          : { id: 0, estado: allCompleted ? "completado" : "abierta" }
+        return { ...old, sesion: sesionActualizada, registros: registrosActualizados }
+      })
+
+      const semanaKey = ["portalSesionesSemana", planificacion.id, studentId, hojaActiva.id, semanaSeleccionada] as const
+      queryClient.setQueryData<{ sesiones: { id: number; dia_id: number; estado: string }[] }>(semanaKey, (old) => {
+        if (!old) return old
+        const sesiones = old.sesiones.map((s) =>
+          s.dia_id === diaSeleccionado.id ? { ...s, estado: allCompleted ? "completado" : s.estado } : s
+        )
+        if (!sesiones.find((s) => s.dia_id === diaSeleccionado.id)) {
+          sesiones.push({ id: 0, dia_id: diaSeleccionado.id, estado: allCompleted ? "completado" : "abierta" })
+        }
+        return { sesiones }
+      })
+
+      const resumenKey = ["portalSesionesResumen", planificacion.id, studentId, hojaActiva.id] as const
+      queryClient.setQueryData<{ sesiones: { semana: number; dia_id: number; estado: string }[] }>(resumenKey, (old) => {
+        if (!old) return old
+        const sesiones = old.sesiones.map((s) =>
+          s.semana === semanaSeleccionada && s.dia_id === diaSeleccionado.id
+            ? { ...s, estado: allCompleted ? "completado" : s.estado }
+            : s
+        )
+        if (!sesiones.find((s) => s.semana === semanaSeleccionada && s.dia_id === diaSeleccionado.id)) {
+          sesiones.push({ semana: semanaSeleccionada, dia_id: diaSeleccionado.id, estado: allCompleted ? "completado" : "abierta" })
+        }
+        return { sesiones }
+      })
+
+      queryClient.invalidateQueries({ queryKey: semanaKey })
+      queryClient.invalidateQueries({ queryKey: resumenKey })
     },
     onError: () => {
       setSaveMessage("No se pudo guardar")
@@ -462,6 +565,14 @@ export function StudentPlanificacionSection({
   saveMutateRef.current = saveMutation.mutate
   const saveIsPendingRef = useRef(saveMutation.isPending)
   saveIsPendingRef.current = saveMutation.isPending
+
+  const scheduleSave = (ejId?: number) => {
+    if (ejId != null) dirtyEjIds.current.add(ejId)
+    if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current)
+    saveDebounceRef.current = setTimeout(() => {
+      if (!saveIsPendingRef.current) saveMutateRef.current()
+    }, 300)
+  }
 
 
   const handleSerieChange = (planEjId: number, serieIdx: number, field: keyof SerieRow, value: string) => {
@@ -503,9 +614,9 @@ export function StudentPlanificacionSection({
       const allSeriesFilled = newSeries.every((s) => !!s.peso_kg && !!s.repeticiones && !!s.rpe)
       if (allSeriesFilled) {
         if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current)
-        saveDebounceRef.current = setTimeout(() => {
-          if (!saveIsPendingRef.current) saveMutateRef.current()
-        }, 800)
+        if (!saveIsPendingRef.current) saveMutateRef.current()
+      } else {
+        scheduleSave(planEjId)
       }
       return updated
     })
@@ -519,6 +630,25 @@ export function StudentPlanificacionSection({
       const old = prev[planEjId] ?? EMPTY_FORM_ROW()
       return { ...prev, [planEjId]: { ...old, notas: value } }
     })
+    scheduleSave(planEjId)
+  }
+
+  const handleToggleSkip = (planEjId: number) => {
+    isDirty.current = true
+    setSaveMessage("")
+    setSavedSuccess(false)
+    setSkippedEjIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(planEjId)) {
+        next.delete(planEjId)
+      } else {
+        next.add(planEjId)
+      }
+      setRegistrosForm((f) => ({ ...f, [planEjId]: EMPTY_FORM_ROW() }))
+      return next
+    })
+    dirtyEjIds.current.add(planEjId)
+    scheduleSave(planEjId)
   }
 
   if (loadingPlan) {
@@ -792,12 +922,17 @@ export function StudentPlanificacionSection({
             const catStyle = CATEGORIA_ROW_STYLE[ej.categoria] ?? {}
             const catColor = catStyle.color as string | undefined
             const catBg = catStyle.backgroundColor as string | undefined
+            const esSaltado = skippedEjIds.has(ej.id)
 
             return (
               <div
                 key={ej.id}
                 ref={(el) => { if (el) exerciseCardRefs.current.set(ej.id, el) }}
-                className="rounded-2xl border border-white/[0.07] transition-all duration-200"
+                className={`rounded-2xl border transition-all duration-200 ${
+                  esSaltado
+                    ? "border-amber-500/20 opacity-60"
+                    : "border-white/[0.07]"
+                }`}
               >
                 {/* Category + name + video strip */}
                 <div
@@ -829,6 +964,19 @@ export function StudentPlanificacionSection({
                       Completado
                     </span>
                   )}
+                  {(!isFilled || esSaltado) ? (
+                  <button
+                    onClick={() => handleToggleSkip(ej.id)}
+                    className={`h-7 px-2.5 rounded-lg flex items-center gap-1.5 text-[10px] font-semibold transition-all border flex-shrink-0 ${
+                      skippedEjIds.has(ej.id)
+                        ? "bg-amber-500/15 border-amber-500/30 text-amber-400"
+                        : "ml-auto bg-transparent border-white/[0.05] text-zinc-600 hover:border-amber-500/30 hover:text-amber-400"
+                    }`}
+                  >
+                    <SkipForward className="h-3 w-3" />
+                    {skippedEjIds.has(ej.id) ? "Saltado" : "Saltar"}
+                  </button>
+                  ) : null}
                 </div>
 
                 {/* Dosis / RPE prescrito — 50/50 */}
@@ -851,7 +999,7 @@ export function StudentPlanificacionSection({
 
                 {/* Serie pills + scroll */}
                 <div className="pb-4">
-                  {/* S1/S2/S3 pills — 33% cada una */}
+                  {/* S1/S2/S3 pills */}
                   <div className="grid grid-cols-3 gap-2 px-4 mt-4 mb-3">
                     {([0, 1, 2] as const).map((i) => {
                       const s = row.series[i]
@@ -861,16 +1009,18 @@ export function StudentPlanificacionSection({
                         <button
                           key={i}
                           onClick={() => scrollToSerie(ej.id, i)}
-                          className={`flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all border ${
-                            filled
-                              ? "bg-green-500/20 border-green-500/40 text-white"
-                              : active
-                              ? "bg-white/[0.08] border-white/[0.15] text-white"
-                              : "bg-transparent border-white/[0.06] text-zinc-500"
+                          className={`relative flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all border ${
+                            active
+                              ? "bg-white/[0.12] border-green-400/60 text-white shadow-[0_0_12px_rgba(74,222,128,0.25)] scale-[1.03] z-10"
+                              : filled
+                              ? "bg-green-500/15 border-green-500/30 text-white/80"
+                              : "bg-transparent border-white/[0.05] text-zinc-600"
                           }`}
                         >
                           Serie {i + 1}
-                          {filled && <span className="h-2 w-2 rounded-full bg-green-400 flex-shrink-0" />}
+                          {filled && (
+                            <span className={`h-2 w-2 rounded-full flex-shrink-0 ${active ? "bg-green-300" : "bg-green-500"}`} />
+                          )}
                         </button>
                       )
                     })}
@@ -891,7 +1041,7 @@ export function StudentPlanificacionSection({
                           {/* 3-col grid: peso / reps / rpe */}
                           <div className="grid grid-cols-3 gap-2">
                             <div className="space-y-1.5">
-                              <label className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                              <label className="flex items-center justify-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
                                 <Weight className="h-2.5 w-2.5" />
                                 Peso kg
                               </label>
@@ -908,7 +1058,7 @@ export function StudentPlanificacionSection({
                               />
                             </div>
                             <div className="space-y-1.5">
-                              <label className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                              <label className="flex items-center justify-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
                                 <RotateCcw className="h-2.5 w-2.5" />
                                 Reps
                               </label>
@@ -925,7 +1075,7 @@ export function StudentPlanificacionSection({
                               />
                             </div>
                             <div className="space-y-1.5">
-                              <label className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                              <label className="flex items-center justify-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
                                 <Flame className="h-2.5 w-2.5" />
                                 RPE
                               </label>
@@ -949,7 +1099,7 @@ export function StudentPlanificacionSection({
                               <div className="flex items-center gap-1.5 px-3 pt-2 pb-1">
                                 <div className="h-1 w-1 rounded-full bg-violet-400" />
                                 <span className="text-[10px] font-bold uppercase tracking-widest text-violet-400">
-                                  Semana {semanaAnterior} · S{serieIdx + 1}
+                                  Semana {semanaAnterior} · Serie {serieIdx + 1}
                                 </span>
                               </div>
                               {anteriorSerie && (anteriorSerie.peso_kg !== null || anteriorSerie.repeticiones !== null || anteriorSerie.rpe !== null) ? (
@@ -1008,46 +1158,34 @@ export function StudentPlanificacionSection({
         </div>
       )}
 
-      {/* Save bar */}
-      <div className="sticky bottom-4 pt-2 z-50">
-        <div className="rounded-2xl border border-white/[0.1] bg-zinc-800/90 backdrop-blur-xl px-5 py-4 flex items-center gap-4">
-          <div className="flex-1 min-w-0">
-            {savedSuccess && allCompleted ? (
-              <span className="flex items-center gap-2 text-sm font-semibold text-green-400">
-                <CheckCircle2 className="h-4 w-4" />
-                Día completado
-              </span>
-            ) : savedSuccess ? (
-              <span className="flex items-center gap-2 text-sm font-semibold text-green-400">
-                <CheckCircle2 className="h-4 w-4" />
-                Guardado
-              </span>
-            ) : isDirty.current ? (
-              <span className="text-sm text-zinc-400">Cambios sin guardar…</span>
-            ) : loadingSession ? (
-              <span className="text-sm text-zinc-500">Cargando sesión…</span>
-            ) : saveMessage ? (
-              <span className="text-sm text-red-400">{saveMessage}</span>
-            ) : allCompleted ? (
-              <span className="flex items-center gap-2 text-sm font-semibold text-green-400">
-                <CheckCircle2 className="h-4 w-4" />
-                Día completado
-              </span>
-            ) : (
-              <span className="text-sm text-zinc-400">Completá tus marcas y guardá</span>
-            )}
-          </div>
-          <Button
-            onClick={() => saveMutation.mutate()}
-            disabled={ejerciciosDelDia.length === 0 || saveMutation.isPending}
-            className="bg-green-500 hover:bg-green-400 text-white font-bold rounded-xl w-14 h-14 p-0 flex-shrink-0 transition-all"
-          >
-            {saveMutation.isPending ? (
-              <Loader2 className="h-6 w-6 animate-spin" />
-            ) : (
-              <Save className="h-6 w-6" />
-            )}
-          </Button>
+      {/* Floating save status */}
+      <div className="fixed bottom-6 right-6 z-50 pointer-events-none">
+        <div className={`rounded-full flex items-center justify-center transition-all duration-300 shadow-lg ${
+          saveMutation.isPending
+            ? "h-14 w-14 bg-zinc-800 border border-white/[0.1]"
+            : savedSuccess
+            ? "h-14 w-14 bg-green-500/20 border border-green-500/30"
+            : saveMessage
+            ? "h-14 w-14 bg-red-500/20 border border-red-500/30"
+            : isDirty.current
+            ? "h-11 w-11 bg-zinc-800/80 border border-white/[0.08] opacity-70"
+            : allCompleted
+            ? "h-11 w-11 bg-green-500/10 border border-green-500/20 opacity-60"
+            : "h-0 w-0 opacity-0"
+        }`}>
+          {saveMutation.isPending ? (
+            <Loader2 className="h-5 w-5 animate-spin text-white/80" />
+          ) : savedSuccess && allCompleted ? (
+            <CheckCircle2 className="h-5 w-5 text-green-400" />
+          ) : savedSuccess ? (
+            <CheckCircle2 className="h-5 w-5 text-green-400 animate-in zoom-in" />
+          ) : saveMessage ? (
+            <X className="h-5 w-5 text-red-400" />
+          ) : isDirty.current ? (
+            <Loader2 className="h-4 w-4 animate-spin text-white/30" />
+          ) : allCompleted ? (
+            <CheckCircle2 className="h-4 w-4 text-green-400/60" />
+          ) : null}
         </div>
       </div>
 
