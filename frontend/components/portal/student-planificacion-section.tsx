@@ -523,10 +523,10 @@ export function StudentPlanificacionSection({
     onSuccess: async () => {
       dirtyEjIds.current.clear()
       isDirty.current = false
-      justSavedRef.current = true
       setSavedSuccess(true)
       setSaveMessage("")
       if (!planificacion || !hojaActiva || !diaSeleccionado || !semanaSeleccionada) return
+      justSavedRef.current = true
 
       const sesionKey = queryKeySesion(planificacion.id, studentId, hojaActiva.id, diaSeleccionado.id, semanaSeleccionada)
 
