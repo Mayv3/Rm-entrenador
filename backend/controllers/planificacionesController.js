@@ -821,6 +821,23 @@ export async function getProgresoPlanificacion(req, res) {
 
   const sesionIds = sesiones.map((s) => s.id);
 
+  const { data: estadosDiarios } = await supabase
+    .from("entrenamiento_estado_diario")
+    .select("*")
+    .in("sesion_id", sesionIds);
+
+  const estadoMap = new Map((estadosDiarios ?? []).map((e) => [e.sesion_id, e]));
+  const sesionesConEstado = sesiones.map((s) => {
+    const est = estadoMap.get(s.id);
+    return {
+      ...s,
+      durmio_mal: est?.durmio_mal ?? false,
+      fatiga: est?.fatiga ?? false,
+      desmotivacion: est?.desmotivacion ?? false,
+      dolor: est?.dolor ?? false,
+    };
+  });
+
   const { data: registros, error: regError } = await supabase
     .from("entrenamiento_registros")
     .select("*")
@@ -829,7 +846,7 @@ export async function getProgresoPlanificacion(req, res) {
 
   if (regError) return res.status(500).json({ error: regError.message });
 
-  res.json({ sesiones, registros: registros ?? [] });
+  res.json({ sesiones: sesionesConEstado, registros: registros ?? [] });
 }
 
 export async function updateDosisBulk(req, res) {

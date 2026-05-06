@@ -98,7 +98,8 @@ interface RegistroSesion {
 }
 
 interface SsnData {
-  sesion: { id: number; estado: string | null; dormi_mal?: boolean; comi_mal?: boolean; enfermo?: boolean; otro?: boolean } | null
+  sesion: { id: number; estado: string | null } | null
+  estado_diario: { durmio_mal?: boolean; fatiga?: boolean; desmotivacion?: boolean; dolor?: boolean } | null
   registros: RegistroSesion[]
 }
 
@@ -147,11 +148,11 @@ export function StudentPlanificacionSection({
   onRequestCloseRef.current = onRequestClose
   const refetchResumenRef = useRef<(() => void) | null>(null)
   const refetchSesionesSemanaRef = useRef<(() => void) | null>(null)
-  const [skippedEjIds, setSkippedEjIds] = useState<Set<number>>(new Set())
-  const [dormiMal, setDormiMal] = useState(false)
-  const [comiMal, setComiMal] = useState(false)
-  const [enfermo, setEnfermo] = useState(false)
-  const [otro, setOtro] = useState(false)
+  const [saltadoEjIds, setSaltadoEjIds] = useState<Set<number>>(new Set())
+  const [durmioMal, setDurmioMal] = useState(false)
+  const [fatiga, setFatiga] = useState(false)
+  const [desmotivacion, setDesmotivacion] = useState(false)
+  const [dolor, setDolor] = useState(false)
   const [checkinMostrado, setCheckinMostrado] = useState(false)
   const justSavedRef = useRef(false)
   const [activeSerieMap, setActiveSerieMap] = useState<Record<number, number>>({})
@@ -209,10 +210,11 @@ export function StudentPlanificacionSection({
     setSemanaSeleccionada(null)
     setDiaSeleccionadoId(null)
     setRegistrosForm({})
-    setSkippedEjIds(new Set())
+    setSaltadoEjIds(new Set())
     setCheckinMostrado(false)
     setSaveMessage("")
     setSavedSuccess(false)
+    dirtyEjIds.current.clear()
   }, [planificacion?.id])
 
   const hojaActiva = useMemo(() => {
@@ -288,8 +290,9 @@ export function StudentPlanificacionSection({
   useEffect(() => {
     if (!diaSeleccionado || !semanaSeleccionada) {
       setRegistrosForm({})
-      setSkippedEjIds(new Set())
+      setSaltadoEjIds(new Set())
       setCheckinMostrado(false)
+      dirtyEjIds.current.clear()
       return
     }
 
@@ -303,11 +306,19 @@ export function StudentPlanificacionSection({
     )
 
     const next: Record<number, FormRow> = {}
+    const saltados = new Set<number>()
     for (const ej of ejerciciosDelDia) {
       const existing = registrosMap.get(ej.id)
       const savedSeries = Array.isArray(existing?.series) && existing.series.length > 0
         ? existing.series
         : []
+
+      // Detect skip via explicit _saltado marker (never auto-detect from all-zeros)
+      const tieneMarcadorSaltado = savedSeries.length > 0 && (savedSeries[0] as any)?._saltado === true
+      if (tieneMarcadorSaltado) {
+        saltados.add(ej.id)
+      }
+
       const series: [SerieRow, SerieRow, SerieRow] = [0, 1, 2].map((i) => {
         const s = savedSeries[i]
         if (s) {
@@ -317,7 +328,6 @@ export function StudentPlanificacionSection({
             rpe: s.rpe?.toString() ?? "",
           }
         }
-        // fallback para registros guardados con el formato anterior (campos top-level)
         if (i === 0 && existing) {
           return {
             peso_kg: existing.peso_kg?.toString() ?? "",
@@ -330,37 +340,24 @@ export function StudentPlanificacionSection({
       next[ej.id] = { series, notas: existing?.notas ?? "" }
     }
     isDirty.current = false
+    dirtyEjIds.current.clear()
     setRegistrosForm(next)
-    setDormiMal(!!sessionData?.sesion?.dormi_mal)
-    setComiMal(!!sessionData?.sesion?.comi_mal)
-    setEnfermo(!!sessionData?.sesion?.enfermo)
-    setOtro(!!sessionData?.sesion?.otro)
+    setSaltadoEjIds(saltados)
+    setDurmioMal(!!sessionData?.estado_diario?.durmio_mal)
+    setFatiga(!!sessionData?.estado_diario?.fatiga)
+    setDesmotivacion(!!sessionData?.estado_diario?.desmotivacion)
+    setDolor(!!sessionData?.estado_diario?.dolor)
     setCheckinMostrado(!!sessionData?.sesion)
-
-    const skipped = new Set<number>()
-    for (const ej of ejerciciosDelDia) {
-      const existing = registrosMap.get(ej.id)
-      if (!existing) continue
-      const series = Array.isArray(existing.series) && existing.series.length > 0
-        ? existing.series
-        : null
-      if (series && series.every((s: any) => (s.peso_kg ?? 0) === 0 && (s.repeticiones ?? 0) === 0 && (s.rpe ?? 0) === 0)) {
-        skipped.add(ej.id)
-      } else if (!series && (existing.peso_kg ?? 0) === 0 && (existing.repeticiones ?? 0) === 0 && (existing.rpe ?? 0) === 0) {
-        skipped.add(ej.id)
-      }
-    }
-    setSkippedEjIds(skipped)
   }, [diaSeleccionado, ejerciciosDelDia, sessionData, semanaSeleccionada])
 
   const allCompletedAuto = useMemo(() => {
     if (ejerciciosDelDia.length === 0) return false
     return ejerciciosDelDia.every((ej) => {
-      if (skippedEjIds.has(ej.id)) return true
+      if (saltadoEjIds.has(ej.id)) return true
       const row = registrosForm[ej.id]
       return (row?.series ?? []).every((s) => !!s.peso_kg && !!s.repeticiones && !!s.rpe)
     })
-  }, [ejerciciosDelDia, registrosForm, skippedEjIds])
+  }, [ejerciciosDelDia, registrosForm, saltadoEjIds])
 
   const allCompleted = allCompletedAuto
 
@@ -425,21 +422,23 @@ export function StudentPlanificacionSection({
         setSemanaSeleccionada(nav.semana ?? null)
         setDiaSeleccionadoId(null)
         setRegistrosForm({})
-        setSkippedEjIds(new Set())
+        setSaltadoEjIds(new Set())
         setCheckinMostrado(false)
         setSaveMessage("")
         setSavedSuccess(false)
         isDirty.current = false
+        dirtyEjIds.current.clear()
         refetchSesionesSemanaRef.current?.()
       } else if (nav?.planNav === "weeks") {
         setSemanaSeleccionada(null)
         setDiaSeleccionadoId(null)
         setRegistrosForm({})
-        setSkippedEjIds(new Set())
+        setSaltadoEjIds(new Set())
         setCheckinMostrado(false)
         setSaveMessage("")
         setSavedSuccess(false)
         isDirty.current = false
+        dirtyEjIds.current.clear()
         refetchResumenRef.current?.()
       } else {
         onRequestCloseRef.current?.()
@@ -472,40 +471,66 @@ export function StudentPlanificacionSection({
       if (!planificacion || !hojaActiva || !diaSeleccionado || !semanaSeleccionada) return
 
       const dirtyIds = new Set(dirtyEjIds.current)
-      const ejerciciosToSave = ejerciciosDelDia.filter((ej) => dirtyIds.has(ej.id) || dirtyIds.size === 0)
-      if (ejerciciosToSave.length === 0) return
+      const registros: any[] = []
 
-      const registros = ejerciciosToSave.map((ej) => {
-        const esSaltado = skippedEjIds.has(ej.id)
+      for (const ej of ejerciciosDelDia) {
+        if (!dirtyIds.has(ej.id)) continue
+
+        const row = registrosForm[ej.id] ?? EMPTY_FORM_ROW()
+        const esSaltado = saltadoEjIds.has(ej.id)
+
         if (esSaltado) {
-          return {
+          registros.push({
             planificacion_ejercicio_id: ej.id,
             peso_kg: 0,
             repeticiones: 0,
             rpe: 0,
             notas: null,
             series: [
-              { peso_kg: 0, repeticiones: 0, rpe: 0 },
+              { peso_kg: 0, repeticiones: 0, rpe: 0, _saltado: true },
               { peso_kg: 0, repeticiones: 0, rpe: 0 },
               { peso_kg: 0, repeticiones: 0, rpe: 0 },
             ],
+          })
+          continue
+        }
+
+        const hasAnyData = row.notas !== "" ||
+          row.series.some((s) => s.peso_kg !== "" || s.repeticiones !== "" || s.rpe !== "")
+
+        if (hasAnyData) {
+          registros.push({
+            planificacion_ejercicio_id: ej.id,
+            peso_kg: row.series[0].peso_kg,
+            repeticiones: row.series[0].repeticiones,
+            rpe: row.series[0].rpe,
+            notas: row.notas,
+            series: row.series.map((s) => ({
+              peso_kg: s.peso_kg === "" ? null : Number(s.peso_kg),
+              repeticiones: s.repeticiones === "" ? null : Number(s.repeticiones),
+              rpe: s.rpe === "" ? null : Number(s.rpe),
+            })),
+          })
+        } else {
+          const sesionKey = queryKeySesion(planificacion.id, studentId, hojaActiva.id, diaSeleccionado.id, semanaSeleccionada)
+          const cached = queryClient.getQueryData<SsnData>(sesionKey) ?? sessionData
+          const priorRegistro = (cached?.registros ?? []).find((r) => r.planificacion_ejercicio_id === ej.id)
+          if (priorRegistro) {
+            registros.push({
+              planificacion_ejercicio_id: ej.id,
+              peso_kg: null,
+              repeticiones: null,
+              rpe: null,
+              notas: null,
+              series: [
+                { peso_kg: null, repeticiones: null, rpe: null },
+                { peso_kg: null, repeticiones: null, rpe: null },
+                { peso_kg: null, repeticiones: null, rpe: null },
+              ],
+            })
           }
         }
-        const row = registrosForm[ej.id] ?? EMPTY_FORM_ROW()
-        const s0 = row.series[0]
-        return {
-          planificacion_ejercicio_id: ej.id,
-          peso_kg: s0.peso_kg,
-          repeticiones: s0.repeticiones,
-          rpe: s0.rpe,
-          notas: row.notas,
-          series: row.series.map((s) => ({
-            peso_kg: s.peso_kg === "" ? null : Number(s.peso_kg),
-            repeticiones: s.repeticiones === "" ? null : Number(s.repeticiones),
-            rpe: s.rpe === "" ? null : Number(s.rpe),
-          })),
-        }
-      })
+      }
 
       await axios.put(`${process.env.NEXT_PUBLIC_URL_BACKEND}/portal/planificaciones/${planificacion.id}/sesiones`, {
         alumno_id: studentId,
@@ -514,10 +539,10 @@ export function StudentPlanificacionSection({
         semana: semanaSeleccionada,
         estado: allCompleted ? "completado" : "abierta",
         registros,
-        dormi_mal: dormiMal,
-        comi_mal: comiMal,
-        enfermo: enfermo,
-        otro: otro,
+        durmio_mal: durmioMal,
+        fatiga,
+        desmotivacion,
+        dolor,
       })
     },
     onSuccess: async () => {
@@ -533,6 +558,20 @@ export function StudentPlanificacionSection({
       queryClient.setQueryData<SsnData>(sesionKey, (old) => {
         if (!old) return undefined
         const registrosActualizados = (old.registros ?? []).map((r) => {
+          if (saltadoEjIds.has(r.planificacion_ejercicio_id)) {
+            return {
+              ...r,
+              peso_kg: 0,
+              repeticiones: 0,
+              rpe: 0,
+              notas: null,
+              series: [
+                { peso_kg: 0, repeticiones: 0, rpe: 0, _saltado: true },
+                { peso_kg: 0, repeticiones: 0, rpe: 0 },
+                { peso_kg: 0, repeticiones: 0, rpe: 0 },
+              ],
+            }
+          }
           const formRow = registrosForm[r.planificacion_ejercicio_id]
           if (!formRow) return r
           return {
@@ -549,9 +588,9 @@ export function StudentPlanificacionSection({
           }
         })
         const sesionActualizada = old.sesion
-          ? { ...old.sesion, estado: allCompleted ? "completado" : old.sesion.estado ?? "abierta", dormi_mal: dormiMal, comi_mal: comiMal, enfermo, otro }
-          : { id: 0, estado: allCompleted ? "completado" : "abierta", dormi_mal: dormiMal, comi_mal: comiMal, enfermo, otro }
-        return { ...old, sesion: sesionActualizada, registros: registrosActualizados }
+          ? { ...old.sesion, estado: allCompleted ? "completado" : old.sesion.estado ?? "abierta" }
+          : { id: 0, estado: allCompleted ? "completado" : "abierta" }
+        return { ...old, sesion: sesionActualizada, estado_diario: { durmio_mal: durmioMal, fatiga, desmotivacion, dolor }, registros: registrosActualizados }
       })
 
       const semanaKey = ["portalSesionesSemana", planificacion.id, studentId, hojaActiva.id, semanaSeleccionada] as const
@@ -593,12 +632,12 @@ export function StudentPlanificacionSection({
   const saveIsPendingRef = useRef(saveMutation.isPending)
   saveIsPendingRef.current = saveMutation.isPending
 
-  const scheduleSave = (ejId?: number) => {
+  const scheduleSave = (ejId?: number, delay = 800) => {
     if (ejId != null) dirtyEjIds.current.add(ejId)
     if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current)
     saveDebounceRef.current = setTimeout(() => {
       if (!saveIsPendingRef.current) saveMutateRef.current()
-    }, 300)
+    }, delay)
   }
 
 
@@ -649,18 +688,18 @@ export function StudentPlanificacionSection({
     })
   }
 
-  const handleToggleEstado = (field: "dormiMal" | "comiMal" | "enfermo" | "otro") => {
-    const setters = { dormiMal: setDormiMal, comiMal: setComiMal, enfermo: setEnfermo, otro: setOtro }
+  const handleToggleEstado = (field: "durmioMal" | "fatiga" | "desmotivacion" | "dolor") => {
+    const setters = { durmioMal: setDurmioMal, fatiga: setFatiga, desmotivacion: setDesmotivacion, dolor: setDolor }
     setters[field]((prev) => !prev)
     isDirty.current = true
-    scheduleSave()
+    scheduleSave(undefined)
   }
 
   const handleEstoyPerfecto = () => {
-    setDormiMal(false)
-    setComiMal(false)
-    setEnfermo(false)
-    setOtro(false)
+    setDurmioMal(false)
+    setFatiga(false)
+    setDesmotivacion(false)
+    setDolor(false)
     setCheckinMostrado(true)
     isDirty.current = true
     if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current)
@@ -693,7 +732,7 @@ export function StudentPlanificacionSection({
     isDirty.current = true
     setSaveMessage("")
     setSavedSuccess(false)
-    setSkippedEjIds((prev) => {
+    setSaltadoEjIds((prev) => {
       const next = new Set(prev)
       if (next.has(planEjId)) {
         next.delete(planEjId)
@@ -885,9 +924,9 @@ export function StudentPlanificacionSection({
 
           <div className="grid grid-cols-2 gap-3 w-full max-w-sm">
             <button
-              onClick={() => handleToggleEstado("dormiMal")}
+              onClick={() => handleToggleEstado("durmioMal")}
               className={`flex flex-col items-center justify-center gap-2 py-5 rounded-2xl text-xs font-semibold border transition-all ${
-                dormiMal
+                durmioMal
                   ? "bg-indigo-500/15 border-indigo-500/30 text-indigo-400"
                   : "bg-white/[0.03] border-white/[0.06] text-zinc-500 hover:border-indigo-500/20 hover:text-zinc-300"
               }`}
@@ -896,9 +935,9 @@ export function StudentPlanificacionSection({
               Dormí mal
             </button>
             <button
-              onClick={() => handleToggleEstado("comiMal")}
+              onClick={() => handleToggleEstado("fatiga")}
               className={`flex flex-col items-center justify-center gap-2 py-5 rounded-2xl text-xs font-semibold border transition-all ${
-                comiMal
+                fatiga
                   ? "bg-amber-500/15 border-amber-500/30 text-amber-400"
                   : "bg-white/[0.03] border-white/[0.06] text-zinc-500 hover:border-amber-500/20 hover:text-zinc-300"
               }`}
@@ -907,9 +946,9 @@ export function StudentPlanificacionSection({
               Mucha fatiga
             </button>
             <button
-              onClick={() => handleToggleEstado("enfermo")}
+              onClick={() => handleToggleEstado("desmotivacion")}
               className={`flex flex-col items-center justify-center gap-2 py-5 rounded-2xl text-xs font-semibold border transition-all ${
-                enfermo
+                desmotivacion
                   ? "bg-cyan-500/15 border-cyan-500/30 text-cyan-400"
                   : "bg-white/[0.03] border-white/[0.06] text-zinc-500 hover:border-cyan-500/20 hover:text-zinc-300"
               }`}
@@ -918,9 +957,9 @@ export function StudentPlanificacionSection({
               Poca motivación
             </button>
             <button
-              onClick={() => handleToggleEstado("otro")}
+              onClick={() => handleToggleEstado("dolor")}
               className={`flex flex-col items-center justify-center gap-2 py-5 rounded-2xl text-xs font-semibold border transition-all ${
-                otro
+                dolor
                   ? "bg-rose-500/15 border-rose-500/30 text-rose-400"
                   : "bg-white/[0.03] border-white/[0.06] text-zinc-500 hover:border-rose-500/20 hover:text-zinc-300"
               }`}
@@ -931,10 +970,10 @@ export function StudentPlanificacionSection({
           </div>
 
           <button
-            onClick={dormiMal || comiMal || enfermo || otro ? handleConfirmar : handleEstoyPerfecto}
+            onClick={durmioMal || fatiga || desmotivacion || dolor ? handleConfirmar : handleEstoyPerfecto}
             className="w-full max-w-sm py-4 rounded-2xl bg-green-500/15 border border-green-500/30 text-green-400 text-sm font-bold hover:bg-green-500/20 transition-all active:scale-[0.98]"
           >
-            {dormiMal || comiMal || enfermo || otro ? "Confirmar" : "¡Estoy perfecto!"}
+            {durmioMal || fatiga || desmotivacion || dolor ? "Confirmar" : "¡Estoy perfecto!"}
           </button>
         </div>
       ) : (
@@ -942,9 +981,9 @@ export function StudentPlanificacionSection({
           {/* Estado del dia */}
           <div className="grid grid-cols-4 gap-2">
             <button
-              onClick={() => handleToggleEstado("dormiMal")}
+              onClick={() => handleToggleEstado("durmioMal")}
               className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-[10px] font-semibold border transition-all ${
-                dormiMal
+                durmioMal
                   ? "bg-indigo-500/15 border-indigo-500/30 text-indigo-400"
                   : "bg-white/[0.03] border-white/[0.06] text-zinc-600 hover:border-indigo-500/20 hover:text-zinc-400"
               }`}
@@ -953,9 +992,9 @@ export function StudentPlanificacionSection({
               Dormí mal
             </button>
             <button
-              onClick={() => handleToggleEstado("comiMal")}
+              onClick={() => handleToggleEstado("fatiga")}
               className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-[10px] font-semibold border transition-all ${
-                comiMal
+                fatiga
                   ? "bg-amber-500/15 border-amber-500/30 text-amber-400"
                   : "bg-white/[0.03] border-white/[0.06] text-zinc-600 hover:border-amber-500/20 hover:text-zinc-400"
               }`}
@@ -964,9 +1003,9 @@ export function StudentPlanificacionSection({
               Fatiga
             </button>
             <button
-              onClick={() => handleToggleEstado("enfermo")}
+              onClick={() => handleToggleEstado("desmotivacion")}
               className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-[10px] font-semibold border transition-all ${
-                enfermo
+                desmotivacion
                   ? "bg-cyan-500/15 border-cyan-500/30 text-cyan-400"
                   : "bg-white/[0.03] border-white/[0.06] text-zinc-600 hover:border-cyan-500/20 hover:text-zinc-400"
               }`}
@@ -975,9 +1014,9 @@ export function StudentPlanificacionSection({
               Motivación
             </button>
             <button
-              onClick={() => handleToggleEstado("otro")}
+              onClick={() => handleToggleEstado("dolor")}
               className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-[10px] font-semibold border transition-all ${
-                otro
+                dolor
                   ? "bg-rose-500/15 border-rose-500/30 text-rose-400"
                   : "bg-white/[0.03] border-white/[0.06] text-zinc-600 hover:border-rose-500/20 hover:text-zinc-400"
               }`}
@@ -1072,7 +1111,7 @@ export function StudentPlanificacionSection({
             const catStyle = CATEGORIA_ROW_STYLE[ej.categoria] ?? {}
             const catColor = catStyle.color as string | undefined
             const catBg = catStyle.backgroundColor as string | undefined
-            const esSaltado = skippedEjIds.has(ej.id)
+            const esSaltado = saltadoEjIds.has(ej.id)
 
             return (
               <div
@@ -1115,17 +1154,17 @@ export function StudentPlanificacionSection({
                     </span>
                   )}
                   {(!isFilled || esSaltado) ? (
-                  <button
-                    onClick={() => handleToggleSkip(ej.id)}
-                    className={`h-7 px-2.5 rounded-lg flex items-center gap-1.5 text-[10px] font-semibold transition-all border flex-shrink-0 ${
-                      skippedEjIds.has(ej.id)
-                        ? "bg-amber-500/15 border-amber-500/30 text-amber-400"
-                        : "ml-auto bg-transparent border-white/[0.05] text-zinc-600 hover:border-amber-500/30 hover:text-amber-400"
-                    }`}
-                  >
-                    <SkipForward className="h-3 w-3" />
-                    {skippedEjIds.has(ej.id) ? "Saltado" : "Saltar"}
-                  </button>
+                    <button
+                      onClick={() => handleToggleSkip(ej.id)}
+                      className={`h-7 px-2.5 rounded-lg flex items-center gap-1.5 text-[10px] font-semibold transition-all border flex-shrink-0 ${
+                        saltadoEjIds.has(ej.id)
+                          ? "bg-amber-500/15 border-amber-500/30 text-amber-400"
+                          : "ml-auto bg-transparent border-white/[0.05] text-zinc-600 hover:border-amber-500/30 hover:text-amber-400"
+                      }`}
+                    >
+                      <SkipForward className="h-3 w-3" />
+                      {saltadoEjIds.has(ej.id) ? "Saltado" : "Saltar"}
+                    </button>
                   ) : null}
                 </div>
 

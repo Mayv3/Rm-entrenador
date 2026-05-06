@@ -1039,10 +1039,10 @@ function PlanProgresoDialog({
                           {SEMANAS_PREVIEW.map((s) => {
                             const sesion = sesionMap.get(`${dia.id}-${s}`)
                             const flags: { key: string; label: string; color: string; bg: string }[] = [
-                              { key: "dormi_mal", label: "Dormí mal", color: "text-indigo-400", bg: "bg-indigo-500/15" },
-                              { key: "comi_mal", label: "Fatiga", color: "text-amber-400", bg: "bg-amber-500/15" },
-                              { key: "enfermo", label: "Motivación", color: "text-cyan-400", bg: "bg-cyan-500/15" },
-                              { key: "otro", label: "Dolor", color: "text-rose-400", bg: "bg-rose-500/15" },
+                              { key: "durmio_mal", label: "Dormí mal", color: "text-indigo-400", bg: "bg-indigo-500/15" },
+                              { key: "fatiga", label: "Fatiga", color: "text-amber-400", bg: "bg-amber-500/15" },
+                              { key: "desmotivacion", label: "Motivación", color: "text-cyan-400", bg: "bg-cyan-500/15" },
+                              { key: "dolor", label: "Dolor", color: "text-rose-400", bg: "bg-rose-500/15" },
                             ]
                             const active = sesion ? flags.filter((f) => !!sesion[f.key]) : []
                             const popoverKey = `${dia.id}-${s}`

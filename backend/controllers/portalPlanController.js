@@ -144,8 +144,17 @@ export async function getPortalSesion(req, res) {
   if (sesionError) return res.status(500).json({ error: sesionError.message });
 
   if (!sesion) {
-    return res.json({ sesion: null, registros: [] });
+    return res.json({ sesion: null, estado_diario: null, registros: [] });
   }
+
+  let estadoDiario = null;
+  const { data: estadoData, error: estadoError } = await supabase
+    .from("entrenamiento_estado_diario")
+    .select("*")
+    .eq("sesion_id", sesion.id)
+    .maybeSingle();
+
+  if (!estadoError) estadoDiario = estadoData;
 
   const { data: registros, error: registrosError } = await supabase
     .from("entrenamiento_registros")
@@ -155,7 +164,7 @@ export async function getPortalSesion(req, res) {
 
   if (registrosError) return res.status(500).json({ error: registrosError.message });
 
-  return res.json({ sesion, registros: registros ?? [] });
+  return res.json({ sesion, estado_diario: estadoDiario, registros: registros ?? [] });
 }
 
 export async function getPortalSesionesResumen(req, res) {
@@ -210,10 +219,10 @@ export async function upsertPortalSesion(req, res) {
     estado,
     fecha_entrenamiento,
     registros = [],
-    dormi_mal,
-    comi_mal,
-    enfermo,
-    otro,
+    durmio_mal,
+    fatiga,
+    desmotivacion,
+    dolor,
   } = req.body;
 
   const alumnoId = Number(alumno_id);
@@ -261,10 +270,6 @@ export async function upsertPortalSesion(req, res) {
         semana: semanaNum,
         estado: estado ?? "abierta",
         fecha_entrenamiento: fecha_entrenamiento ?? null,
-        dormi_mal: dormi_mal ?? false,
-        comi_mal: comi_mal ?? false,
-        enfermo: enfermo ?? false,
-        otro: otro ?? false,
       },
       { onConflict: "alumno_id,planificacion_id,hoja_id,dia_id,semana" }
     )
@@ -272,6 +277,22 @@ export async function upsertPortalSesion(req, res) {
     .single();
 
   if (sesionError) return res.status(500).json({ error: sesionError.message });
+
+  // Upsert estado diario
+  const { error: estadoError } = await supabase
+    .from("entrenamiento_estado_diario")
+    .upsert(
+      {
+        sesion_id: sesion.id,
+        durmio_mal: durmio_mal ?? false,
+        fatiga: fatiga ?? false,
+        desmotivacion: desmotivacion ?? false,
+        dolor: dolor ?? false,
+      },
+      { onConflict: "sesion_id" }
+    );
+
+  if (estadoError) return res.status(500).json({ error: estadoError.message });
 
   if (registros.length > 0) {
     const rows = registros.map((reg) => {
@@ -318,5 +339,11 @@ export async function upsertPortalSesion(req, res) {
 
   if (registrosError) return res.status(500).json({ error: registrosError.message });
 
-  return res.json({ sesion, registros: registrosGuardados ?? [] });
+  const { data: estadoDiario } = await supabase
+    .from("entrenamiento_estado_diario")
+    .select("*")
+    .eq("sesion_id", sesion.id)
+    .maybeSingle();
+
+  return res.json({ sesion, estado_diario: estadoDiario, registros: registrosGuardados ?? [] });
 }
