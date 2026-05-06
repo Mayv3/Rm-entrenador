@@ -652,6 +652,8 @@ export function StudentPlanificacionSection({
   const handleToggleEstado = (field: "dormiMal" | "comiMal" | "enfermo" | "otro") => {
     const setters = { dormiMal: setDormiMal, comiMal: setComiMal, enfermo: setEnfermo, otro: setOtro }
     setters[field]((prev) => !prev)
+    isDirty.current = true
+    scheduleSave()
   }
 
   const handleEstoyPerfecto = () => {
@@ -765,18 +767,18 @@ export function StudentPlanificacionSection({
                     if (historyDepthRef) historyDepthRef.current++
                     setSemanaSeleccionada(semana)
                   }}
-                  className={`group relative rounded-2xl border active:scale-95 transition-all duration-150 p-4 text-left overflow-hidden ${
+                  className={`group relative aspect-square rounded-2xl border active:scale-95 transition-all duration-150 p-4 text-left overflow-hidden ${
                     completada
                       ? "border-green-500/40 bg-green-500/[0.07] hover:bg-green-500/[0.11]"
                       : "border-white/[0.07] bg-white/[0.03] hover:bg-white/[0.06] hover:border-green-500/30 active:bg-green-500/20 active:border-green-500/60"
                   }`}
                 >
                   <div className="absolute inset-0 bg-gradient-to-br from-green-500/0 group-hover:from-green-500/5 to-transparent transition-all duration-200" />
-                  <span className={`block text-[10px] font-semibold uppercase tracking-widest transition-colors ${completada ? "text-green-500/70" : "text-zinc-500 group-hover:text-green-500/70"}`}>Semana</span>
-                  <span className="block text-3xl font-black text-white mt-0.5 leading-none">{semana}</span>
+                  <span className={`absolute top-3 left-3 text-[10px] font-semibold uppercase tracking-widest transition-colors ${completada ? "text-green-500/70" : "text-zinc-500 group-hover:text-green-500/70"}`}>Semana</span>
+                  <span className={`absolute inset-0 flex items-center justify-center text-4xl font-black transition-colors ${completada ? "text-green-400" : "text-white"}`}>{semana}</span>
                   {completada
-                    ? <CheckCircle2 className="absolute right-3 bottom-3.5 h-4 w-4 text-green-400" />
-                    : <ChevronRight className="absolute right-3 bottom-3.5 h-4 w-4 text-zinc-600 group-hover:text-green-500/50 transition-colors" />
+                    ? <CheckCircle2 className="absolute right-3 bottom-3 h-4 w-4 text-green-400" />
+                    : <ChevronRight className="absolute right-3 bottom-3 h-4 w-4 text-zinc-600 group-hover:text-green-500/50 transition-colors" />
                   }
                 </button>
               )
@@ -807,43 +809,34 @@ export function StudentPlanificacionSection({
         {dias.length === 0 ? (
           <p className="text-sm text-zinc-400 text-center py-8">Esta hoja no tiene días cargados.</p>
         ) : (
-          <div className="space-y-2.5">
-            {dias.map((dia) => (
-              <button
-                key={dia.id}
-                onClick={() => {
-                  history.pushState({ planNav: "exercises" }, "")
-                  if (historyDepthRef) historyDepthRef.current++
-                  setDiaSeleccionadoId(dia.id)
-                }}
-                className={`group w-full rounded-2xl border transition-all duration-150 p-4 text-left flex items-center gap-4 overflow-hidden relative active:scale-95 ${
-                  sesionesMapSemana.get(dia.id)?.estado === "completado"
-                    ? "border-green-500/30 bg-green-500/[0.05] hover:bg-green-500/[0.08]"
-                    : "border-white/[0.07] bg-white/[0.03] hover:bg-white/[0.06] hover:border-green-500/25 active:bg-green-500/20 active:border-green-500/60"
-                }`}
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-green-500/0 group-hover:from-green-500/[0.04] to-transparent transition-all duration-200" />
-                <div className={`h-10 w-10 rounded-xl flex items-center justify-center transition-colors flex-shrink-0 ${
-                  sesionesMapSemana.get(dia.id)?.estado === "completado"
-                    ? "bg-green-500/20"
-                    : "bg-zinc-800 group-hover:bg-green-500/15"
-                }`}>
-                  {sesionesMapSemana.get(dia.id)?.estado === "completado"
-                    ? <CheckCircle2 className="h-5 w-5 text-green-400" />
-                    : <span className="text-base font-black text-zinc-300 group-hover:text-green-400 transition-colors">{dia.numero_dia}</span>
+          <div className="grid grid-cols-2 gap-2.5">
+            {dias.map((dia) => {
+              const completado = sesionesMapSemana.get(dia.id)?.estado === "completado"
+              return (
+                <button
+                  key={dia.id}
+                  onClick={() => {
+                    history.pushState({ planNav: "exercises" }, "")
+                    if (historyDepthRef) historyDepthRef.current++
+                    setDiaSeleccionadoId(dia.id)
+                  }}
+                  className={`group relative aspect-square rounded-2xl border active:scale-95 transition-all duration-150 p-4 text-left overflow-hidden ${
+                    completado
+                      ? "border-green-500/40 bg-green-500/[0.07] hover:bg-green-500/[0.11]"
+                      : "border-white/[0.07] bg-white/[0.03] hover:bg-white/[0.06] hover:border-green-500/30 active:bg-green-500/20 active:border-green-500/60"
+                  }`}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-br from-green-500/0 group-hover:from-green-500/5 to-transparent transition-all duration-200" />
+                  <span className={`absolute top-3 left-3 text-[10px] font-semibold uppercase tracking-widest transition-colors ${completado ? "text-green-500/70" : "text-zinc-500 group-hover:text-green-500/70"}`}>Día</span>
+                  <span className={`absolute inset-0 flex items-center justify-center text-4xl font-black transition-colors ${completado ? "text-green-400" : "text-white"}`}>{dia.numero_dia}</span>
+                  <span className="absolute bottom-3 left-3 right-8 text-[10px] text-zinc-400 truncate">{dia.nombre}</span>
+                  {completado
+                    ? <CheckCircle2 className="absolute right-3 bottom-3 h-4 w-4 text-green-400" />
+                    : <ChevronRight className="absolute right-3 bottom-3 h-4 w-4 text-zinc-600 group-hover:text-green-500/50 transition-colors" />
                   }
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-white truncate">DIA {dia.numero_dia} - {dia.nombre}</p>
-                  <p className={`text-[11px] mt-0.5 ${sesionesMapSemana.get(dia.id)?.estado === "completado" ? "text-green-500/70" : "text-zinc-500"}`}>
-                    {sesionesMapSemana.get(dia.id)?.estado === "completado"
-                      ? "Completado"
-                      : `${dia.ejercicios.length} ejercicio${dia.ejercicios.length !== 1 ? "s" : ""}`}
-                  </p>
-                </div>
-                <ChevronRight className="h-4 w-4 text-zinc-600 group-hover:text-green-500/50 transition-colors flex-shrink-0" />
-              </button>
-            ))}
+                </button>
+              )
+            })}
           </div>
         )}
       </div>
