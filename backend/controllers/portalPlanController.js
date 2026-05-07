@@ -224,6 +224,7 @@ export async function upsertPortalSesion(req, res) {
     fatiga,
     desmotivacion,
     dolor,
+    excelente,
   } = req.body;
 
   const alumnoId = Number(alumno_id);
@@ -282,7 +283,7 @@ export async function upsertPortalSesion(req, res) {
   console.log("[DB] Sesión upsert exitosa:", JSON.stringify(sesion, null, 2))
 
   // Upsert estado diario (solo si el frontend envió los campos)
-  const hasEstadoDiario = req.body.durmio_mal !== undefined || req.body.fatiga !== undefined || req.body.desmotivacion !== undefined || req.body.dolor !== undefined
+  const hasEstadoDiario = req.body.durmio_mal !== undefined || req.body.fatiga !== undefined || req.body.desmotivacion !== undefined || req.body.dolor !== undefined || req.body.excelente !== undefined
 
   if (hasEstadoDiario) {
     const { error: estadoError } = await supabase
@@ -294,13 +295,14 @@ export async function upsertPortalSesion(req, res) {
           fatiga: fatiga ?? false,
           desmotivacion: desmotivacion ?? false,
           dolor: dolor ?? false,
+          excelente: excelente ?? false,
         },
         { onConflict: "sesion_id" }
       );
 
     if (estadoError) return res.status(500).json({ error: estadoError.message });
 
-    console.log("[DB] Estado diario guardado: durmio_mal=", durmio_mal, "fatiga=", fatiga, "desmotivacion=", desmotivacion, "dolor=", dolor)
+    console.log("[DB] Estado diario guardado: durmio_mal=", durmio_mal, "fatiga=", fatiga, "desmotivacion=", desmotivacion, "dolor=", dolor, "excelente=", excelente)
   }
 
   if (registros.length > 0) {

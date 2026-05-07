@@ -99,7 +99,7 @@ interface RegistroSesion {
 
 interface SsnData {
   sesion: { id: number; estado: string | null } | null
-  estado_diario: { durmio_mal?: boolean; fatiga?: boolean; desmotivacion?: boolean; dolor?: boolean } | null
+  estado_diario: { durmio_mal?: boolean; fatiga?: boolean; desmotivacion?: boolean; dolor?: boolean; excelente?: boolean } | null
   registros: RegistroSesion[]
 }
 
@@ -153,10 +153,12 @@ export function StudentPlanificacionSection({
   const [fatiga, setFatiga] = useState(false)
   const [desmotivacion, setDesmotivacion] = useState(false)
   const [dolor, setDolor] = useState(false)
+  const [excelente, setExcelente] = useState(false)
   const durmioMalRef = useRef(false)
   const fatigaRef = useRef(false)
   const desmotivacionRef = useRef(false)
   const dolorRef = useRef(false)
+  const excelenteRef = useRef(false)
   const [checkinMostrado, setCheckinMostrado] = useState(false)
   const [estadoLocalDirty, setEstadoLocalDirty] = useState(false)
   const justSavedRef = useRef(false)
@@ -271,7 +273,25 @@ export function StudentPlanificacionSection({
       return res.data
     },
     enabled: !!planificacion && !!hojaActiva && !!diaSeleccionado && !!semanaSeleccionada,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   })
+
+  useEffect(() => {
+    if (
+      planificacion &&
+      hojaActiva &&
+      diaSeleccionado &&
+      semanaSeleccionada &&
+      !justSavedRef.current
+    ) {
+      queryClient.invalidateQueries({
+        queryKey: queryKeySesion(planificacion.id, studentId, hojaActiva.id, diaSeleccionado.id, semanaSeleccionada),
+      })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [diaSeleccionado?.id, semanaSeleccionada])
 
   const semanaAnterior = semanaSeleccionada !== null && semanaSeleccionada > 1 ? semanaSeleccionada - 1 : null
 
@@ -364,10 +384,12 @@ export function StudentPlanificacionSection({
     fatigaRef.current = !!sessionData?.estado_diario?.fatiga
     desmotivacionRef.current = !!sessionData?.estado_diario?.desmotivacion
     dolorRef.current = !!sessionData?.estado_diario?.dolor
+    excelenteRef.current = !!sessionData?.estado_diario?.excelente
     setDurmioMal(durmioMalRef.current)
     setFatiga(fatigaRef.current)
     setDesmotivacion(desmotivacionRef.current)
     setDolor(dolorRef.current)
+    setExcelente(excelenteRef.current)
     setCheckinMostrado(sessionData?.estado_diario != null)
     setEstadoLocalDirty(false)
   }, [diaSeleccionado, ejerciciosDelDia, sessionData, semanaSeleccionada])
@@ -567,6 +589,7 @@ export function StudentPlanificacionSection({
         payload.fatiga = fatigaRef.current
         payload.desmotivacion = desmotivacionRef.current
         payload.dolor = dolorRef.current
+        payload.excelente = excelenteRef.current
       }
       await axios.put(`${process.env.NEXT_PUBLIC_URL_BACKEND}/portal/planificaciones/${planificacion.id}/sesiones`, payload)
     },
@@ -616,7 +639,7 @@ export function StudentPlanificacionSection({
         const sesionActualizada = old.sesion
           ? { ...old.sesion, estado: allCompleted ? "completado" : old.sesion.estado ?? "abierta" }
           : { id: 0, estado: allCompleted ? "completado" : "abierta" }
-        return { ...old, sesion: sesionActualizada, estado_diario: { durmio_mal: durmioMal, fatiga, desmotivacion, dolor }, registros: registrosActualizados }
+        return { ...old, sesion: sesionActualizada, estado_diario: { durmio_mal: durmioMal, fatiga, desmotivacion, dolor, excelente }, registros: registrosActualizados }
       })
 
       const semanaKey = ["portalSesionesSemana", planificacion.id, studentId, hojaActiva.id, semanaSeleccionada] as const
@@ -700,9 +723,9 @@ export function StudentPlanificacionSection({
     }
   }
 
-  const handleToggleEstado = (field: "durmioMal" | "fatiga" | "desmotivacion" | "dolor") => {
-    const setters = { durmioMal: setDurmioMal, fatiga: setFatiga, desmotivacion: setDesmotivacion, dolor: setDolor }
-    const refs = { durmioMal: durmioMalRef, fatiga: fatigaRef, desmotivacion: desmotivacionRef, dolor: dolorRef }
+  const handleToggleEstado = (field: "durmioMal" | "fatiga" | "desmotivacion" | "dolor" | "excelente") => {
+    const setters = { durmioMal: setDurmioMal, fatiga: setFatiga, desmotivacion: setDesmotivacion, dolor: setDolor, excelente: setExcelente }
+    const refs = { durmioMal: durmioMalRef, fatiga: fatigaRef, desmotivacion: desmotivacionRef, dolor: dolorRef, excelente: excelenteRef }
     refs[field].current = !refs[field].current
     setters[field](refs[field].current)
     isDirty.current = true
@@ -715,10 +738,12 @@ export function StudentPlanificacionSection({
     fatigaRef.current = false
     desmotivacionRef.current = false
     dolorRef.current = false
+    excelenteRef.current = true
     setDurmioMal(false)
     setFatiga(false)
     setDesmotivacion(false)
     setDolor(false)
+    setExcelente(true)
     setCheckinMostrado(true)
     setEstadoLocalDirty(false)
     isDirty.current = true
@@ -727,6 +752,8 @@ export function StudentPlanificacionSection({
   }
 
   const handleConfirmar = () => {
+    excelenteRef.current = false
+    setExcelente(false)
     setCheckinMostrado(true)
     setEstadoLocalDirty(false)
     isDirty.current = true
@@ -992,15 +1019,16 @@ export function StudentPlanificacionSection({
             onClick={durmioMal || fatiga || desmotivacion || dolor ? handleConfirmar : handleEstoyPerfecto}
             className="w-full max-w-sm py-4 rounded-2xl bg-green-500/15 border border-green-500/30 text-green-400 text-sm font-bold hover:bg-green-500/20 transition-all active:scale-[0.98]"
           >
-            {durmioMal || fatiga || desmotivacion || dolor ? "Confirmar" : "¡Estoy perfecto!"}
+            {durmioMal || fatiga || desmotivacion || dolor ? "Confirmar" : "¡Estoy excelente!"}
           </button>
         </div>
       ) : (
         <>
           {/* Estado de salud */}
           <div className="space-y-2">
-            <div className="grid grid-cols-4 gap-1.5">
+            <div className="grid grid-cols-5 gap-1.5">
               {([
+                { field: "excelente" as const, label: "Excelente", Icon: CheckCircle2, active: excelente, on: "bg-green-500/20 border-green-500/40 text-green-300" },
                 { field: "durmioMal" as const, label: "Sueño", Icon: Moon, active: durmioMal, on: "bg-indigo-500/20 border-indigo-500/40 text-indigo-300" },
                 { field: "fatiga" as const, label: "Fatiga", Icon: BatteryWarning, active: fatiga, on: "bg-amber-500/20 border-amber-500/40 text-amber-300" },
                 { field: "desmotivacion" as const, label: "Ánimo", Icon: Frown, active: desmotivacion, on: "bg-cyan-500/20 border-cyan-500/40 text-cyan-300" },
