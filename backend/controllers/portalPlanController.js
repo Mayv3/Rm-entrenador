@@ -154,7 +154,8 @@ export async function getPortalSesion(req, res) {
     .eq("sesion_id", sesion.id)
     .maybeSingle();
 
-  if (!estadoError) estadoDiario = estadoData;
+  if (estadoError) console.error("[DB] Error fetching estado_diario:", estadoError.message)
+  else estadoDiario = estadoData;
 
   const { data: registros, error: registrosError } = await supabase
     .from("entrenamiento_registros")
