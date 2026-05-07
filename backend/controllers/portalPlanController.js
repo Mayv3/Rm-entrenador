@@ -278,21 +278,29 @@ export async function upsertPortalSesion(req, res) {
 
   if (sesionError) return res.status(500).json({ error: sesionError.message });
 
-  // Upsert estado diario
-  const { error: estadoError } = await supabase
-    .from("entrenamiento_estado_diario")
-    .upsert(
-      {
-        sesion_id: sesion.id,
-        durmio_mal: durmio_mal ?? false,
-        fatiga: fatiga ?? false,
-        desmotivacion: desmotivacion ?? false,
-        dolor: dolor ?? false,
-      },
-      { onConflict: "sesion_id" }
-    );
+  console.log("[DB] Sesión upsert exitosa:", JSON.stringify(sesion, null, 2))
 
-  if (estadoError) return res.status(500).json({ error: estadoError.message });
+  // Upsert estado diario (solo si el frontend envió los campos)
+  const hasEstadoDiario = req.body.durmio_mal !== undefined || req.body.fatiga !== undefined || req.body.desmotivacion !== undefined || req.body.dolor !== undefined
+
+  if (hasEstadoDiario) {
+    const { error: estadoError } = await supabase
+      .from("entrenamiento_estado_diario")
+      .upsert(
+        {
+          sesion_id: sesion.id,
+          durmio_mal: durmio_mal ?? false,
+          fatiga: fatiga ?? false,
+          desmotivacion: desmotivacion ?? false,
+          dolor: dolor ?? false,
+        },
+        { onConflict: "sesion_id" }
+      );
+
+    if (estadoError) return res.status(500).json({ error: estadoError.message });
+
+    console.log("[DB] Estado diario guardado: durmio_mal=", durmio_mal, "fatiga=", fatiga, "desmotivacion=", desmotivacion, "dolor=", dolor)
+  }
 
   if (registros.length > 0) {
     const rows = registros.map((reg) => {
@@ -329,6 +337,7 @@ export async function upsertPortalSesion(req, res) {
     if (upsertRegistrosError) {
       return res.status(500).json({ error: upsertRegistrosError.message });
     }
+    console.log("[DB] Registros guardados:", JSON.stringify(rows, null, 2))
   }
 
   const { data: registrosGuardados, error: registrosError } = await supabase

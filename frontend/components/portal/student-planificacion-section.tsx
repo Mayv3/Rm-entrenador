@@ -142,8 +142,8 @@ export function StudentPlanificacionSection({
   const [savedSuccess, setSavedSuccess] = useState(false)
   const [videoModal, setVideoModal] = useState<{ nombre: string; url: string } | null>(null)
   const isDirty = useRef(false)
+  const estadoDirty = useRef(false)
   const dirtyEjIds = useRef(new Set<number>())
-  const saveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const onRequestCloseRef = useRef(onRequestClose)
   onRequestCloseRef.current = onRequestClose
   const refetchResumenRef = useRef<(() => void) | null>(null)
@@ -153,7 +153,12 @@ export function StudentPlanificacionSection({
   const [fatiga, setFatiga] = useState(false)
   const [desmotivacion, setDesmotivacion] = useState(false)
   const [dolor, setDolor] = useState(false)
+  const durmioMalRef = useRef(false)
+  const fatigaRef = useRef(false)
+  const desmotivacionRef = useRef(false)
+  const dolorRef = useRef(false)
   const [checkinMostrado, setCheckinMostrado] = useState(false)
+  const [estadoLocalDirty, setEstadoLocalDirty] = useState(false)
   const justSavedRef = useRef(false)
   const [activeSerieMap, setActiveSerieMap] = useState<Record<number, number>>({})
   const serieScrollRefs = useRef<Map<number, HTMLDivElement>>(new Map())
@@ -162,6 +167,7 @@ export function StudentPlanificacionSection({
   const movilidadScrollRef = useRef<HTMLDivElement | null>(null)
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map())
   const serieAdvanceDebounceRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+  const registrosFormRef = useRef<Record<number, FormRow>>({})
 
   const clampSerieValue = (field: keyof SerieRow, value: string): string => {
     if (value === "") return ""
@@ -209,6 +215,7 @@ export function StudentPlanificacionSection({
   useEffect(() => {
     setSemanaSeleccionada(null)
     setDiaSeleccionadoId(null)
+    registrosFormRef.current = {}
     setRegistrosForm({})
     setSaltadoEjIds(new Set())
     setCheckinMostrado(false)
@@ -289,6 +296,7 @@ export function StudentPlanificacionSection({
 
   useEffect(() => {
     if (!diaSeleccionado || !semanaSeleccionada) {
+      registrosFormRef.current = {}
       setRegistrosForm({})
       setSaltadoEjIds(new Set())
       setCheckinMostrado(false)
@@ -341,13 +349,19 @@ export function StudentPlanificacionSection({
     }
     isDirty.current = false
     dirtyEjIds.current.clear()
+    registrosFormRef.current = next
     setRegistrosForm(next)
     setSaltadoEjIds(saltados)
-    setDurmioMal(!!sessionData?.estado_diario?.durmio_mal)
-    setFatiga(!!sessionData?.estado_diario?.fatiga)
-    setDesmotivacion(!!sessionData?.estado_diario?.desmotivacion)
-    setDolor(!!sessionData?.estado_diario?.dolor)
+    durmioMalRef.current = !!sessionData?.estado_diario?.durmio_mal
+    fatigaRef.current = !!sessionData?.estado_diario?.fatiga
+    desmotivacionRef.current = !!sessionData?.estado_diario?.desmotivacion
+    dolorRef.current = !!sessionData?.estado_diario?.dolor
+    setDurmioMal(durmioMalRef.current)
+    setFatiga(fatigaRef.current)
+    setDesmotivacion(desmotivacionRef.current)
+    setDolor(dolorRef.current)
     setCheckinMostrado(!!sessionData?.sesion)
+    setEstadoLocalDirty(false)
   }, [diaSeleccionado, ejerciciosDelDia, sessionData, semanaSeleccionada])
 
   const allCompletedAuto = useMemo(() => {
@@ -396,7 +410,6 @@ export function StudentPlanificacionSection({
   useEffect(() => {
     function handleBeforeUnload(e: BeforeUnloadEvent) {
       if (isDirty.current) {
-        if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current)
         saveMutateRef.current()
         e.preventDefault()
         e.returnValue = ""
@@ -413,7 +426,6 @@ export function StudentPlanificacionSection({
 
     function handlePopState(e: PopStateEvent) {
       if (isDirty.current) {
-        if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current)
         saveMutateRef.current()
       }
       if (historyDepthRef) historyDepthRef.current = Math.max(0, historyDepthRef.current - 1)
@@ -421,6 +433,7 @@ export function StudentPlanificacionSection({
       if (nav?.planNav === "days") {
         setSemanaSeleccionada(nav.semana ?? null)
         setDiaSeleccionadoId(null)
+        registrosFormRef.current = {}
         setRegistrosForm({})
         setSaltadoEjIds(new Set())
         setCheckinMostrado(false)
@@ -432,6 +445,7 @@ export function StudentPlanificacionSection({
       } else if (nav?.planNav === "weeks") {
         setSemanaSeleccionada(null)
         setDiaSeleccionadoId(null)
+        registrosFormRef.current = {}
         setRegistrosForm({})
         setSaltadoEjIds(new Set())
         setCheckinMostrado(false)
@@ -476,7 +490,7 @@ export function StudentPlanificacionSection({
       for (const ej of ejerciciosDelDia) {
         if (!dirtyIds.has(ej.id)) continue
 
-        const row = registrosForm[ej.id] ?? EMPTY_FORM_ROW()
+        const row = registrosFormRef.current[ej.id] ?? EMPTY_FORM_ROW()
         const esSaltado = saltadoEjIds.has(ej.id)
 
         if (esSaltado) {
@@ -495,8 +509,8 @@ export function StudentPlanificacionSection({
           continue
         }
 
-        const hasAnyData = row.notas !== "" ||
-          row.series.some((s) => s.peso_kg !== "" || s.repeticiones !== "" || s.rpe !== "")
+        const serieCompleta = row.series.some((s) => !!s.peso_kg && !!s.repeticiones && !!s.rpe)
+        const hasAnyData = row.notas !== "" || serieCompleta
 
         if (hasAnyData) {
           registros.push({
@@ -532,22 +546,26 @@ export function StudentPlanificacionSection({
         }
       }
 
-      await axios.put(`${process.env.NEXT_PUBLIC_URL_BACKEND}/portal/planificaciones/${planificacion.id}/sesiones`, {
+      const payload: any = {
         alumno_id: studentId,
         hoja_id: hojaActiva.id,
         dia_id: diaSeleccionado.id,
         semana: semanaSeleccionada,
         estado: allCompleted ? "completado" : "abierta",
         registros,
-        durmio_mal: durmioMal,
-        fatiga,
-        desmotivacion,
-        dolor,
-      })
+      }
+      if (estadoDirty.current) {
+        payload.durmio_mal = durmioMalRef.current
+        payload.fatiga = fatigaRef.current
+        payload.desmotivacion = desmotivacionRef.current
+        payload.dolor = dolorRef.current
+      }
+      await axios.put(`${process.env.NEXT_PUBLIC_URL_BACKEND}/portal/planificaciones/${planificacion.id}/sesiones`, payload)
     },
-    onSuccess: async () => {
+    onSuccess: async (_data: any) => {
       dirtyEjIds.current.clear()
       isDirty.current = false
+      estadoDirty.current = false
       setSavedSuccess(true)
       setSaveMessage("")
       if (!planificacion || !hojaActiva || !diaSeleccionado || !semanaSeleccionada) return
@@ -632,100 +650,91 @@ export function StudentPlanificacionSection({
   const saveIsPendingRef = useRef(saveMutation.isPending)
   saveIsPendingRef.current = saveMutation.isPending
 
-  const scheduleSave = (ejId?: number, delay = 800) => {
-    if (ejId != null) dirtyEjIds.current.add(ejId)
-    if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current)
-    saveDebounceRef.current = setTimeout(() => {
-      if (!saveIsPendingRef.current) saveMutateRef.current()
-    }, delay)
-  }
-
 
   const handleSerieChange = (planEjId: number, serieIdx: number, field: keyof SerieRow, value: string) => {
     const clamped = clampSerieValue(field, value)
     isDirty.current = true
+    dirtyEjIds.current.add(planEjId)
     setSaveMessage("")
     setSavedSuccess(false)
-    setRegistrosForm((prev) => {
-      const old = prev[planEjId] ?? EMPTY_FORM_ROW()
-      const newSeries = old.series.map((s, i) =>
-        i === serieIdx ? { ...s, [field]: clamped } : s
-      ) as [SerieRow, SerieRow, SerieRow]
-      const updated = { ...prev, [planEjId]: { ...old, series: newSeries } }
 
-      const thisSerie = newSeries[serieIdx]
-      const serieFilled = !!thisSerie.peso_kg && !!thisSerie.repeticiones && !!thisSerie.rpe
+    const old = registrosFormRef.current[planEjId] ?? EMPTY_FORM_ROW()
+    const newSeries = old.series.map((s, i) =>
+      i === serieIdx ? { ...s, [field]: clamped } : s
+    ) as [SerieRow, SerieRow, SerieRow]
+    const updated = { ...registrosFormRef.current, [planEjId]: { ...old, series: newSeries } }
+    registrosFormRef.current = updated
+    setRegistrosForm(updated)
 
-      // Debounce advance so typing "10" in RPE doesn't jump before the second digit
-      const advanceKey = `${planEjId}-${serieIdx}`
-      const pending = serieAdvanceDebounceRef.current.get(advanceKey)
-      if (pending) clearTimeout(pending)
+    const thisSerie = newSeries[serieIdx]
+    const serieFilled = !!thisSerie.peso_kg && !!thisSerie.repeticiones && !!thisSerie.rpe
 
-      if (serieFilled) {
-        const t = setTimeout(() => {
-          serieAdvanceDebounceRef.current.delete(advanceKey)
-          if (serieIdx < 2) {
-            scrollToSerie(planEjId, serieIdx + 1)
-          } else {
-            const ejIdx = ejerciciosDelDia.findIndex((e) => e.id === planEjId)
-            if (ejIdx !== -1 && ejIdx < ejerciciosDelDia.length - 1) {
-              const nextEjId = ejerciciosDelDia[ejIdx + 1].id
-              exerciseCardRefs.current.get(nextEjId)?.scrollIntoView({ behavior: "smooth", block: "start" })
-            }
+    const advanceKey = `${planEjId}-${serieIdx}`
+    const pending = serieAdvanceDebounceRef.current.get(advanceKey)
+    if (pending) clearTimeout(pending)
+
+    if (serieFilled) {
+      const t = setTimeout(() => {
+        serieAdvanceDebounceRef.current.delete(advanceKey)
+        if (serieIdx < 2) {
+          scrollToSerie(planEjId, serieIdx + 1)
+        } else {
+          const ejIdx = ejerciciosDelDia.findIndex((e) => e.id === planEjId)
+          if (ejIdx !== -1 && ejIdx < ejerciciosDelDia.length - 1) {
+            const nextEjId = ejerciciosDelDia[ejIdx + 1].id
+            exerciseCardRefs.current.get(nextEjId)?.scrollIntoView({ behavior: "smooth", block: "start" })
           }
-        }, 700)
-        serieAdvanceDebounceRef.current.set(advanceKey, t)
-      }
+        }
+      }, 700)
+      serieAdvanceDebounceRef.current.set(advanceKey, t)
 
-      const allSeriesFilled = newSeries.every((s) => !!s.peso_kg && !!s.repeticiones && !!s.rpe)
-      if (allSeriesFilled) {
-        if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current)
-        if (!saveIsPendingRef.current) saveMutateRef.current()
-      } else {
-        scheduleSave(planEjId)
-      }
-      return updated
-    })
+      if (!saveIsPendingRef.current) saveMutateRef.current()
+    }
   }
 
   const handleToggleEstado = (field: "durmioMal" | "fatiga" | "desmotivacion" | "dolor") => {
     const setters = { durmioMal: setDurmioMal, fatiga: setFatiga, desmotivacion: setDesmotivacion, dolor: setDolor }
-    setters[field]((prev) => !prev)
+    const refs = { durmioMal: durmioMalRef, fatiga: fatigaRef, desmotivacion: desmotivacionRef, dolor: dolorRef }
+    refs[field].current = !refs[field].current
+    setters[field](refs[field].current)
     isDirty.current = true
-    scheduleSave(undefined)
+    estadoDirty.current = true
+    setEstadoLocalDirty(true)
   }
 
   const handleEstoyPerfecto = () => {
+    durmioMalRef.current = false
+    fatigaRef.current = false
+    desmotivacionRef.current = false
+    dolorRef.current = false
     setDurmioMal(false)
     setFatiga(false)
     setDesmotivacion(false)
     setDolor(false)
     setCheckinMostrado(true)
+    setEstadoLocalDirty(false)
     isDirty.current = true
-    if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current)
-    saveDebounceRef.current = setTimeout(() => {
-      if (!saveIsPendingRef.current) saveMutateRef.current()
-    }, 300)
+    estadoDirty.current = true
+    saveMutateRef.current()
   }
 
   const handleConfirmar = () => {
     setCheckinMostrado(true)
+    setEstadoLocalDirty(false)
     isDirty.current = true
-    if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current)
-    saveDebounceRef.current = setTimeout(() => {
-      if (!saveIsPendingRef.current) saveMutateRef.current()
-    }, 300)
+    estadoDirty.current = true
+    saveMutateRef.current()
   }
 
   const handleNotasChange = (planEjId: number, value: string) => {
     isDirty.current = true
     setSaveMessage("")
     setSavedSuccess(false)
-    setRegistrosForm((prev) => {
-      const old = prev[planEjId] ?? EMPTY_FORM_ROW()
-      return { ...prev, [planEjId]: { ...old, notas: value } }
-    })
-    scheduleSave(planEjId)
+    const old = registrosFormRef.current[planEjId] ?? EMPTY_FORM_ROW()
+    const updated = { ...registrosFormRef.current, [planEjId]: { ...old, notas: value } }
+    registrosFormRef.current = updated
+    setRegistrosForm(updated)
+    dirtyEjIds.current.add(planEjId)
   }
 
   const handleToggleSkip = (planEjId: number) => {
@@ -741,9 +750,11 @@ export function StudentPlanificacionSection({
       }
       return next
     })
-    setRegistrosForm((f) => ({ ...f, [planEjId]: EMPTY_FORM_ROW() }))
+    const updatedSkip = { ...registrosFormRef.current, [planEjId]: EMPTY_FORM_ROW() }
+    registrosFormRef.current = updatedSkip
+    setRegistrosForm(updatedSkip)
     dirtyEjIds.current.add(planEjId)
-    scheduleSave(planEjId)
+    saveMutateRef.current()
   }
 
   if (loadingPlan) {
@@ -978,52 +989,46 @@ export function StudentPlanificacionSection({
         </div>
       ) : (
         <>
-          {/* Estado del dia */}
-          <div className="grid grid-cols-4 gap-2">
-            <button
-              onClick={() => handleToggleEstado("durmioMal")}
-              className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-[10px] font-semibold border transition-all ${
-                durmioMal
-                  ? "bg-indigo-500/15 border-indigo-500/30 text-indigo-400"
-                  : "bg-white/[0.03] border-white/[0.06] text-zinc-600 hover:border-indigo-500/20 hover:text-zinc-400"
-              }`}
-            >
-              <Moon className="h-3.5 w-3.5" />
-              Dormí mal
-            </button>
-            <button
-              onClick={() => handleToggleEstado("fatiga")}
-              className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-[10px] font-semibold border transition-all ${
-                fatiga
-                  ? "bg-amber-500/15 border-amber-500/30 text-amber-400"
-                  : "bg-white/[0.03] border-white/[0.06] text-zinc-600 hover:border-amber-500/20 hover:text-zinc-400"
-              }`}
-            >
-              <BatteryWarning className="h-3.5 w-3.5" />
-              Fatiga
-            </button>
-            <button
-              onClick={() => handleToggleEstado("desmotivacion")}
-              className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-[10px] font-semibold border transition-all ${
-                desmotivacion
-                  ? "bg-cyan-500/15 border-cyan-500/30 text-cyan-400"
-                  : "bg-white/[0.03] border-white/[0.06] text-zinc-600 hover:border-cyan-500/20 hover:text-zinc-400"
-              }`}
-            >
-              <Frown className="h-3.5 w-3.5" />
-              Motivación
-            </button>
-            <button
-              onClick={() => handleToggleEstado("dolor")}
-              className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-[10px] font-semibold border transition-all ${
-                dolor
-                  ? "bg-rose-500/15 border-rose-500/30 text-rose-400"
-                  : "bg-white/[0.03] border-white/[0.06] text-zinc-600 hover:border-rose-500/20 hover:text-zinc-400"
-              }`}
-            >
-              <Activity className="h-3.5 w-3.5" />
-              Dolor
-            </button>
+          {/* Estado de salud */}
+          <div className="space-y-2">
+            <div className="grid grid-cols-4 gap-1.5">
+              {([
+                { field: "durmioMal" as const, label: "Sueño", Icon: Moon, active: durmioMal, on: "bg-indigo-500/20 border-indigo-500/40 text-indigo-300" },
+                { field: "fatiga" as const, label: "Fatiga", Icon: BatteryWarning, active: fatiga, on: "bg-amber-500/20 border-amber-500/40 text-amber-300" },
+                { field: "desmotivacion" as const, label: "Ánimo", Icon: Frown, active: desmotivacion, on: "bg-cyan-500/20 border-cyan-500/40 text-cyan-300" },
+                { field: "dolor" as const, label: "Dolor", Icon: Activity, active: dolor, on: "bg-rose-500/20 border-rose-500/40 text-rose-300" },
+              ]).map(({ field, label, Icon, active, on }) => (
+                <button
+                  key={field}
+                  onClick={() => handleToggleEstado(field)}
+                  className={`flex flex-col items-center justify-center gap-1.5 py-3 rounded-2xl border transition-all active:scale-95 ${
+                    active ? on : "bg-white/[0.03] border-white/[0.06] text-zinc-600 hover:text-zinc-400 hover:border-white/[0.1]"
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span className="text-[10px] font-semibold">{label}</span>
+                </button>
+              ))}
+            </div>
+            {estadoLocalDirty && (
+              <div className="animate-in slide-in-from-top-3 fade-in duration-200">
+                <button
+                  onClick={() => {
+                    estadoDirty.current = true
+                    isDirty.current = true
+                    saveMutateRef.current()
+                    setEstadoLocalDirty(false)
+                  }}
+                  disabled={saveMutation.isPending}
+                  className="w-full py-2.5 rounded-2xl bg-green-500/15 border border-green-500/30 text-green-400 text-xs font-bold hover:bg-green-500/20 transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {saveMutation.isPending
+                    ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Guardando…</>
+                    : <><CheckCircle2 className="h-3.5 w-3.5" /> Guardar estado de salud</>
+                  }
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Movilidad */}
