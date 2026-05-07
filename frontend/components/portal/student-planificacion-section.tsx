@@ -241,7 +241,15 @@ export function StudentPlanificacionSection({
     [dias, diaSeleccionadoId]
   )
 
-  const ejerciciosDelDia = useMemo(() => diaSeleccionado?.ejercicios ?? [], [diaSeleccionado])
+  const CATEGORIA_ORDER: Record<string, number> = { ACTIVADOR: 0, A: 1, B: 2, C: 3, D: 4, E: 5 }
+  const ejerciciosDelDia = useMemo(
+    () =>
+      [...(diaSeleccionado?.ejercicios ?? [])].sort(
+        (a, b) =>
+          (CATEGORIA_ORDER[a.categoria ?? ""] ?? 99) - (CATEGORIA_ORDER[b.categoria ?? ""] ?? 99)
+      ),
+    [diaSeleccionado]
+  )
 
   const { data: sessionData, isFetching: loadingSession } = useQuery<SsnData>({
     queryKey: queryKeySesion(
