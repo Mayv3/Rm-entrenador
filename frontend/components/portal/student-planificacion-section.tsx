@@ -368,7 +368,7 @@ export function StudentPlanificacionSection({
     setFatiga(fatigaRef.current)
     setDesmotivacion(desmotivacionRef.current)
     setDolor(dolorRef.current)
-    setCheckinMostrado(!!sessionData?.sesion && sessionData.estado_diario !== null)
+    setCheckinMostrado(sessionData?.estado_diario != null)
     setEstadoLocalDirty(false)
   }, [diaSeleccionado, ejerciciosDelDia, sessionData, semanaSeleccionada])
 
