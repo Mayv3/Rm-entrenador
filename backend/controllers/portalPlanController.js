@@ -1,5 +1,4 @@
 import { supabase } from "../lib/supabase.js";
-import { cache } from "../lib/cache.js";
 
 function pickPlan(planificaciones) {
   if (!Array.isArray(planificaciones) || planificaciones.length === 0) return null;
@@ -236,19 +235,12 @@ export async function upsertPortalSesion(req, res) {
     return res.status(400).json({ error: "Faltan o son inválidos: alumno_id, hoja_id, dia_id, semana" });
   }
 
-  const cacheKey = `ej_dia:${diaId}`;
-  let ejerciciosDia = cache.get(cacheKey);
+  const { data: ejerciciosDia, error: ejerciciosError } = await supabase
+    .from("planificacion_ejercicios")
+    .select("id, categoria, ejercicio_id, ejercicios(id, nombre), planificacion_semanas(semana, dosis, rpe)")
+    .eq("planificacion_dia_id", diaId);
 
-  if (!ejerciciosDia) {
-    const { data, error: ejerciciosError } = await supabase
-      .from("planificacion_ejercicios")
-      .select("id, categoria, ejercicio_id, ejercicios(id, nombre), planificacion_semanas(semana, dosis, rpe)")
-      .eq("planificacion_dia_id", diaId);
-
-    if (ejerciciosError) return res.status(500).json({ error: ejerciciosError.message });
-    ejerciciosDia = data;
-    cache.set(cacheKey, ejerciciosDia);
-  }
+  if (ejerciciosError) return res.status(500).json({ error: ejerciciosError.message });
 
   const ejercicioMap = new Map((ejerciciosDia ?? []).map((e) => [Number(e.id), e]));
 

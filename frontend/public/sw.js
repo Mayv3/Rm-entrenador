@@ -1,4 +1,4 @@
-const CACHE_NAME = "rm-entrenador-v1";
+const CACHE_NAME = "rm-entrenador-v2";
 
 const STATIC_ASSETS = [
   "/",
@@ -36,6 +36,9 @@ self.addEventListener("fetch", (event) => {
 
   // Skip API requests (always network)
   if (event.request.url.includes("/api/")) return;
+
+  // Skip portal alumno (sin cache)
+  if (event.request.url.includes("/portal")) return;
 
   event.respondWith(
     fetch(event.request)

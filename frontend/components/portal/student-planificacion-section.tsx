@@ -210,6 +210,10 @@ export function StudentPlanificacionSection({
       return res.data
     },
     enabled: !!studentId,
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   })
 
   const planificacion = planData?.planificacion ?? null
@@ -274,6 +278,7 @@ export function StudentPlanificacionSection({
     },
     enabled: !!planificacion && !!hojaActiva && !!diaSeleccionado && !!semanaSeleccionada,
     staleTime: 0,
+    gcTime: 0,
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
   })
@@ -315,6 +320,10 @@ export function StudentPlanificacionSection({
       return res.data
     },
     enabled: !!planificacion && !!hojaActiva && !!diaSeleccionado && !!semanaAnterior,
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   })
 
   const registrosAnterioresMap = useMemo(
@@ -414,6 +423,10 @@ export function StudentPlanificacionSection({
       return res.data
     },
     enabled: !!planificacion && !!hojaActiva && !!semanaSeleccionada && diaSeleccionadoId === null,
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   })
 
   const sesionesMapSemana = useMemo(
@@ -430,6 +443,10 @@ export function StudentPlanificacionSection({
       return res.data
     },
     enabled: !!planificacion && !!hojaActiva && semanaSeleccionada === null,
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   })
 
   // Keep refetch refs up to date

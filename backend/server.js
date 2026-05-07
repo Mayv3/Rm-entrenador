@@ -153,7 +153,15 @@ app.put("/planificaciones/ejercicios/:planEjId/semanas", updateDosisBulk);
 // Progreso del alumno (pesos cargados por ejercicio/dia/semana)
 app.get("/planificaciones/:id/progreso", getProgresoPlanificacion);
 
-// Portal alumno: planificacion + carga de entrenamiento
+// Portal alumno: planificacion + carga de entrenamiento (sin cache)
+const noStore = (_req, res, next) => {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.set("Pragma", "no-cache");
+  res.set("Expires", "0");
+  res.set("Surrogate-Control", "no-store");
+  next();
+};
+app.use("/portal", noStore);
 app.get("/portal/alumnos/:alumnoId/planificacion", getPortalPlanificacion);
 app.get("/portal/planificaciones/:planId/sesiones/resumen", getPortalSesionesResumen);
 app.get("/portal/planificaciones/:planId/sesiones/semana", getPortalSesionesSemana);
