@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader } from "@/components/ui/loader"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { queryKeys } from "@/lib/query-keys"
-import { ArrowLeft, Plus, Loader2, Save, Eye, EyeOff, Trash2, TrendingUp, AlertTriangle, CheckCircle2, StickyNote } from "lucide-react"
+import { ArrowLeft, Plus, Loader2, Save, Eye, EyeOff, Trash2, TrendingUp, AlertTriangle, CheckCircle2, StickyNote, CalendarDays } from "lucide-react"
+import { PlanCalendarioDialog } from "./plan-calendario-dialog"
 import { DayBlock } from "./day-block"
 import { ExerciseLibraryPanel } from "./exercise-library-panel"
 import { ExerciseLibrarySheet } from "./exercise-library-sheet"
@@ -47,6 +48,7 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
   const [libSheetOpen, setLibSheetOpen] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [progresoOpen, setProgresoOpen] = useState(false)
+  const [calendarioOpen, setCalendarioOpen] = useState(false)
   const [movilidadCollapseSignal, setMovilidadCollapseSignal] = useState(0)
 
   // Estado centralizado: dosis, rpe y categoría de todos los ejercicios ya guardados
@@ -649,6 +651,16 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
 
         <Button
           size="sm"
+          variant="outline"
+          onClick={() => setCalendarioOpen(true)}
+          className="h-8 px-3 text-xs gap-1.5 shrink-0 bg-[var(--primary-color)]/10 border-[var(--primary-color)]/30 text-[var(--primary-color)] hover:bg-[var(--primary-color)]/20"
+        >
+          <CalendarDays className="h-3.5 w-3.5" />
+          Asistencia
+        </Button>
+
+        <Button
+          size="sm"
           onClick={handleGuardar}
           disabled={!isDirty || saveStatus === "saving"}
           className={`md:hidden h-8 px-3 text-xs gap-1.5 shrink-0 bg-[var(--primary-color)] hover:bg-[var(--primary-color)]/90 text-white transition-opacity duration-300 ${isDirty ? "opacity-100" : "opacity-40"}`}
@@ -767,6 +779,14 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
         plan={plan}
         activeHoja={activeHoja}
         localData={localData}
+      />
+
+      <PlanCalendarioDialog
+        open={calendarioOpen}
+        onOpenChange={setCalendarioOpen}
+        planId={planId}
+        alumnoId={plan.alumno_id ?? null}
+        alumnoNombre={plan.alumnos?.nombre ?? null}
       />
 
       <Dialog open={!!hojaToDelete} onOpenChange={(open) => { if (!open) setHojaToDelete(null) }}>

@@ -871,3 +871,67 @@ export async function updateDosisBulk(req, res) {
 
   res.json({ ok: true });
 }
+
+export async function getAsistenciasPlanificacion(req, res) {
+  const planId = Number(req.params.id);
+  if (!Number.isFinite(planId)) return res.status(400).json({ error: "planId inválido" });
+
+  const { data: plan, error: planError } = await supabase
+    .from("planificaciones")
+    .select("id, alumno_id")
+    .eq("id", planId)
+    .single();
+
+  if (planError) return res.status(500).json({ error: planError.message });
+  if (!plan) return res.status(404).json({ error: "Planificacion no encontrada" });
+  if (!plan.alumno_id) return res.json({ asistencias: [] });
+
+  const { data: asistencias, error: asisError } = await supabase
+    .from("asistencias_alumnos")
+    .select("id, fecha, sesion_id, planificacion_id, created_at")
+    .eq("alumno_id", plan.alumno_id)
+    .order("fecha", { ascending: false });
+
+  if (asisError) return res.status(500).json({ error: asisError.message });
+  if (!asistencias || asistencias.length === 0) return res.json({ asistencias: [] });
+
+  const sesionIds = asistencias.map((a) => a.sesion_id).filter(Boolean);
+  const idsForQuery = sesionIds.length ? sesionIds : [-1];
+
+  const [{ data: sesiones }, { data: estados }, { data: registros }] = await Promise.all([
+    supabase
+      .from("entrenamiento_sesiones")
+      .select("id, dia_id, semana, estado, fecha_entrenamiento, hoja_id, planificacion_dias(numero_dia, nombre), planificacion_hojas(nombre)")
+      .in("id", idsForQuery),
+    supabase
+      .from("entrenamiento_estado_diario")
+      .select("*")
+      .in("sesion_id", idsForQuery),
+    supabase
+      .from("entrenamiento_registros")
+      .select("*")
+      .in("sesion_id", idsForQuery)
+      .order("id", { ascending: true }),
+  ]);
+
+  const sesionMap = new Map((sesiones ?? []).map((s) => [s.id, s]));
+  const estadoMap = new Map((estados ?? []).map((e) => [e.sesion_id, e]));
+  const registrosBySesion = new Map();
+  (registros ?? []).forEach((r) => {
+    if (!registrosBySesion.has(r.sesion_id)) registrosBySesion.set(r.sesion_id, []);
+    registrosBySesion.get(r.sesion_id).push(r);
+  });
+
+  const result = asistencias.map((a) => ({
+    id: a.id,
+    fecha: a.fecha,
+    sesion_id: a.sesion_id,
+    planificacion_id: a.planificacion_id,
+    es_de_este_plan: a.planificacion_id === planId,
+    sesion: sesionMap.get(a.sesion_id) ?? null,
+    estado_diario: estadoMap.get(a.sesion_id) ?? null,
+    registros: registrosBySesion.get(a.sesion_id) ?? [],
+  }));
+
+  res.json({ asistencias: result });
+}

@@ -295,6 +295,22 @@ export async function upsertPortalSesion(req, res) {
     if (estadoError) return res.status(500).json({ error: estadoError.message });
 
     console.log("[DB] Estado diario guardado: durmio_mal=", durmio_mal, "fatiga=", fatiga, "desmotivacion=", desmotivacion, "dolor=", dolor, "excelente=", excelente)
+
+    const fechaAsistencia = (fecha_entrenamiento ?? new Date().toISOString()).slice(0, 10);
+    const { error: asistenciaError } = await supabase
+      .from("asistencias_alumnos")
+      .upsert(
+        {
+          alumno_id: alumnoId,
+          fecha: fechaAsistencia,
+          planificacion_id: planId,
+          sesion_id: sesion.id,
+        },
+        { onConflict: "alumno_id,fecha", ignoreDuplicates: true }
+      );
+
+    if (asistenciaError) console.error("[DB] Error asistencia:", asistenciaError.message);
+    else console.log("[DB] Asistencia registrada:", alumnoId, fechaAsistencia);
   }
 
   if (registros.length > 0) {
