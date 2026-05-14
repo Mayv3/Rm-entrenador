@@ -450,6 +450,36 @@ export function StudentPlanificacionSection({
       }
     } else {
       setActiveSerieMap({})
+      // Day already started: navigate to first incomplete series
+      const hasAnyData = ejerciciosDelDia.some((ej) => {
+        if (saltados.has(ej.id)) return false
+        const row = next[ej.id]
+        return (row?.series ?? []).some((s) => !!s.peso_kg || !!s.repeticiones || !!s.rpe)
+      })
+      if (hasAnyData) {
+        let targetEjId: number | null = null
+        let targetSerieIdx = 0
+        for (const ej of ejerciciosDelDia) {
+          if (saltados.has(ej.id)) continue
+          const series = next[ej.id]?.series ?? []
+          const incompleteIdx = series.findIndex((s) => !s.peso_kg || !s.repeticiones || !s.rpe)
+          if (incompleteIdx !== -1) {
+            targetEjId = ej.id
+            targetSerieIdx = incompleteIdx
+            break
+          }
+        }
+        if (targetEjId !== null) {
+          const newMap = { [targetEjId]: targetSerieIdx }
+          setActiveSerieMap(newMap)
+          pendingSerieRestoreRef.current = { [targetEjId]: targetSerieIdx }
+          const applyScroll = () => {
+            exerciseCardRefs.current.get(targetEjId!)?.scrollIntoView({ behavior: "instant", block: "start" })
+          }
+          applyScroll()
+          requestAnimationFrame(applyScroll)
+        }
+      }
     }
   }, [diaSeleccionado, ejerciciosDelDia, sessionData, semanaSeleccionada])
 
