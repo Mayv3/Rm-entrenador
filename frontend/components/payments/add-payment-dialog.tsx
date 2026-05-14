@@ -218,11 +218,11 @@ export function AddPaymentDialog({ open, onOpenChange, onPaymentUpdated }: AddPa
                     <SelectContent>
                       {basePlans.map((base) => (
                         <SelectGroup key={base.id}>
-                          <SelectLabel className="text-xs font-semibold">{base.nombre}</SelectLabel>
+                          <SelectLabel className="text-[10px] font-semibold uppercase tracking-wide">{base.nombre}</SelectLabel>
                           <SelectItem value={String(base.id)}>
                             <span className="flex items-center gap-1.5">
-                              <span className="font-medium text-blue-500">Individual</span>
-                              {base.precio > 0 && <span className="text-muted-foreground">${base.precio.toLocaleString("es-AR")}</span>}
+                              <span className="text-xs font-medium text-blue-500">Individual</span>
+                              {base.precio > 0 && <span className="text-[11px] text-muted-foreground">${base.precio.toLocaleString("es-AR")}</span>}
                             </span>
                           </SelectItem>
                           {(subplanMap.get(base.id) ?? [])
@@ -230,8 +230,8 @@ export function AddPaymentDialog({ open, onOpenChange, onPaymentUpdated }: AddPa
                             .map((sub) => (
                               <SelectItem key={sub.id} value={String(sub.id)}>
                                 <span className="flex items-center gap-1.5">
-                                  <span className={`font-medium ${sub.duracion_meses === 3 ? "text-amber-500" : "text-emerald-600"}`}>{sub.duracion_meses} meses</span>
-                                  {sub.precio > 0 && <span className="text-muted-foreground">${sub.precio.toLocaleString("es-AR")}</span>}
+                                  <span className={`text-xs font-medium ${sub.duracion_meses === 3 ? "text-amber-500" : "text-emerald-600"}`}>{sub.duracion_meses} meses</span>
+                                  {sub.precio > 0 && <span className="text-[11px] text-muted-foreground">${sub.precio.toLocaleString("es-AR")}</span>}
                                 </span>
                               </SelectItem>
                             ))}
