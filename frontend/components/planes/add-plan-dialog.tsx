@@ -56,6 +56,8 @@ export function AddPlanDialog({ open, onOpenChange }: AddPlanDialogProps) {
     }
   }
 
+  const precio = Number(formData.precio) || 0
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[90vw] !max-w-[480px] p-0 gap-0 overflow-x-hidden h-auto max-h-[90vh] flex flex-col rounded-2xl">
@@ -93,11 +95,28 @@ export function AddPlanDialog({ open, onOpenChange }: AddPlanDialogProps) {
               </div>
             </div>
 
-            {/* Precio */}
+            {/* Precio mensual */}
             <div className="grid gap-1.5">
-              <Label htmlFor="precio" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Precio</Label>
-              <Input id="precio" name="precio" type="number" value={formData.precio} onChange={handleChange} placeholder="0.00" className="h-9" />
+              <Label htmlFor="precio" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Precio mensual</Label>
+              <Input id="precio" name="precio" type="number" min="0" value={formData.precio} onChange={handleChange} placeholder="0.00" className="h-9" />
             </div>
+
+            {/* Preview variantes */}
+            {precio > 0 && (
+              <div className="rounded-lg border bg-muted/30 px-3 py-2.5 grid gap-1">
+                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Variantes que se crearán</span>
+                <div className="grid grid-cols-2 gap-2 mt-1">
+                  <div className="flex flex-col gap-0.5 rounded-md border bg-background px-2.5 py-1.5">
+                    <span className="text-[10px] text-muted-foreground">3 meses (-10%)</span>
+                    <span className="text-sm font-semibold">${Math.round(precio * 3 * 0.9).toLocaleString("es-AR")}</span>
+                  </div>
+                  <div className="flex flex-col gap-0.5 rounded-md border bg-background px-2.5 py-1.5">
+                    <span className="text-[10px] text-muted-foreground">6 meses (-15%)</span>
+                    <span className="text-sm font-semibold">${Math.round(precio * 6 * 0.85).toLocaleString("es-AR")}</span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Descripción */}
             <div className="grid gap-1.5">

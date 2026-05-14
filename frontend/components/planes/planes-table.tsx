@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Edit, MoreHorizontal, Plus, Search, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,17 +20,20 @@ function firstSentence(html: string): string {
   return match ? match[0].trim() : text.slice(0, 80)
 }
 
-// ─── Mobile card ──────────────────────────────────────────────────────────────
-
 function PlanMobileCard({
   plan,
+  children,
   onEdit,
   onDelete,
 }: {
   plan: Plan;
+  children: Plan[];
   onEdit: (p: Plan) => void;
   onDelete: (p: Plan) => void;
 }) {
+  const sub3 = children.find((c) => c.duracion_meses === 3)
+  const sub6 = children.find((c) => c.duracion_meses === 6)
+
   return (
     <Card className="p-3 py-3 max-w-[90vw] mx-auto">
       <CardHeader className="pb-3">
@@ -42,16 +45,14 @@ function PlanMobileCard({
             />
             <CardTitle className="text-base">{plan.nombre}</CardTitle>
           </div>
-          <div className="flex flex-col items-end gap-0.5">
-            <span className="font-semibold text-sm">${plan.precio?.toLocaleString()}</span>
-            {plan.precio > 0 && (
-              <div className="flex gap-3 text-xs text-emerald-600 font-semibold">
-                <span>3m: ${(plan.precio * 3 * 0.9).toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
-                <span>6m: ${(plan.precio * 6 * 0.85).toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
-              </div>
-            )}
-          </div>
+          <span className="font-semibold text-sm">${plan.precio?.toLocaleString("es-AR")}/mes</span>
         </div>
+        {(sub3 || sub6) && (
+          <div className="flex gap-3 text-xs text-emerald-600 font-semibold mt-1">
+            {sub3 && <span>3m (-{sub3.descuento}%): ${sub3.precio.toLocaleString("es-AR")}</span>}
+            {sub6 && <span>6m (-{sub6.descuento}%): ${sub6.precio.toLocaleString("es-AR")}</span>}
+          </div>
+        )}
       </CardHeader>
       <CardContent className="space-y-3">
         {plan.descripcion && (
@@ -72,8 +73,6 @@ function PlanMobileCard({
   );
 }
 
-// ─── Componente principal ─────────────────────────────────────────────────────
-
 export function PlanesTable() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -83,7 +82,19 @@ export function PlanesTable() {
 
   const { data: planes = [], isLoading } = usePlanes();
 
-  const filtered = planes.filter(
+  const { basePlans, subplanMap } = useMemo(() => {
+    const base = planes.filter((p) => p.parent_id == null)
+    const map = new Map<number, Plan[]>()
+    for (const p of planes) {
+      if (p.parent_id != null) {
+        if (!map.has(p.parent_id)) map.set(p.parent_id, [])
+        map.get(p.parent_id)!.push(p)
+      }
+    }
+    return { basePlans: base, subplanMap: map }
+  }, [planes])
+
+  const filtered = basePlans.filter(
     (p) =>
       p.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.descripcion?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -106,20 +117,32 @@ export function PlanesTable() {
       ),
     },
     {
-      field: "precio", headerName: "Precio", flex: 0.7, minWidth: 90,
-      renderCell: ({ value }) => `$${value?.toLocaleString()}`,
+      field: "precio", headerName: "Precio/mes", flex: 0.7, minWidth: 90,
+      renderCell: ({ value }) => `$${value?.toLocaleString("es-AR")}`,
     },
     {
-      field: "_3meses", headerName: "3 meses (-10%)", flex: 0.8, minWidth: 120, sortable: false,
-      renderCell: ({ row }) => row.precio
-        ? <span className="text-emerald-600 font-medium">${(row.precio * 3 * 0.9).toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
-        : "—",
+      field: "_3meses", headerName: "3 meses", flex: 0.8, minWidth: 110, sortable: false,
+      renderCell: ({ row }) => {
+        const sub = subplanMap.get(row.id)?.find((c) => c.duracion_meses === 3)
+        return sub ? (
+          <span className="text-emerald-600 font-medium">
+            ${sub.precio.toLocaleString("es-AR")}
+            <span className="text-xs text-muted-foreground ml-1">(-{sub.descuento}%)</span>
+          </span>
+        ) : "—"
+      },
     },
     {
-      field: "_6meses", headerName: "6 meses (-15%)", flex: 0.8, minWidth: 120, sortable: false,
-      renderCell: ({ row }) => row.precio
-        ? <span className="text-emerald-600 font-medium">${(row.precio * 6 * 0.85).toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
-        : "—",
+      field: "_6meses", headerName: "6 meses", flex: 0.8, minWidth: 110, sortable: false,
+      renderCell: ({ row }) => {
+        const sub = subplanMap.get(row.id)?.find((c) => c.duracion_meses === 6)
+        return sub ? (
+          <span className="text-emerald-600 font-medium">
+            ${sub.precio.toLocaleString("es-AR")}
+            <span className="text-xs text-muted-foreground ml-1">(-{sub.descuento}%)</span>
+          </span>
+        ) : "—"
+      },
     },
     {
       field: "descripcion", headerName: "Descripción", flex: 1, minWidth: 100,
@@ -182,7 +205,13 @@ export function PlanesTable() {
         <>
           <div className="grid gap-4 md:hidden">
             {filtered.map((plan) => (
-              <PlanMobileCard key={plan.id} plan={plan} onEdit={handleEdit} onDelete={handleDelete} />
+              <PlanMobileCard
+                key={plan.id}
+                plan={plan}
+                children={subplanMap.get(plan.id) ?? []}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+              />
             ))}
           </div>
           <div className="hidden md:block">

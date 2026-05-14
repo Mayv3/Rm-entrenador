@@ -115,7 +115,7 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
                     <SelectValue placeholder="Seleccionar" />
                   </SelectTrigger>
                   <SelectContent>
-                    {planes.map((p) => (
+                    {planes.filter((p) => p.parent_id == null).map((p) => (
                       <SelectItem key={p.id} value={p.nombre}>{p.nombre}</SelectItem>
                     ))}
                   </SelectContent>

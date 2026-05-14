@@ -8,6 +8,9 @@ export interface Plan {
   precio: number;
   descripcion: string | null;
   color: string | null;
+  parent_id: number | null;
+  duracion_meses: number | null;
+  descuento: number;
 }
 
 export function usePlanes() {

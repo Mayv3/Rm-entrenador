@@ -617,15 +617,15 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
         </Button>
       </div>
 
-      <div className="flex items-center gap-2.5 pt-0.5">
+      <div className="grid grid-cols-2 gap-2 pt-0.5 md:flex md:items-center md:gap-2.5">
         <Button
           size="sm"
           variant="outline"
           onClick={handleCreateHoja}
           disabled={creatingHoja}
-          className="h-8 px-3 text-xs border-dashed gap-1.5 shrink-0"
+          className="h-11 px-4 text-sm border-dashed gap-2 shrink-0 md:h-8 md:px-3 md:text-xs md:gap-1.5"
         >
-          {creatingHoja ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+          {creatingHoja ? <Loader2 className="h-4 w-4 animate-spin md:h-3 md:w-3" /> : <Plus className="h-4 w-4 md:h-3 md:w-3" />}
           Nueva hoja
         </Button>
 
@@ -633,9 +633,9 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
           size="sm"
           variant="outline"
           onClick={() => setPreviewOpen(true)}
-          className="h-8 px-3 text-xs gap-1.5 shrink-0 ml-auto"
+          className="h-11 px-4 text-sm gap-2 shrink-0 md:h-8 md:px-3 md:text-xs md:gap-1.5 md:ml-auto"
         >
-          <Eye className="h-3.5 w-3.5" />
+          <Eye className="h-4 w-4 md:h-3.5 md:w-3.5" />
           Preview
         </Button>
 
@@ -643,9 +643,9 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
           size="sm"
           variant="outline"
           onClick={() => setProgresoOpen(true)}
-          className="h-8 px-3 text-xs gap-1.5 shrink-0 bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/30"
+          className="h-11 px-4 text-sm gap-2 shrink-0 md:h-8 md:px-3 md:text-xs md:gap-1.5 bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/30"
         >
-          <TrendingUp className="h-3.5 w-3.5" />
+          <TrendingUp className="h-4 w-4 md:h-3.5 md:w-3.5" />
           Progreso
         </Button>
 
@@ -653,9 +653,9 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
           size="sm"
           variant="outline"
           onClick={() => setCalendarioOpen(true)}
-          className="h-8 px-3 text-xs gap-1.5 shrink-0 bg-[var(--primary-color)]/10 border-[var(--primary-color)]/30 text-[var(--primary-color)] hover:bg-[var(--primary-color)]/20"
+          className="h-11 px-4 text-sm gap-2 shrink-0 md:h-8 md:px-3 md:text-xs md:gap-1.5 bg-[var(--primary-color)]/10 border-[var(--primary-color)]/30 text-[var(--primary-color)] hover:bg-[var(--primary-color)]/20"
         >
-          <CalendarDays className="h-3.5 w-3.5" />
+          <CalendarDays className="h-4 w-4 md:h-3.5 md:w-3.5" />
           Asistencia
         </Button>
 
@@ -663,9 +663,9 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
           size="sm"
           onClick={handleGuardar}
           disabled={!isDirty || saveStatus === "saving"}
-          className={`md:hidden h-8 px-3 text-xs gap-1.5 shrink-0 bg-[var(--primary-color)] hover:bg-[var(--primary-color)]/90 text-white transition-opacity duration-300 ${isDirty ? "opacity-100" : "opacity-40"}`}
+          className={`col-span-2 md:hidden h-11 px-4 text-sm gap-2 shrink-0 bg-[var(--primary-color)] hover:bg-[var(--primary-color)]/90 text-white transition-opacity duration-300 ${isDirty ? "opacity-100" : "opacity-40"}`}
         >
-          {saveStatus === "saving" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+          {saveStatus === "saving" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
           {saveStatus === "saving" ? "Guardando..." : "Guardar"}
         </Button>
       </div>

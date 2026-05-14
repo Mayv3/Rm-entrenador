@@ -12,6 +12,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { queryKeys } from "@/lib/query-keys"
 import { useDialogBackButton } from "@/hooks/use-dialog-back-button"
 import type { Plan } from "@/hooks/use-planes"
+import { usePlanes } from "@/hooks/use-planes"
 import { ColorPickerPopover } from "@/components/ui/colorSelector"
 import { RichTextEditor } from "@/components/ui/rich-text-editor"
 
@@ -21,9 +22,17 @@ interface EditPlanDialogProps {
   plan: Plan
 }
 
+interface SubplanEdit {
+  id: number
+  duracion_meses: number
+  descuento: string
+}
+
 export function EditPlanDialog({ open, onOpenChange, plan }: EditPlanDialogProps) {
   const queryClient = useQueryClient()
+  const { data: planes = [] } = usePlanes()
   const [formData, setFormData] = useState({ nombre: "", precio: "", descripcion: "", color: "#22b567" })
+  const [subplans, setSubplans] = useState<SubplanEdit[]>([])
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
@@ -34,8 +43,10 @@ export function EditPlanDialog({ open, onOpenChange, plan }: EditPlanDialogProps
         descripcion: plan.descripcion ?? "",
         color: plan.color ?? "#22b567",
       })
+      const children = planes.filter((p) => p.parent_id === plan.id)
+      setSubplans(children.map((c) => ({ id: c.id, duracion_meses: c.duracion_meses ?? 3, descuento: c.descuento.toString() })))
     }
-  }, [plan])
+  }, [plan, planes])
 
   useDialogBackButton(open, onOpenChange)
 
@@ -44,16 +55,30 @@ export function EditPlanDialog({ open, onOpenChange, plan }: EditPlanDialogProps
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
+  const handleSubplanDescuento = (id: number, value: string) => {
+    const n = Number(value)
+    if (value !== "" && (n < 0 || n > 100)) return
+    setSubplans((prev) => prev.map((s) => (s.id === id ? { ...s, descuento: value } : s)))
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!formData.nombre) return
     setIsLoading(true)
     try {
+      const basePrecio = Number(formData.precio) || 0
+      const subplansPayload = subplans.map((s) => ({
+        id: s.id,
+        descuento: Number(s.descuento) || 0,
+        precio: Math.round(basePrecio * s.duracion_meses * (1 - Number(s.descuento) / 100)),
+      }))
+
       const response = await axios.put(`${process.env.NEXT_PUBLIC_URL_BACKEND}/planes/${plan.id}`, {
         nombre: formData.nombre,
-        precio: Number(formData.precio) || 0,
+        precio: basePrecio,
         descripcion: formData.descripcion || null,
         color: formData.color || null,
+        subplans: subplansPayload,
       })
       if (response.status === 200 || response.status === 201) {
         await queryClient.invalidateQueries({ queryKey: queryKeys.planes })
@@ -66,12 +91,13 @@ export function EditPlanDialog({ open, onOpenChange, plan }: EditPlanDialogProps
     }
   }
 
+  const basePrecio = Number(formData.precio) || 0
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[90vw] !max-w-[480px] p-0 gap-0 overflow-x-hidden h-auto max-h-[90vh] flex flex-col rounded-2xl">
         <DialogTitle className="sr-only">Editar Plan</DialogTitle>
 
-        {/* Header */}
         <div className="flex items-center gap-3 px-5 py-4 border-b bg-muted/40">
           <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[var(--primary-color)]/10">
             <Pencil className="w-4 h-4 text-[var(--primary-color)]" />
@@ -82,11 +108,9 @@ export function EditPlanDialog({ open, onOpenChange, plan }: EditPlanDialogProps
           </div>
         </div>
 
-        {/* Body */}
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-y-auto">
           <div className="px-5 py-4 grid gap-4">
 
-            {/* Nombre + Color */}
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-1.5">
                 <Label htmlFor="nombre" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Nombre *</Label>
@@ -103,34 +127,40 @@ export function EditPlanDialog({ open, onOpenChange, plan }: EditPlanDialogProps
               </div>
             </div>
 
-            {/* Precio */}
             <div className="grid gap-1.5">
               <Label htmlFor="precio" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Precio mensual</Label>
-              <Input id="precio" name="precio" type="number" value={formData.precio} onChange={handleChange} placeholder="0.00" className="h-9" />
-
-              {/* Descuentos por duración */}
-              {Number(formData.precio) > 0 && (() => {
-                const base = Number(formData.precio)
-                const precio3 = base * 3 * 0.9
-                const precio6 = base * 6 * 0.85
-                return (
-                  <div className="grid grid-cols-2 gap-2 mt-1">
-                    <div className="flex flex-col gap-0.5 rounded-lg border bg-muted/40 px-3 py-2">
-                      <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">3 meses</span>
-                      <span className="text-sm font-semibold">${precio3.toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
-                      <span className="text-[10px] text-emerald-500 font-medium">10% de descuento</span>
-                    </div>
-                    <div className="flex flex-col gap-0.5 rounded-lg border bg-muted/40 px-3 py-2">
-                      <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">6 meses</span>
-                      <span className="text-sm font-semibold">${precio6.toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
-                      <span className="text-[10px] text-emerald-500 font-medium">15% de descuento</span>
-                    </div>
-                  </div>
-                )
-              })()}
+              <Input id="precio" name="precio" type="number" min="0" value={formData.precio} onChange={handleChange} placeholder="0.00" className="h-9" />
             </div>
 
-            {/* Descripción */}
+            {subplans.length > 0 && (
+              <div className="grid gap-2">
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Variantes</Label>
+                {subplans.map((s) => (
+                  <div key={s.id} className="flex items-center gap-3 rounded-lg border bg-muted/30 px-3 py-2.5">
+                    <div className="flex-1">
+                      <p className="text-xs font-medium">{s.duracion_meses} meses</p>
+                      {basePrecio > 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          ${Math.round(basePrecio * s.duracion_meses * (1 - Number(s.descuento) / 100)).toLocaleString("es-AR")}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={s.descuento}
+                        onChange={(e) => handleSubplanDescuento(s.id, e.target.value)}
+                        className="h-8 w-16 text-right"
+                      />
+                      <span className="text-xs text-muted-foreground">%</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div className="grid gap-1.5">
               <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Descripción</Label>
               <RichTextEditor
@@ -141,7 +171,6 @@ export function EditPlanDialog({ open, onOpenChange, plan }: EditPlanDialogProps
 
           </div>
 
-          {/* Footer */}
           <DialogFooter className="px-5 py-3 border-t bg-muted/40 mt-auto flex flex-row gap-3">
             <Button type="button" variant="outline" size="sm" className="flex-1" onClick={() => onOpenChange(false)} disabled={isLoading}>
               Cancelar

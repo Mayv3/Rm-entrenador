@@ -1234,6 +1234,11 @@ export function StudentPlanificacionSection({
             <div className="space-y-3">
               {ejerciciosDelDia.map((ej) => {
             const semanaPlan = ej.semanas.find((s) => s.semana === semanaSeleccionada)
+            const semanaPlanPrev = semanaSeleccionada != null && semanaSeleccionada % 2 === 0
+              ? ej.semanas.find((s) => s.semana === semanaSeleccionada - 1)
+              : undefined
+            const effectiveRpe = semanaPlan?.rpe ?? semanaPlanPrev?.rpe ?? null
+            const effectiveDosis = semanaPlan?.dosis ?? semanaPlanPrev?.dosis ?? null
             const row = registrosForm[ej.id] ?? EMPTY_FORM_ROW()
             const isFilled = row.series.every((s) => !!s.peso_kg && !!s.repeticiones && !!s.rpe)
             const regAnterior = registrosAnterioresMap.get(ej.id) ?? null
@@ -1307,18 +1312,18 @@ export function StudentPlanificacionSection({
                 </div>
 
                 {/* Dosis / RPE prescrito — 50/50 */}
-                {(semanaPlan?.dosis || typeof semanaPlan?.rpe === "number") && (
+                {(effectiveDosis || typeof effectiveRpe === "number") && (
                   <div className="px-4 pt-2 pb-1 grid grid-cols-2 gap-2">
-                    {semanaPlan?.dosis ? (
+                    {effectiveDosis ? (
                       <span className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-500/10 border border-blue-500/20 px-3 py-2 text-xs font-bold text-blue-400">
                         <CalendarDays className="h-3 w-3" />
-                        {semanaPlan.dosis}
+                        {effectiveDosis}
                       </span>
                     ) : <div />}
-                    {typeof semanaPlan?.rpe === "number" ? (
+                    {typeof effectiveRpe === "number" ? (
                       <span className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-orange-500/10 border border-orange-500/20 px-3 py-2 text-xs font-bold text-orange-400">
                         <Flame className="h-3 w-3" />
-                        RPE {semanaPlan.rpe}
+                        RPE {effectiveRpe}
                       </span>
                     ) : <div />}
                   </div>

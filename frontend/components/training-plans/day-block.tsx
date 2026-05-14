@@ -356,7 +356,9 @@ export function DayBlock({
                             <span className="font-medium block max-w-[180px] truncate 2xl:max-w-none 2xl:overflow-visible 2xl:whitespace-normal 2xl:text-clip" title={p.ejercicio.nombre}>{p.ejercicio.nombre}</span>
                           </div>
                         </td>
-                        {SEMANAS.map((s) => (
+                        {SEMANAS.map((s) => {
+                          const pendingRpe = p.rpe[s] || (s % 2 === 0 ? (p.rpe[s - 1] ?? "") : "")
+                          return (
                           <td key={s} className="px-1 py-1">
                             <div className="flex gap-1">
                               <Input
@@ -366,13 +368,14 @@ export function DayBlock({
                                 className="h-7 text-xs text-center px-1 placeholder:text-gray-300 min-w-[80px] md:min-w-0 flex-1"
                               />
                               <RpeSelect
-                                value={p.rpe[s] ?? ""}
+                                value={pendingRpe}
                                 onChange={(v) => setPendingField(p.tempId, "rpe", s, v)}
                                 exerciseName={p.ejercicio.nombre}
                               />
                             </div>
                           </td>
-                        ))}
+                          )
+                        })}
                         <td className="px-2 py-1.5 text-center">
                           <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
                             onClick={() => removePending(p.tempId)}>
@@ -476,6 +479,8 @@ function SortableExerciseRow({
       </td>
       {SEMANAS.map((s) => {
         const sem = local?.semanas?.[s]
+        const prevSem = s % 2 === 0 ? local?.semanas?.[s - 1] : undefined
+        const rpeValue = sem?.rpe || (s % 2 === 0 ? (prevSem?.rpe ?? "") : "")
         return (
           <td key={s} className="px-1 py-1">
             <div className="flex gap-1">
@@ -486,7 +491,7 @@ function SortableExerciseRow({
                 className="h-7 text-xs text-center px-1 placeholder:text-gray-300 min-w-[80px] md:min-w-0 flex-1"
               />
               <RpeSelect
-                value={sem?.rpe ?? ""}
+                value={rpeValue}
                 onChange={(v) => onSemanaChange(ej.id, s, "rpe", v)}
                 exerciseName={ej.ejercicios.nombre}
               />

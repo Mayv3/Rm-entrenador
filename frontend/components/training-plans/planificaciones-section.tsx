@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import axios from "axios"
 import { queryKeys } from "@/lib/query-keys"
@@ -40,9 +40,13 @@ const ESTADO_CONFIG: Record<string, { label: string; icon: React.ReactNode; badg
   },
 }
 
-export function PlanificacionesSection() {
+export function PlanificacionesSection({ initialPlanId }: { initialPlanId?: number | null }) {
   const queryClient = useQueryClient()
-  const [activePlanId, setActivePlanId] = useState<number | null>(null)
+  const [activePlanId, setActivePlanId] = useState<number | null>(initialPlanId ?? null)
+
+  useEffect(() => {
+    if (initialPlanId != null) setActivePlanId(initialPlanId)
+  }, [initialPlanId])
   const [createOpen, setCreateOpen] = useState(false)
   const [newAlumnoId, setNewAlumnoId] = useState<string>("")
   const [creating, setCreating] = useState(false)

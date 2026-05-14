@@ -84,6 +84,12 @@ export default function Dashboard() {
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<"students" | "payments" | "planes" | "portal" | "antropometrias" | "nutricion" | "estadisticas" | "planificaciones">("students");
   const [copied, setCopied] = useState(false);
+  const [planToOpen, setPlanToOpen] = useState<number | null>(null);
+
+  const handleOpenPlan = (planId: number) => {
+    setPlanToOpen(planId);
+    setActiveTab("planificaciones");
+  };
 
   useEffect(() => setMounted(true), []);
 
@@ -103,11 +109,11 @@ export default function Dashboard() {
     { value: "estadisticas", label: "Estadísticas", icon: BarChart2 },
     { value: "students", label: "Alumnos", icon: Users },
     { value: "payments", label: "Pagos", icon: CreditCard },
+    { value: "planificaciones", label: "Planificaciones", icon: ClipboardList },
     { value: "planes", label: "Planes", icon: Tag },
     { value: "portal", label: "Portal", icon: Globe },
     { value: "antropometrias", label: "Antropometría", icon: Ruler },
     { value: "nutricion", label: "Nutrición", icon: Salad },
-    { value: "planificaciones", label: "Planificaciones", icon: ClipboardList },
   ] as const;
 
   return (
@@ -184,13 +190,13 @@ export default function Dashboard() {
       <main className={`flex-1 md:ml-14 mt-16 md:mt-0 pb-20 md:pb-0 overflow-x-hidden ${activeTab === "planificaciones" ? "p-2 sm:p-3 md:overflow-y-hidden md:h-screen" : "p-4 sm:p-6"}`}>
         {/* Contenido */}
         <div className={`w-full md:mx-auto ${activeTab === "planificaciones" ? "md:h-full md:max-w-[78vw]" : "md:max-w-[95vw] space-y-4"}`}>
-          {activeTab === "students" ? <StudentsTable />
+          {activeTab === "students" ? <StudentsTable onOpenPlan={handleOpenPlan} />
             : activeTab === "payments" ? <PaymentsTable />
               : activeTab === "planes" ? <PlanesTable />
                 : activeTab === "antropometrias" ? <AntropometriasSection />
                   : activeTab === "nutricion" ? <NutricionSection />
                     : activeTab === "estadisticas" ? <EstadisticasSection />
-                      : activeTab === "planificaciones" ? <PlanificacionesSection />
+                      : activeTab === "planificaciones" ? <PlanificacionesSection initialPlanId={planToOpen} />
                         : <PortalSection copied={copied} setCopied={setCopied} />
           }
         </div>
