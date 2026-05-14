@@ -191,15 +191,32 @@ export function StudentPlanificacionSection({
 
   const getActiveSerie = (ejId: number) => activeSerieMap[ejId] ?? 0
 
+  const posStorageKey = semanaSeleccionada != null && diaSeleccionadoId != null
+    ? `planPos-${studentId}-${semanaSeleccionada}-${diaSeleccionadoId}`
+    : null
+
   const scrollToSerie = (ejId: number, idx: number) => {
     const el = serieScrollRefs.current.get(ejId)
     if (el) el.scrollTo({ left: idx * el.clientWidth, behavior: "smooth" })
-    setActiveSerieMap((prev) => ({ ...prev, [ejId]: idx }))
+    setActiveSerieMap((prev) => {
+      const next = { ...prev, [ejId]: idx }
+      if (posStorageKey) {
+        sessionStorage.setItem(posStorageKey, JSON.stringify({ activeSerieMap: next, lastEjId: ejId }))
+      }
+      return next
+    })
   }
 
   const handleSerieScroll = (ejId: number, el: HTMLDivElement) => {
     const idx = Math.round(el.scrollLeft / el.clientWidth)
-    setActiveSerieMap((prev) => (prev[ejId] === idx ? prev : { ...prev, [ejId]: idx }))
+    setActiveSerieMap((prev) => {
+      if (prev[ejId] === idx) return prev
+      const next = { ...prev, [ejId]: idx }
+      if (posStorageKey) {
+        sessionStorage.setItem(posStorageKey, JSON.stringify({ activeSerieMap: next, lastEjId: ejId }))
+      }
+      return next
+    })
   }
 
 
@@ -401,6 +418,34 @@ export function StudentPlanificacionSection({
     setExcelente(excelenteRef.current)
     setCheckinMostrado(sessionData?.estado_diario != null)
     setEstadoLocalDirty(false)
+
+    // Restore scroll position after phone lock / page reload
+    const storageKey = `planPos-${studentId}-${semanaSeleccionada}-${diaSeleccionado?.id}`
+    const saved = storageKey ? sessionStorage.getItem(storageKey) : null
+    if (saved) {
+      try {
+        const { activeSerieMap: savedMap, lastEjId } = JSON.parse(saved) as {
+          activeSerieMap: Record<number, number>
+          lastEjId: number
+        }
+        setActiveSerieMap(savedMap)
+        // Restore position instantly after DOM settles (no animation)
+        setTimeout(() => {
+          if (lastEjId != null) {
+            exerciseCardRefs.current.get(lastEjId)?.scrollIntoView({ behavior: "instant", block: "start" })
+          }
+          for (const [ejIdStr, serieIdx] of Object.entries(savedMap)) {
+            const ejId = Number(ejIdStr)
+            const el = serieScrollRefs.current.get(ejId)
+            if (el) el.scrollLeft = serieIdx * el.clientWidth
+          }
+        }, 300)
+      } catch {
+        // ignore malformed storage
+      }
+    } else {
+      setActiveSerieMap({})
+    }
   }, [diaSeleccionado, ejerciciosDelDia, sessionData, semanaSeleccionada])
 
   const allCompletedAuto = useMemo(() => {
