@@ -164,6 +164,7 @@ export function StudentPlanificacionSection({
   const justSavedRef = useRef(false)
   const [activeSerieMap, setActiveSerieMap] = useState<Record<number, number>>({})
   const serieScrollRefs = useRef<Map<number, HTMLDivElement>>(new Map())
+  const pendingSerieRestoreRef = useRef<Record<number, number>>({})
   const exerciseCardRefs = useRef<Map<number, HTMLDivElement>>(new Map())
   const [movilidadIdx, setMovilidadIdx] = useState(0)
   const movilidadScrollRef = useRef<HTMLDivElement | null>(null)
@@ -355,6 +356,7 @@ export function StudentPlanificacionSection({
       setSaltadoEjIds(new Set())
       setCheckinMostrado(false)
       dirtyEjIds.current.clear()
+      pendingSerieRestoreRef.current = {}
       return
     }
 
@@ -429,17 +431,20 @@ export function StudentPlanificacionSection({
           lastEjId: number
         }
         setActiveSerieMap(savedMap)
-        // Restore position instantly after DOM settles (no animation)
-        setTimeout(() => {
+        // Store pending serie restores — applied in the scroll ref callback when each element mounts
+        const pending: Record<number, number> = {}
+        for (const [ejIdStr, serieIdx] of Object.entries(savedMap)) {
+          pending[Number(ejIdStr)] = serieIdx
+        }
+        pendingSerieRestoreRef.current = pending
+        // For the exercise card, try now (may already be in DOM) and again after paint
+        const applyExerciseScroll = () => {
           if (lastEjId != null) {
             exerciseCardRefs.current.get(lastEjId)?.scrollIntoView({ behavior: "instant", block: "start" })
           }
-          for (const [ejIdStr, serieIdx] of Object.entries(savedMap)) {
-            const ejId = Number(ejIdStr)
-            const el = serieScrollRefs.current.get(ejId)
-            if (el) el.scrollLeft = serieIdx * el.clientWidth
-          }
-        }, 300)
+        }
+        applyExerciseScroll()
+        requestAnimationFrame(applyExerciseScroll)
       } catch {
         // ignore malformed storage
       }
@@ -1320,7 +1325,16 @@ export function StudentPlanificacionSection({
 
                   {/* Horizontal scroll container */}
                   <div
-                    ref={(el) => { if (el) serieScrollRefs.current.set(ej.id, el) }}
+                    ref={(el) => {
+                      if (el) {
+                        serieScrollRefs.current.set(ej.id, el)
+                        const pending = pendingSerieRestoreRef.current[ej.id]
+                        if (pending != null) {
+                          el.scrollLeft = pending * el.clientWidth
+                          delete pendingSerieRestoreRef.current[ej.id]
+                        }
+                      }
+                    }}
                     className="flex overflow-x-auto snap-x snap-mandatory"
                     style={{ scrollbarWidth: "none" }}
                     onScroll={(e) => handleSerieScroll(ej.id, e.currentTarget)}
