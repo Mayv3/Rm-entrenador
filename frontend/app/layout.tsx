@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "@/styles/globals.css";
 import { Comfortaa } from "next/font/google";
 import { Providers } from "./providers";
+import { Toaster } from "@/components/ui/sonner";
 
 const comfortaa = Comfortaa({ subsets: ["latin"], weight: "400" });
 
@@ -40,6 +41,7 @@ export default function RootLayout({
         <Providers>
           {children}
         </Providers>
+        <Toaster richColors position="top-right" />
         <script
           dangerouslySetInnerHTML={{
             __html: `

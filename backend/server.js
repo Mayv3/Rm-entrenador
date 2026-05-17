@@ -18,6 +18,9 @@ import {
 import { getAntrosByAlumno, getAllAntrosCounts, createAntro, deleteAntro, updateAntroNombre, updateAntroFecha, getParsedAntro } from "./controllers/antropometriasController.js";
 import { getNutricionByAlumno, getAllNutricionCounts, createNutricion, deleteNutricion, updateNutricionNombre, updateNutricionHabitos } from "./controllers/nutricionController.js";
 import { getPortalPlanificacion, getPortalSesion, upsertPortalSesion, getPortalSesionesSemana, getPortalSesionesResumen } from "./controllers/portalPlanController.js";
+import {
+  getPlantillas, getPlantillaById, createPlantilla, updatePlantilla, deletePlantilla, asignarPlantilla, syncPlantilla, hidratarPlantilla,
+} from "./controllers/plantillasController.js";
 
 import multer from "multer"
 import { parseAntropometriaPdf } from "./controllers/pdfAntroParser.js"
@@ -153,6 +156,16 @@ app.put("/planificaciones/ejercicios/:planEjId/semanas", updateDosisBulk);
 // Progreso del alumno (pesos cargados por ejercicio/dia/semana)
 app.get("/planificaciones/:id/progreso", getProgresoPlanificacion);
 app.get("/planificaciones/:id/asistencias", getAsistenciasPlanificacion);
+
+// Plantillas de planificaciones
+app.get("/plantillas", getPlantillas);
+app.get("/plantillas/:id", getPlantillaById);
+app.post("/plantillas", createPlantilla);
+app.put("/plantillas/:id", updatePlantilla);
+app.delete("/plantillas/:id", deletePlantilla);
+app.post("/plantillas/:id/asignar", asignarPlantilla);
+app.post("/plantillas/:id/sync", syncPlantilla);
+app.post("/plantillas/:id/hidratar", hidratarPlantilla);
 
 // Portal alumno: planificacion + carga de entrenamiento (sin cache)
 const noStore = (_req, res, next) => {

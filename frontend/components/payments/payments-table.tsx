@@ -102,6 +102,7 @@ function PaymentMobileCard({
 
 export function PaymentsTable() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(false);
   const [isEditPaymentOpen, setIsEditPaymentOpen] = useState(false);
   const [isDeletePaymentOpen, setIsDeletePaymentOpen] = useState(false);
@@ -149,13 +150,19 @@ export function PaymentsTable() {
 
   const filteredPayments = useMemo(
     () =>
-      payments.filter(
-        (p) =>
+      payments.filter((p) => {
+        const matchesSearch =
           p.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           p.modalidad?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          p.status?.toLowerCase().includes(searchTerm.toLowerCase())
-      ),
-    [payments, searchTerm]
+          p.status?.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesStatus =
+          !statusFilter ||
+          (statusFilter === "Activo" && p.status === "Pagado") ||
+          (statusFilter === "Vencido" && (p.status === "Vencido" || p.status === "Pendiente")) ||
+          (statusFilter === "Indefinido" && p.status === "Indefinido");
+        return matchesSearch && matchesStatus;
+      }),
+    [payments, searchTerm, statusFilter]
   );
 
   const handleEdit = (payment: Payment) => { setSelectedPayment(payment); setIsEditPaymentOpen(true); };
@@ -253,15 +260,32 @@ export function PaymentsTable() {
   return (
     <>
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="relative w-full md:w-96">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Buscar pagos..."
-            className="w-full pl-8"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+        <div className="flex flex-col gap-2 w-full md:w-96">
+          <div className="relative w-full">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Buscar pagos..."
+              className="w-full pl-8"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <div className="flex gap-2 md:hidden mt-4">
+            {[null, "Activo", "Vencido"].map((f) => (
+              <button
+                key={f ?? "todos"}
+                onClick={() => setStatusFilter(f)}
+                className={`flex-1 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                  statusFilter === f
+                    ? "bg-[var(--primary-color)] text-white border-[var(--primary-color)]"
+                    : "bg-background text-muted-foreground border-border"
+                }`}
+              >
+                {f ?? "Todos"}
+              </button>
+            ))}
+          </div>
         </div>
         <div className="flex gap-2">
           <Button

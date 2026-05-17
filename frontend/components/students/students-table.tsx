@@ -730,7 +730,7 @@ export function StudentsTable({ onOpenPlan }: { onOpenPlan?: (planId: number) =>
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <div className="flex gap-2 md:hidden">
+          <div className="flex gap-2 md:hidden my-4">
             {[null, "Activo", "Vencido", "Indefinido"].map((f) => (
               <button
                 key={f ?? "todos"}

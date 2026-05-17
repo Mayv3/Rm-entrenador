@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { FileText, LogOut, MessageSquare, ArrowLeft, Loader2, Download, Eye, TrendingUp, GitCompareArrows, Salad, Dumbbell, ArrowRight, X } from "lucide-react"
+import { ModeToggle } from "@/components/mode-toggle"
 import { StudentPlanificacionSection } from "@/components/portal/student-planificacion-section"
 import { supabase } from "@/lib/supabase-client"
 import { determineSubscriptionStatus, formatDate, getStatusColor } from "@/lib/payment-utils"
@@ -147,10 +148,14 @@ export default function PortalPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const { setTheme } = useTheme()
+  const themeInitRef = useRef(false)
 
   useEffect(() => {
-    setTheme("dark")
-    return () => setTheme("light")
+    if (themeInitRef.current) return
+    themeInitRef.current = true
+    if (typeof window !== "undefined" && !localStorage.getItem("theme")) {
+      setTheme("dark")
+    }
   }, [setTheme])
 
   const [parsedData, setParsedData] = useState<ParsedAntro | null>(null)
@@ -262,13 +267,16 @@ export default function PortalPage() {
       <header className="border-b bg-background sticky top-0 z-10">
         <div className="max-w-lg mx-auto flex items-center justify-between px-6 py-4">
           <Image src={logoRodrigoEntrenador} alt="RM Entrenador" width={100} />
-          <button
-            onClick={() => signOut({ callbackUrl: "/portal/login" })}
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-red-500 transition-colors"
-          >
-            <LogOut className="h-3.5 w-3.5" />
-            Salir
-          </button>
+          <div className="flex items-center gap-2">
+            <ModeToggle />
+            <button
+              onClick={() => signOut({ callbackUrl: "/portal/login" })}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-red-500 transition-colors"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              Salir
+            </button>
+          </div>
         </div>
       </header>
 
@@ -524,14 +532,15 @@ export default function PortalPage() {
             className="flex-1 bg-black/50 backdrop-blur-sm"
             onClick={() => closeMiPlan()}
           />
-          <div className="w-full max-w-md bg-[#0a0a0a] h-full flex flex-col animate-slide-in-right shadow-2xl border-l border-white/[0.06]">
+          <div className="w-full max-w-md bg-background dark:bg-[#0a0a0a] h-full flex flex-col animate-slide-in-right shadow-2xl border-l border-border dark:border-white/[0.06]">
             {/* Header */}
-            <div className="border-b border-white/[0.06] bg-[#0a0a0a]/80 backdrop-blur-xl px-4 py-3.5 flex items-center justify-end flex-shrink-0">
+            <div className="border-b border-border dark:border-white/[0.06] bg-background/80 dark:bg-background dark:bg-[#0a0a0a]/80 backdrop-blur-xl px-4 py-3.5 flex items-center justify-end gap-2 flex-shrink-0">
+              <ModeToggle />
               <button
                 onClick={() => closeMiPlan()}
-                className="h-8 w-8 rounded-xl bg-white/[0.05] hover:bg-white/[0.08] flex items-center justify-center transition-colors"
+                className="h-8 w-8 rounded-xl bg-muted dark:bg-white/[0.05] hover:bg-muted dark:bg-white/[0.08] flex items-center justify-center transition-colors"
               >
-                <X className="h-4 w-4 text-zinc-400" />
+                <X className="h-4 w-4 text-muted-foreground dark:text-zinc-400" />
               </button>
             </div>
             {/* Content */}
@@ -561,52 +570,96 @@ export default function PortalPage() {
             {planes.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-6">No hay planes cargados</p>
             ) : (
-              planes.map((plan) => {
-                const isExpanded = expandedPlan === plan.id
-                return (
-                  <button
-                    key={plan.id}
-                    onClick={() => setExpandedPlan(isExpanded ? null : plan.id)}
-                    className="relative rounded-2xl overflow-hidden border w-full text-left transition-all active:scale-[0.98]"
-                    style={{ borderColor: `${plan.color ?? "#9e9e9e"}40` }}
-                  >
-                    {/* Barra de color izquierda */}
-                    <div
-                      className="absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl"
-                      style={{ backgroundColor: plan.color ?? "#9e9e9e" }}
-                    />
-                    {/* Header */}
-                    <div
-                      className="px-5 py-4 flex items-center justify-between"
-                      style={{ backgroundColor: `${plan.color ?? "#9e9e9e"}0d` }}
+              (() => {
+                const basePlans = planes.filter((p) => p.parent_id == null)
+                const subplanMap = new Map<number, Plan[]>()
+                for (const p of planes) {
+                  if (p.parent_id != null) {
+                    if (!subplanMap.has(p.parent_id)) subplanMap.set(p.parent_id, [])
+                    subplanMap.get(p.parent_id)!.push(p)
+                  }
+                }
+                return basePlans.map((plan) => {
+                  const isExpanded = expandedPlan === plan.id
+                  const variants = (subplanMap.get(plan.id) ?? []).sort((a, b) => (a.duracion_meses ?? 0) - (b.duracion_meses ?? 0))
+                  const hasContent = !!plan.descripcion || variants.length > 0
+                  return (
+                    <button
+                      key={plan.id}
+                      onClick={() => setExpandedPlan(isExpanded ? null : plan.id)}
+                      className="relative rounded-2xl overflow-hidden border w-full text-left transition-all active:scale-[0.98]"
+                      style={{ borderColor: `${plan.color ?? "#9e9e9e"}40` }}
                     >
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm">{plan.nombre}</span>
-                        {plan.descripcion && (
-                          <ArrowRight className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`} />
-                        )}
-                      </div>
                       <div
-                        className="px-3 py-1.5 rounded-xl font-bold text-sm"
-                        style={{
-                          color: plan.color ?? "#9e9e9e",
-                          backgroundColor: `${plan.color ?? "#9e9e9e"}20`,
-                        }}
-                      >
-                        ${Number(plan.precio).toLocaleString("es-AR")}
-                      </div>
-                    </div>
-                    {/* Descripción expandida */}
-                    {isExpanded && plan.descripcion && (
-                      <div
-                        className="px-5 py-3 border-t text-xs text-muted-foreground [&_strong]:font-semibold [&_strong]:text-foreground [&_p]:mb-1 [&_br]:block"
-                        style={{ borderColor: `${plan.color ?? "#9e9e9e"}30`, backgroundColor: `${plan.color ?? "#9e9e9e"}08` }}
-                        dangerouslySetInnerHTML={{ __html: plan.descripcion }}
+                        className="absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl"
+                        style={{ backgroundColor: plan.color ?? "#9e9e9e" }}
                       />
-                    )}
-                  </button>
-                )
-              })
+                      <div
+                        className="px-5 py-4 flex items-center justify-between"
+                        style={{ backgroundColor: `${plan.color ?? "#9e9e9e"}0d` }}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-sm">{plan.nombre}</span>
+                          {hasContent && (
+                            <ArrowRight className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`} />
+                          )}
+                        </div>
+                        <div
+                          className="px-3 py-1.5 rounded-xl font-bold text-sm"
+                          style={{
+                            color: plan.color ?? "#9e9e9e",
+                            backgroundColor: `${plan.color ?? "#9e9e9e"}20`,
+                          }}
+                        >
+                          ${Number(plan.precio).toLocaleString("es-AR")}
+                        </div>
+                      </div>
+                      {isExpanded && (
+                        <>
+                          {variants.length > 0 && (
+                            <div
+                              className="px-3 py-3 border-t flex flex-col gap-2"
+                              style={{ borderColor: `${plan.color ?? "#9e9e9e"}30`, backgroundColor: `${plan.color ?? "#9e9e9e"}08` }}
+                            >
+                              {variants.map((v) => (
+                                <div
+                                  key={v.id}
+                                  className="flex items-center justify-between rounded-xl px-3 py-2 bg-background/40 border"
+                                  style={{ borderColor: `${plan.color ?? "#9e9e9e"}25` }}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-semibold">
+                                      {v.duracion_meses ? `${v.duracion_meses} meses` : v.nombre}
+                                    </span>
+                                    {v.descuento > 0 && (
+                                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-500">
+                                        -{v.descuento}%
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span
+                                    className="text-xs font-bold"
+                                    style={{ color: plan.color ?? "#9e9e9e" }}
+                                  >
+                                    ${Number(v.precio).toLocaleString("es-AR")}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {plan.descripcion && (
+                            <div
+                              className="px-5 py-3 border-t text-xs text-muted-foreground [&_strong]:font-semibold [&_strong]:text-foreground [&_p]:mb-1 [&_br]:block"
+                              style={{ borderColor: `${plan.color ?? "#9e9e9e"}30`, backgroundColor: `${plan.color ?? "#9e9e9e"}08` }}
+                              dangerouslySetInnerHTML={{ __html: plan.descripcion }}
+                            />
+                          )}
+                        </>
+                      )}
+                    </button>
+                  )
+                })
+              })()
             )}
           </div>
         </DialogContent>

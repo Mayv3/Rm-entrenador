@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import React, { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Trash2, Youtube, ChevronDown, ChevronUp, Loader2, GripVertical, Pencil, Plus, ArrowUp, ArrowDown } from "lucide-react"
+import { Trash2, Youtube, ChevronDown, ChevronUp, Loader2, GripVertical, Pencil, Plus, ArrowUp, ArrowDown, StickyNote } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import axios from "axios"
 import { useQueryClient } from "@tanstack/react-query"
@@ -43,6 +43,7 @@ interface DayBlockProps {
   onDeleted: () => void
   onSemanaChange: (planEjId: number, semana: number, field: "dosis" | "rpe", value: string) => void
   onCategoriaChange: (planEjId: number, categoria: string) => void
+  onNotasProfesorChange: (planEjId: number, value: string) => void
   onPendingChange: (pending: PendingEjercicio[]) => void
   onOrderChange: (orderedIds: number[]) => void
   onDeleteEj: (planEjId: number) => void
@@ -56,7 +57,7 @@ interface DayBlockProps {
 
 export function DayBlock({
   dia, planId, localData, pending, isActive, onActivate, onDeleted,
-  onSemanaChange, onCategoriaChange, onPendingChange, onOrderChange, onDeleteEj, onReplaceEj, onOpenLibrary,
+  onSemanaChange, onCategoriaChange, onNotasProfesorChange, onPendingChange, onOrderChange, onDeleteEj, onReplaceEj, onOpenLibrary,
   canMoveUp, canMoveDown, onMoveUp, onMoveDown,
 }: DayBlockProps) {
   const queryClient = useQueryClient()
@@ -121,6 +122,7 @@ export function DayBlock({
         tempId: `tmp-${Date.now()}-${Math.random()}`,
         ejercicio,
         categoria: "A",
+        notas_profesor: "",
         dosis: {},
         rpe: {},
       }
@@ -191,7 +193,7 @@ export function DayBlock({
     }
   }
 
-  const setPendingField = (tempId: string, field: "categoria" | "dosis" | "rpe", semana: number | null, value: string) => {
+  const setPendingField = (tempId: string, field: "categoria" | "dosis" | "rpe" | "notas_profesor", semana: number | null, value: string) => {
     if (field === "categoria") {
       const idx = pending.findIndex((p) => p.tempId === tempId)
       onPendingChange(pending.map((p, i) => {
@@ -204,6 +206,7 @@ export function DayBlock({
     onPendingChange(pending.map((p) => {
       if (p.tempId !== tempId) return p
       if (field === "categoria") return { ...p, categoria: value }
+      if (field === "notas_profesor") return { ...p, notas_profesor: value }
       if (field === "dosis" && semana !== null) {
         const newDosis = { ...p.dosis }
         if (semana % 2 === 1) {
@@ -335,13 +338,15 @@ export function DayBlock({
                         localData={localData}
                         onSemanaChange={onSemanaChange}
                         onCategoriaChange={handleCategoriaForRow}
+                        onNotasProfesorChange={onNotasProfesorChange}
                         onDelete={handleDeleteSaved}
                         onReplace={onReplaceEj}
                       />
                     ))}
 
                     {pending.map((p) => (
-                      <tr key={p.tempId} className="border-l-2 border-l-[var(--primary-color)] animate-in fade-in slide-in-from-top-2 duration-200" style={CATEGORIA_ROW_STYLE[p.categoria]}>
+                      <React.Fragment key={p.tempId}>
+                      <tr className="border-l-2 border-l-[var(--primary-color)] animate-in fade-in slide-in-from-top-2 duration-200" style={CATEGORIA_ROW_STYLE[p.categoria]}>
                         <td className="px-1 py-1.5">
                           <CategoriaSelect value={p.categoria} onChange={(v) => setPendingField(p.tempId, "categoria", null, v)} />
                         </td>
@@ -383,6 +388,20 @@ export function DayBlock({
                           </Button>
                         </td>
                       </tr>
+                      <tr style={CATEGORIA_ROW_STYLE[p.categoria]}>
+                        <td className="px-1 pb-2 pt-0" />
+                        <td className="px-3 pb-2 pt-0" />
+                        <td colSpan={6} className="px-1 pb-2 pt-0">
+                          <Input
+                            value={p.notas_profesor}
+                            onChange={(e) => setPendingField(p.tempId, "notas_profesor", null, e.target.value)}
+                            placeholder="Comentario para el alumno (opcional)"
+                            className="h-8 text-xs placeholder:text-muted-foreground/50 bg-background/60 border-dashed"
+                          />
+                        </td>
+                        <td className="px-2 pb-2 pt-0" />
+                      </tr>
+                      </React.Fragment>
                     ))}
                   </tbody>
                 </SortableContext>
@@ -430,12 +449,13 @@ export function DayBlock({
 }
 
 function SortableExerciseRow({
-  ej, localData, onSemanaChange, onCategoriaChange, onDelete, onReplace,
+  ej, localData, onSemanaChange, onCategoriaChange, onNotasProfesorChange, onDelete, onReplace,
 }: {
   ej: PlanEjercicio
   localData: Record<number, EjercicioLocal>
   onSemanaChange: (planEjId: number, semana: number, field: "dosis" | "rpe", value: string) => void
   onCategoriaChange: (planEjId: number, categoria: string) => void
+  onNotasProfesorChange: (planEjId: number, value: string) => void
   onDelete: (planEjId: number) => void
   onReplace: (planEjId: number) => void
 }) {
@@ -443,6 +463,7 @@ function SortableExerciseRow({
 
   const local = localData[ej.id]
   const categoria = local?.categoria ?? ej.categoria
+  const notasProfesor = local?.notas_profesor ?? ej.notas_profesor ?? ""
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -452,6 +473,7 @@ function SortableExerciseRow({
   }
 
   return (
+    <>
     <tr ref={setNodeRef} style={style}>
       <td className="px-1 py-1.5">
         <div className="flex items-center gap-0.5">
@@ -513,6 +535,20 @@ function SortableExerciseRow({
         </div>
       </td>
     </tr>
+    <tr style={CATEGORIA_ROW_STYLE[categoria]}>
+      <td className="px-1 pb-2 pt-0" />
+      <td className="px-3 pb-2 pt-0" />
+      <td colSpan={6} className="px-1 pb-2 pt-0">
+        <Input
+          value={notasProfesor}
+          onChange={(e) => onNotasProfesorChange(ej.id, e.target.value)}
+          placeholder="Comentario para el alumno (opcional)"
+          className="h-8 text-xs placeholder:text-muted-foreground/50 bg-background/60 border-dashed"
+        />
+      </td>
+      <td className="px-2 pb-2 pt-0" />
+    </tr>
+    </>
   )
 }
 

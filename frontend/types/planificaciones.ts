@@ -30,6 +30,7 @@ export interface PlanEjercicio {
   ejercicio_id: number
   categoria: string
   orden: number
+  notas_profesor: string | null
   ejercicios: Ejercicio
   semanas: PlanSemana[]
 }

@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader } from "@/components/ui/loader"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { queryKeys } from "@/lib/query-keys"
-import { ArrowLeft, Plus, Loader2, Save, Eye, EyeOff, Trash2, TrendingUp, AlertTriangle, CheckCircle2, StickyNote, CalendarDays } from "lucide-react"
+import { ArrowLeft, Plus, Loader2, Save, Eye, EyeOff, Trash2, TrendingUp, AlertTriangle, CheckCircle2, StickyNote, CalendarDays, FileText } from "lucide-react"
+import { Label } from "@/components/ui/label"
 import { PlanCalendarioDialog } from "./plan-calendario-dialog"
 import { DayBlock } from "./day-block"
 import { ExerciseLibraryPanel } from "./exercise-library-panel"
@@ -21,11 +22,12 @@ import { CATEGORIA_COLORS, CATEGORIA_ROW_STYLE } from "@/types/planificaciones"
 const CATEGORIA_ORDER = ["ACTIVADOR", "A", "B", "C", "D", "E"]
 
 export type SemanaLocal = { dosis: string; rpe: string }
-export type EjercicioLocal = { categoria: string; semanas: Record<number, SemanaLocal> }
+export type EjercicioLocal = { categoria: string; notas_profesor: string; semanas: Record<number, SemanaLocal> }
 export type PendingEjercicio = {
   tempId: string
   ejercicio: Ejercicio
   categoria: string
+  notas_profesor: string
   dosis: Record<number, string>
   rpe: Record<number, string>
 }
@@ -33,9 +35,10 @@ export type PendingEjercicio = {
 interface PlanBuilderProps {
   planId: number
   onBack: () => void
+  plantillaId?: number | null
 }
 
-export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
+export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
   const queryClient = useQueryClient()
   const [savingMeta, setSavingMeta] = useState(false)
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle")
@@ -50,6 +53,31 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
   const [progresoOpen, setProgresoOpen] = useState(false)
   const [calendarioOpen, setCalendarioOpen] = useState(false)
   const [movilidadCollapseSignal, setMovilidadCollapseSignal] = useState(0)
+  const [saveAsTemplateOpen, setSaveAsTemplateOpen] = useState(false)
+  const [templateNombre, setTemplateNombre] = useState("")
+  const [templateDesc, setTemplateDesc] = useState("")
+  const [savingTemplate, setSavingTemplate] = useState(false)
+
+  const handleSaveAsTemplate = async () => {
+    if (!templateNombre.trim()) return
+    setSavingTemplate(true)
+    try {
+      await axios.post(`${process.env.NEXT_PUBLIC_URL_BACKEND}/plantillas`, {
+        nombre: templateNombre.trim(),
+        descripcion: templateDesc.trim() || null,
+        from_plan_id: planId,
+        from_hoja_id: activeHojaId,
+      })
+      await queryClient.invalidateQueries({ queryKey: queryKeys.plantillas })
+      setSaveAsTemplateOpen(false)
+      setTemplateNombre("")
+      setTemplateDesc("")
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setSavingTemplate(false)
+    }
+  }
 
   // Estado centralizado: dosis, rpe y categoría de todos los ejercicios ya guardados
   const [localData, setLocalData] = useState<Record<number, EjercicioLocal>>({})
@@ -81,6 +109,7 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
       dia.ejercicios.forEach((ej) => {
         data[ej.id] = {
           categoria: ej.categoria,
+          notas_profesor: ej.notas_profesor ?? "",
           semanas: Object.fromEntries(
             ej.semanas.map((s) => [s.semana, { dosis: s.dosis ?? "", rpe: s.rpe?.toString() ?? "" }])
           ),
@@ -132,6 +161,7 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
             ...prev,
             [ej.id]: {
               categoria: ej.categoria,
+              notas_profesor: ej.notas_profesor ?? "",
               semanas: Object.fromEntries(
                 ej.semanas.map((s) => [s.semana, { dosis: s.dosis ?? "", rpe: s.rpe?.toString() ?? "" }])
               ),
@@ -184,6 +214,15 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
     markDirty()
   }
 
+  // ── Cambios en notas del profesor ───────────────────────────────────────────
+  const handleNotasProfesorChange = (planEjId: number, value: string) => {
+    setLocalData((prev) => ({
+      ...prev,
+      [planEjId]: { ...prev[planEjId], notas_profesor: value },
+    }))
+    markDirty()
+  }
+
   // ── Pendientes por día ──────────────────────────────────────────────────────
   const handlePendingChange = (diaId: number, pending: PendingEjercicio[]) => {
     setPendingByDay((prev) => ({ ...prev, [diaId]: pending }))
@@ -224,6 +263,7 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
       // Construir semanas y categorías de ejercicios ya persistidos
       const semanas: { planificacion_ejercicio_id: number; semana: number; dosis: string | null; rpe: number | null }[] = []
       const categorias: { planificacion_ejercicio_id: number; categoria: string }[] = []
+      const notasProfesor: { planificacion_ejercicio_id: number; notas_profesor: string }[] = []
 
       plan.hojas.flatMap((h) => h.dias).forEach((dia) => {
         dia.ejercicios.forEach((ej) => {
@@ -231,6 +271,9 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
           if (!local) return
           if (local.categoria !== ej.categoria) {
             categorias.push({ planificacion_ejercicio_id: ej.id, categoria: local.categoria })
+          }
+          if ((local.notas_profesor ?? "") !== (ej.notas_profesor ?? "")) {
+            notasProfesor.push({ planificacion_ejercicio_id: ej.id, notas_profesor: local.notas_profesor ?? "" })
           }
           for (let s = 1; s <= 6; s++) {
             const localSem = local.semanas[s]
@@ -249,7 +292,7 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
         })
       })
 
-      const pendingByDayPayload: Record<string, { ejercicio_id: number; categoria: string; orden: number; semanas: { semana: number; dosis: string | null; rpe: number | null }[] }[]> = {}
+      const pendingByDayPayload: Record<string, { ejercicio_id: number; categoria: string; orden: number; notas_profesor: string | null; semanas: { semana: number; dosis: string | null; rpe: number | null }[] }[]> = {}
       for (const [diaId, pending] of Object.entries(snapshotPendingByDay)) {
         if (!pending.length) continue
         pendingByDayPayload[diaId] = [...pending]
@@ -258,6 +301,7 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
             ejercicio_id: p.ejercicio.id,
             categoria: p.categoria,
             orden: i,
+            notas_profesor: p.notas_profesor || null,
             semanas: [1, 2, 3, 4, 5, 6].map((s) => ({
               semana: s,
               dosis: p.dosis[s] || null,
@@ -277,6 +321,7 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
           pendingByDay: pendingByDayPayload,
           semanas,
           categorias,
+          notasProfesor,
           deletes: snapshotPendingDeletes,
           orden: ordenItems,
         }
@@ -292,6 +337,13 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
       initialized.current = false
       refetch()
       queryClient.invalidateQueries({ queryKey: queryKeys.planificaciones })
+
+      // Si es workspace de plantilla, sincronizar jsonb
+      if (plantillaId) {
+        axios.post(`${process.env.NEXT_PUBLIC_URL_BACKEND}/plantillas/${plantillaId}/sync`)
+          .then(() => queryClient.invalidateQueries({ queryKey: queryKeys.plantillas }))
+          .catch((err) => console.error("sync plantilla fail:", err))
+      }
     } catch (err) {
       console.error(err)
       // Revertir estado en caso de error
@@ -544,19 +596,28 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
         Volver
       </Button>
 
+      {plantillaId && (
+        <div className="flex items-center gap-2 text-xs font-medium text-[var(--primary-color)] bg-[var(--primary-color)]/10 border border-[var(--primary-color)]/30 rounded-lg px-3 py-2">
+          <FileText className="h-3.5 w-3.5" />
+          Editando plantilla — los cambios se sincronizan al guardar
+        </div>
+      )}
+
       <div className="rounded-xl border bg-card p-3 md:p-0 md:rounded-none md:border-0 md:bg-transparent">
         <div className="flex-1 min-w-0 flex items-center gap-2.5">
           <div className="min-w-0 flex-1">
             <PlanNameEditor value={plan.nombre} onSave={(v) => handleSaveMeta("nombre", v)} disabled={savingMeta} />
           </div>
-          <Select value={plan.estado} onValueChange={(v) => handleSaveMeta("estado", v)}>
-            <SelectTrigger className="w-28 h-8 text-sm shrink-0"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="borrador">Borrador</SelectItem>
-              <SelectItem value="activo">Activo</SelectItem>
-              <SelectItem value="finalizado">Finalizado</SelectItem>
-            </SelectContent>
-          </Select>
+          {!plantillaId && (
+            <Select value={plan.estado} onValueChange={(v) => handleSaveMeta("estado", v)}>
+              <SelectTrigger className="w-28 h-8 text-sm shrink-0"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="borrador">Borrador</SelectItem>
+                <SelectItem value="activo">Activo</SelectItem>
+                <SelectItem value="finalizado">Finalizado</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
       </div>
@@ -618,16 +679,18 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
       </div>
 
       <div className="grid grid-cols-2 gap-2 pt-0.5 md:flex md:items-center md:gap-2.5">
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={handleCreateHoja}
-          disabled={creatingHoja}
-          className="h-11 px-4 text-sm border-dashed gap-2 shrink-0 md:h-8 md:px-3 md:text-xs md:gap-1.5"
-        >
-          {creatingHoja ? <Loader2 className="h-4 w-4 animate-spin md:h-3 md:w-3" /> : <Plus className="h-4 w-4 md:h-3 md:w-3" />}
-          Nueva hoja
-        </Button>
+        {!plantillaId && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleCreateHoja}
+            disabled={creatingHoja}
+            className="h-11 px-4 text-sm border-dashed gap-2 shrink-0 md:h-8 md:px-3 md:text-xs md:gap-1.5"
+          >
+            {creatingHoja ? <Loader2 className="h-4 w-4 animate-spin md:h-3 md:w-3" /> : <Plus className="h-4 w-4 md:h-3 md:w-3" />}
+            Nueva hoja
+          </Button>
+        )}
 
         <Button
           size="sm"
@@ -639,25 +702,42 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
           Preview
         </Button>
 
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => setProgresoOpen(true)}
-          className="h-11 px-4 text-sm gap-2 shrink-0 md:h-8 md:px-3 md:text-xs md:gap-1.5 bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/30"
-        >
-          <TrendingUp className="h-4 w-4 md:h-3.5 md:w-3.5" />
-          Progreso
-        </Button>
+        {!plantillaId && (
+          <>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setProgresoOpen(true)}
+              className="h-11 px-4 text-sm gap-2 shrink-0 md:h-8 md:px-3 md:text-xs md:gap-1.5 bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/30"
+            >
+              <TrendingUp className="h-4 w-4 md:h-3.5 md:w-3.5" />
+              Progreso
+            </Button>
 
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => setCalendarioOpen(true)}
-          className="h-11 px-4 text-sm gap-2 shrink-0 md:h-8 md:px-3 md:text-xs md:gap-1.5 bg-[var(--primary-color)]/10 border-[var(--primary-color)]/30 text-[var(--primary-color)] hover:bg-[var(--primary-color)]/20"
-        >
-          <CalendarDays className="h-4 w-4 md:h-3.5 md:w-3.5" />
-          Asistencia
-        </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setCalendarioOpen(true)}
+              className="h-11 px-4 text-sm gap-2 shrink-0 md:h-8 md:px-3 md:text-xs md:gap-1.5 bg-[var(--primary-color)]/10 border-[var(--primary-color)]/30 text-[var(--primary-color)] hover:bg-[var(--primary-color)]/20"
+            >
+              <CalendarDays className="h-4 w-4 md:h-3.5 md:w-3.5" />
+              Asistencia
+            </Button>
+
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setTemplateNombre(plan?.nombre ?? "")
+                setSaveAsTemplateOpen(true)
+              }}
+              className="h-11 px-4 text-sm gap-2 shrink-0 md:h-8 md:px-3 md:text-xs md:gap-1.5"
+            >
+              <FileText className="h-4 w-4 md:h-3.5 md:w-3.5" />
+              Guardar como plantilla
+            </Button>
+          </>
+        )}
 
         <Button
           size="sm"
@@ -715,6 +795,7 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
                 }}
                 onSemanaChange={handleSemanaChange}
                 onCategoriaChange={handleCategoriaChange}
+                onNotasProfesorChange={handleNotasProfesorChange}
                 onPendingChange={(p) => handlePendingChange(dia.id, p)}
                 onOrderChange={(ids) => handleOrderChange(dia.id, ids)}
                 onDeleteEj={handleDeleteEj}
@@ -800,6 +881,46 @@ export function PlanBuilder({ planId, onBack }: PlanBuilderProps) {
           <DialogFooter className="flex-row gap-2 sm:gap-2">
             <Button variant="outline" className="w-1/2" onClick={() => setHojaToDelete(null)}>Cancelar</Button>
             <Button variant="destructive" className="w-1/2" onClick={confirmDeleteHoja}>Eliminar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={saveAsTemplateOpen} onOpenChange={setSaveAsTemplateOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Guardar como plantilla</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground">
+            Guarda este plan como plantilla reutilizable. Asigná luego a cualquier alumno.
+          </p>
+          <div className="space-y-3 mt-2">
+            <div>
+              <Label className="text-xs">Nombre *</Label>
+              <Input
+                value={templateNombre}
+                onChange={(e) => setTemplateNombre(e.target.value)}
+                placeholder="Ej: Hipertrofia 6 semanas"
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Descripción</Label>
+              <Input
+                value={templateDesc}
+                onChange={(e) => setTemplateDesc(e.target.value)}
+                placeholder="Opcional"
+              />
+            </div>
+          </div>
+          <DialogFooter className="mt-3">
+            <Button variant="outline" onClick={() => setSaveAsTemplateOpen(false)}>Cancelar</Button>
+            <Button
+              onClick={handleSaveAsTemplate}
+              disabled={!templateNombre.trim() || savingTemplate}
+              className="bg-[var(--primary-color)] hover:bg-[var(--primary-color)]/90 text-white"
+            >
+              {savingTemplate && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Guardar
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

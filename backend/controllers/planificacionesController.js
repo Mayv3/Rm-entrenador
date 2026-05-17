@@ -82,10 +82,23 @@ export async function getPlanificaciones(req, res) {
   const cached = cache.get(KEYS.planificaciones)
   if (cached) return res.json(cached)
 
-  const { data, error } = await supabase
+  // IDs de planificaciones que son workspace de plantillas (excluir)
+  const { data: workspaceRefs } = await supabase
+    .from("planificacion_plantillas")
+    .select("workspace_plan_id")
+    .not("workspace_plan_id", "is", null)
+  const workspaceIds = (workspaceRefs ?? []).map((r) => r.workspace_plan_id)
+
+  let query = supabase
     .from("planificaciones")
     .select("*, alumnos(id, nombre), planificacion_hojas!planificacion_id(id, nombre, numero, estado)")
     .order("created_at", { ascending: false });
+
+  if (workspaceIds.length > 0) {
+    query = query.not("id", "in", `(${workspaceIds.join(",")})`)
+  }
+
+  const { data, error } = await query
   if (error) return res.status(500).json({ error: error.message });
   cache.set(KEYS.planificaciones, data)
   res.json(data);
@@ -635,9 +648,10 @@ export async function saveMovilidad(req, res) {
 export async function saveAll(req, res) {
   const { id } = req.params
   const {
-    pendingByDay = {},   // { [diaId]: [{ ejercicio_id, categoria, orden, semanas }] }
+    pendingByDay = {},   // { [diaId]: [{ ejercicio_id, categoria, orden, semanas, notas_profesor }] }
     semanas = [],        // [{ planificacion_ejercicio_id, semana, dosis, rpe }]
     categorias = [],     // [{ planificacion_ejercicio_id, categoria }]
+    notasProfesor = [],  // [{ planificacion_ejercicio_id, notas_profesor }]
     deletes = [],        // [planEjId]
     orden = [],          // [{ id, orden }]
   } = req.body
@@ -654,6 +668,7 @@ export async function saveAll(req, res) {
         ejercicio_id: e.ejercicio_id,
         categoria: e.categoria ?? "A",
         orden: e.orden ?? i,
+        notas_profesor: e.notas_profesor ?? null,
       }))
 
       const { data: insertedEjs, error: ejError } = await supabase
@@ -683,7 +698,7 @@ export async function saveAll(req, res) {
   }
 
   // 2. Upsert semanas + categorías de ejercicios existentes
-  if (semanas.length > 0 || categorias.length > 0) {
+  if (semanas.length > 0 || categorias.length > 0 || notasProfesor.length > 0) {
     ops.push((async () => {
       const innerOps = []
       for (const s of semanas) {
@@ -697,6 +712,11 @@ export async function saveAll(req, res) {
       for (const c of categorias) {
         innerOps.push(
           supabase.from("planificacion_ejercicios").update({ categoria: c.categoria }).eq("id", c.planificacion_ejercicio_id)
+        )
+      }
+      for (const n of notasProfesor) {
+        innerOps.push(
+          supabase.from("planificacion_ejercicios").update({ notas_profesor: n.notas_profesor || null }).eq("id", n.planificacion_ejercicio_id)
         )
       }
       const results = await Promise.all(innerOps)

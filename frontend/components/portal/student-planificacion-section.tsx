@@ -894,7 +894,7 @@ export function StudentPlanificacionSection({
       <div className="flex items-center justify-center py-20">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="h-6 w-6 animate-spin text-green-500" />
-          <p className="text-xs text-zinc-500">Cargando tu planificación…</p>
+          <p className="text-xs text-muted-foreground dark:text-zinc-500">Cargando tu planificación…</p>
         </div>
       </div>
     )
@@ -902,21 +902,21 @@ export function StudentPlanificacionSection({
 
   if (errorPlan) {
     return (
-      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-6 text-center">
-        <p className="text-sm text-zinc-400">No pudimos cargar tu planificación.</p>
+      <div className="rounded-2xl border border-border dark:border-white/[0.06] bg-muted/40 dark:bg-white/[0.03] p-6 text-center">
+        <p className="text-sm text-muted-foreground dark:text-zinc-400">No pudimos cargar tu planificación.</p>
       </div>
     )
   }
 
   if (!planificacion) {
     return (
-      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-8 text-center space-y-3">
-        <div className="h-12 w-12 rounded-xl bg-zinc-800 flex items-center justify-center mx-auto">
-          <Dumbbell className="h-6 w-6 text-zinc-500" />
+      <div className="rounded-2xl border border-border dark:border-white/[0.06] bg-muted/40 dark:bg-white/[0.03] p-8 text-center space-y-3">
+        <div className="h-12 w-12 rounded-xl bg-muted dark:bg-zinc-800 flex items-center justify-center mx-auto">
+          <Dumbbell className="h-6 w-6 text-muted-foreground dark:text-zinc-500" />
         </div>
         <div>
-          <p className="text-sm font-medium text-zinc-300">Sin planificación asignada</p>
-          <p className="text-xs text-zinc-500 mt-1">Tu entrenador aún no te asignó un plan.</p>
+          <p className="text-sm font-medium text-foreground/90 dark:text-zinc-300">Sin planificación asignada</p>
+          <p className="text-xs text-muted-foreground dark:text-zinc-500 mt-1">Tu entrenador aún no te asignó un plan.</p>
         </div>
       </div>
     )
@@ -931,13 +931,13 @@ export function StudentPlanificacionSection({
             <div className="h-7 w-7 rounded-lg bg-green-500/15 flex items-center justify-center">
               <Trophy className="h-3.5 w-3.5 text-green-400" />
             </div>
-            <h2 className="text-base font-bold text-white">{planificacion.nombre}</h2>
+            <h2 className="text-base font-bold text-foreground dark:text-white">{planificacion.nombre}</h2>
           </div>
-          <p className="text-xs text-zinc-500 pl-9">{totalSemanas} semanas · {hojaActiva?.nombre}</p>
+          <p className="text-xs text-muted-foreground dark:text-zinc-500 pl-9">{totalSemanas} semanas · {hojaActiva?.nombre}</p>
         </div>
 
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-500 mb-3">Seleccioná una semana</p>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground dark:text-zinc-500 mb-3">Seleccioná una semana</p>
           <div className="grid grid-cols-2 gap-2.5">
             {Array.from({ length: totalSemanas }, (_, i) => i + 1).map((semana) => {
               const completada = semanaCompletadaMap.get(semana) === true
@@ -952,15 +952,15 @@ export function StudentPlanificacionSection({
                   className={`group relative aspect-square rounded-2xl border active:scale-95 transition-all duration-150 p-4 text-left overflow-hidden ${
                     completada
                       ? "border-green-500/40 bg-green-500/[0.07] hover:bg-green-500/[0.11]"
-                      : "border-white/[0.07] bg-white/[0.03] hover:bg-white/[0.06] hover:border-green-500/30 active:bg-green-500/20 active:border-green-500/60"
+                      : "border-border dark:border-white/[0.07] bg-muted/40 dark:bg-white/[0.03] hover:bg-muted/60 dark:bg-white/[0.06] hover:border-green-500/30 active:bg-green-500/20 active:border-green-500/60"
                   }`}
                 >
                   <div className="absolute inset-0 bg-gradient-to-br from-green-500/0 group-hover:from-green-500/5 to-transparent transition-all duration-200" />
-                  <span className={`absolute top-3 left-3 text-[10px] font-semibold uppercase tracking-widest transition-colors ${completada ? "text-green-500/70" : "text-zinc-500 group-hover:text-green-500/70"}`}>Semana</span>
-                  <span className={`absolute inset-0 flex items-center justify-center text-4xl font-black transition-colors ${completada ? "text-green-400" : "text-white"}`}>{semana}</span>
+                  <span className={`absolute top-3 left-3 text-[10px] font-semibold uppercase tracking-widest transition-colors ${completada ? "text-green-500/70" : "text-muted-foreground dark:text-zinc-500 group-hover:text-green-500/70"}`}>Semana</span>
+                  <span className={`absolute inset-0 flex items-center justify-center text-4xl font-black transition-colors ${completada ? "text-green-400" : "text-foreground dark:text-white"}`}>{semana}</span>
                   {completada
                     ? <CheckCircle2 className="absolute right-3 bottom-3 h-4 w-4 text-green-400" />
-                    : <ChevronRight className="absolute right-3 bottom-3 h-4 w-4 text-zinc-600 group-hover:text-green-500/50 transition-colors" />
+                    : <ChevronRight className="absolute right-3 bottom-3 h-4 w-4 text-muted-foreground/70 dark:text-zinc-600 group-hover:text-green-500/50 transition-colors" />
                   }
                 </button>
               )
@@ -978,18 +978,18 @@ export function StudentPlanificacionSection({
         <div className="flex items-center gap-2">
           <button
             onClick={() => history.back()}
-            className="h-8 w-8 rounded-xl bg-white/[0.05] hover:bg-white/[0.08] flex items-center justify-center transition-colors"
+            className="h-8 w-8 rounded-xl bg-muted/50 dark:bg-white/[0.05] hover:bg-muted/70 dark:bg-white/[0.08] flex items-center justify-center transition-colors"
           >
-            <ChevronLeft className="h-4 w-4 text-zinc-400" />
+            <ChevronLeft className="h-4 w-4 text-muted-foreground dark:text-zinc-400" />
           </button>
           <div>
-            <p className="text-xs text-zinc-500">Semana {semanaSeleccionada}</p>
-            <p className="text-sm font-bold text-white leading-tight">Elegí un día</p>
+            <p className="text-xs text-muted-foreground dark:text-zinc-500">Semana {semanaSeleccionada}</p>
+            <p className="text-sm font-bold text-foreground dark:text-white leading-tight">Elegí un día</p>
           </div>
         </div>
 
         {dias.length === 0 ? (
-          <p className="text-sm text-zinc-400 text-center py-8">Esta hoja no tiene días cargados.</p>
+          <p className="text-sm text-muted-foreground dark:text-zinc-400 text-center py-8">Esta hoja no tiene días cargados.</p>
         ) : (
           <div className="grid grid-cols-2 gap-2.5">
             {dias.map((dia) => {
@@ -1005,16 +1005,16 @@ export function StudentPlanificacionSection({
                   className={`group relative aspect-square rounded-2xl border active:scale-95 transition-all duration-150 p-4 text-left overflow-hidden ${
                     completado
                       ? "border-green-500/40 bg-green-500/[0.07] hover:bg-green-500/[0.11]"
-                      : "border-white/[0.07] bg-white/[0.03] hover:bg-white/[0.06] hover:border-green-500/30 active:bg-green-500/20 active:border-green-500/60"
+                      : "border-border dark:border-white/[0.07] bg-muted/40 dark:bg-white/[0.03] hover:bg-muted/60 dark:bg-white/[0.06] hover:border-green-500/30 active:bg-green-500/20 active:border-green-500/60"
                   }`}
                 >
                   <div className="absolute inset-0 bg-gradient-to-br from-green-500/0 group-hover:from-green-500/5 to-transparent transition-all duration-200" />
-                  <span className={`absolute top-3 left-3 text-[10px] font-semibold uppercase tracking-widest transition-colors ${completado ? "text-green-500/70" : "text-zinc-500 group-hover:text-green-500/70"}`}>Día</span>
-                  <span className={`absolute inset-0 flex items-center justify-center text-4xl font-black transition-colors ${completado ? "text-green-400" : "text-white"}`}>{dia.numero_dia}</span>
-                  <span className="absolute bottom-3 left-3 right-8 text-[10px] text-zinc-400 truncate">{dia.nombre}</span>
+                  <span className={`absolute top-3 left-3 text-[10px] font-semibold uppercase tracking-widest transition-colors ${completado ? "text-green-500/70" : "text-muted-foreground dark:text-zinc-500 group-hover:text-green-500/70"}`}>Día</span>
+                  <span className={`absolute inset-0 flex items-center justify-center text-4xl font-black transition-colors ${completado ? "text-green-400" : "text-foreground dark:text-white"}`}>{dia.numero_dia}</span>
+                  <span className="absolute bottom-3 left-3 right-8 text-[10px] text-muted-foreground dark:text-zinc-400 truncate">{dia.nombre}</span>
                   {completado
                     ? <CheckCircle2 className="absolute right-3 bottom-3 h-4 w-4 text-green-400" />
-                    : <ChevronRight className="absolute right-3 bottom-3 h-4 w-4 text-zinc-600 group-hover:text-green-500/50 transition-colors" />
+                    : <ChevronRight className="absolute right-3 bottom-3 h-4 w-4 text-muted-foreground/70 dark:text-zinc-600 group-hover:text-green-500/50 transition-colors" />
                   }
                 </button>
               )
@@ -1032,18 +1032,18 @@ export function StudentPlanificacionSection({
       <div className="flex items-center gap-2">
         <button
           onClick={() => history.back()}
-          className="h-8 w-8 rounded-xl bg-white/[0.05] hover:bg-white/[0.08] flex items-center justify-center transition-colors flex-shrink-0"
+          className="h-8 w-8 rounded-xl bg-muted/50 dark:bg-white/[0.05] hover:bg-muted/70 dark:bg-white/[0.08] flex items-center justify-center transition-colors flex-shrink-0"
         >
-          <ChevronLeft className="h-4 w-4 text-zinc-400" />
+          <ChevronLeft className="h-4 w-4 text-muted-foreground dark:text-zinc-400" />
         </button>
         <div className="flex-1 min-w-0">
-          <p className="text-[11px] text-zinc-500">Semana {semanaSeleccionada}</p>
-          <p className="text-sm font-bold text-white leading-tight truncate">
+          <p className="text-[11px] text-muted-foreground dark:text-zinc-500">Semana {semanaSeleccionada}</p>
+          <p className="text-sm font-bold text-foreground dark:text-white leading-tight truncate">
             Día {diaSeleccionado?.numero_dia} · {diaSeleccionado?.nombre}
           </p>
         </div>
         {loadingSession
-          ? <Loader2 className="h-3.5 w-3.5 animate-spin text-zinc-500 flex-shrink-0" />
+          ? <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground dark:text-zinc-500 flex-shrink-0" />
           : allCompleted ? (
             <span className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold border bg-green-500/15 border-green-500/30 text-green-400 flex-shrink-0">
               <CheckCircle2 className="h-3.5 w-3.5 text-green-400" />
@@ -1055,14 +1055,14 @@ export function StudentPlanificacionSection({
 
       {loadingSession ? (
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-6 w-6 animate-spin text-zinc-500" />
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground dark:text-zinc-500" />
         </div>
       ) : !checkinMostrado ? (
         /* ── Check-in inicial ── */
         <div className="flex-1 flex flex-col items-center justify-center min-h-[60vh] gap-6 px-4">
           <div className="text-center space-y-1 mb-2">
-            <p className="text-sm font-semibold text-zinc-300">¿Cómo estás hoy?</p>
-            <p className="text-[11px] text-zinc-500">Seleccioná lo que corresponda</p>
+            <p className="text-sm font-semibold text-foreground/90 dark:text-zinc-300">¿Cómo estás hoy?</p>
+            <p className="text-[11px] text-muted-foreground dark:text-zinc-500">Seleccioná lo que corresponda</p>
           </div>
 
           <div className="grid grid-cols-2 gap-3 w-full max-w-sm">
@@ -1071,7 +1071,7 @@ export function StudentPlanificacionSection({
               className={`flex flex-col items-center justify-center gap-2 py-5 rounded-2xl text-xs font-semibold border transition-all ${
                 durmioMal
                   ? "bg-indigo-500/15 border-indigo-500/30 text-indigo-400"
-                  : "bg-white/[0.03] border-white/[0.06] text-zinc-500 hover:border-indigo-500/20 hover:text-zinc-300"
+                  : "bg-muted/40 dark:bg-white/[0.03] border-border dark:border-white/[0.06] text-muted-foreground dark:text-zinc-500 hover:border-indigo-500/20 hover:text-foreground/90 dark:text-zinc-300"
               }`}
             >
               <Moon className="h-6 w-6" />
@@ -1082,7 +1082,7 @@ export function StudentPlanificacionSection({
               className={`flex flex-col items-center justify-center gap-2 py-5 rounded-2xl text-xs font-semibold border transition-all ${
                 fatiga
                   ? "bg-amber-500/15 border-amber-500/30 text-amber-400"
-                  : "bg-white/[0.03] border-white/[0.06] text-zinc-500 hover:border-amber-500/20 hover:text-zinc-300"
+                  : "bg-muted/40 dark:bg-white/[0.03] border-border dark:border-white/[0.06] text-muted-foreground dark:text-zinc-500 hover:border-amber-500/20 hover:text-foreground/90 dark:text-zinc-300"
               }`}
             >
               <BatteryWarning className="h-6 w-6" />
@@ -1093,7 +1093,7 @@ export function StudentPlanificacionSection({
               className={`flex flex-col items-center justify-center gap-2 py-5 rounded-2xl text-xs font-semibold border transition-all ${
                 desmotivacion
                   ? "bg-cyan-500/15 border-cyan-500/30 text-cyan-400"
-                  : "bg-white/[0.03] border-white/[0.06] text-zinc-500 hover:border-cyan-500/20 hover:text-zinc-300"
+                  : "bg-muted/40 dark:bg-white/[0.03] border-border dark:border-white/[0.06] text-muted-foreground dark:text-zinc-500 hover:border-cyan-500/20 hover:text-foreground/90 dark:text-zinc-300"
               }`}
             >
               <Frown className="h-6 w-6" />
@@ -1104,7 +1104,7 @@ export function StudentPlanificacionSection({
               className={`flex flex-col items-center justify-center gap-2 py-5 rounded-2xl text-xs font-semibold border transition-all ${
                 dolor
                   ? "bg-rose-500/15 border-rose-500/30 text-rose-400"
-                  : "bg-white/[0.03] border-white/[0.06] text-zinc-500 hover:border-rose-500/20 hover:text-zinc-300"
+                  : "bg-muted/40 dark:bg-white/[0.03] border-border dark:border-white/[0.06] text-muted-foreground dark:text-zinc-500 hover:border-rose-500/20 hover:text-foreground/90 dark:text-zinc-300"
               }`}
             >
               <Activity className="h-6 w-6" />
@@ -1135,7 +1135,7 @@ export function StudentPlanificacionSection({
                   key={field}
                   onClick={() => handleToggleEstado(field)}
                   className={`flex flex-col items-center justify-center gap-1.5 py-3 rounded-2xl border transition-all active:scale-95 ${
-                    active ? on : "bg-white/[0.03] border-white/[0.06] text-zinc-600 hover:text-zinc-400 hover:border-white/[0.1]"
+                    active ? on : "bg-muted/40 dark:bg-white/[0.03] border-border dark:border-white/[0.06] text-muted-foreground/70 dark:text-zinc-600 hover:text-muted-foreground dark:text-zinc-400 hover:border-border dark:border-white/[0.1]"
                   }`}
                 >
                   <Icon className="h-4 w-4" />
@@ -1170,13 +1170,13 @@ export function StudentPlanificacionSection({
             const total = movilidad.length
             const mov = movilidad[movilidadIdx]
             return (
-              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02]">
+              <div className="rounded-2xl border border-border dark:border-white/[0.07] bg-muted/30 dark:bg-white/[0.02]">
                 {/* Header */}
-                <div className="px-4 pt-3 pb-2 flex items-center gap-2 border-b border-white/[0.05]">
+                <div className="px-4 pt-3 pb-2 flex items-center gap-2 border-b border-border dark:border-white/[0.05]">
                   <span className="text-[10px] font-black uppercase tracking-widest text-amber-400 flex-shrink-0">Movilidad</span>
-                  <span className="text-[10px] text-zinc-500 flex-shrink-0">·</span>
-                  <span className="text-[11px] font-semibold text-zinc-200 truncate flex-1">{mov.nombre}</span>
-                  <span className="text-[10px] font-semibold text-zinc-500 flex-shrink-0">{movilidadIdx + 1}/{total}</span>
+                  <span className="text-[10px] text-muted-foreground dark:text-zinc-500 flex-shrink-0">·</span>
+                  <span className="text-[11px] font-semibold text-foreground dark:text-zinc-200 truncate flex-1">{mov.nombre}</span>
+                  <span className="text-[10px] font-semibold text-muted-foreground dark:text-zinc-500 flex-shrink-0">{movilidadIdx + 1}/{total}</span>
                 </div>
 
                 {/* Scroll carousel */}
@@ -1195,7 +1195,7 @@ export function StudentPlanificacionSection({
                         <img
                           src={item.imagen_url}
                           alt={item.nombre}
-                          className="w-full aspect-video rounded-xl object-cover bg-zinc-800"
+                          className="w-full aspect-video rounded-xl object-cover bg-muted dark:bg-zinc-800"
                         />
                       ) : (
                         <div className="w-full aspect-video rounded-xl bg-amber-500/10 flex items-center justify-center">
@@ -1217,7 +1217,7 @@ export function StudentPlanificacionSection({
                           movilidadScrollRef.current?.scrollTo({ left: i * movilidadScrollRef.current.clientWidth, behavior: "smooth" })
                         }}
                         className={`rounded-full transition-all ${
-                          i === movilidadIdx ? "w-4 h-1.5 bg-amber-400" : "w-1.5 h-1.5 bg-zinc-600"
+                          i === movilidadIdx ? "w-4 h-1.5 bg-amber-400" : "w-1.5 h-1.5 bg-muted-foreground/40 dark:bg-zinc-600"
                         }`}
                       />
                     ))}
@@ -1229,7 +1229,7 @@ export function StudentPlanificacionSection({
 
           {/* Exercise cards */}
           {ejerciciosDelDia.length === 0 ? (
-            <p className="text-sm text-zinc-400 text-center py-8">Este día no tiene ejercicios asignados.</p>
+            <p className="text-sm text-muted-foreground dark:text-zinc-400 text-center py-8">Este día no tiene ejercicios asignados.</p>
           ) : (
             <div className="space-y-3">
               {ejerciciosDelDia.map((ej) => {
@@ -1263,7 +1263,7 @@ export function StudentPlanificacionSection({
                 className={`rounded-2xl border transition-all duration-200 ${
                   esSaltado
                     ? "border-amber-500/20 opacity-60"
-                    : "border-white/[0.07]"
+                    : "border-border dark:border-white/[0.07]"
                 }`}
               >
                 {/* Category + name + video strip */}
@@ -1277,8 +1277,8 @@ export function StudentPlanificacionSection({
                   >
                     {ej.categoria}
                   </span>
-                  <span className="text-[10px] text-zinc-500 flex-shrink-0">·</span>
-                  <p className="text-[11px] font-semibold text-zinc-200 truncate flex-1 min-w-0">
+                  <span className="text-[10px] text-muted-foreground dark:text-zinc-500 flex-shrink-0">·</span>
+                  <p className="text-[11px] font-semibold text-foreground dark:text-zinc-200 truncate flex-1 min-w-0">
                     {ej.ejercicios?.nombre ?? "Ejercicio"}
                   </p>
                   {ej.ejercicios?.video_url && (
@@ -1302,7 +1302,7 @@ export function StudentPlanificacionSection({
                       className={`h-7 px-2.5 rounded-lg flex items-center gap-1.5 text-[10px] font-semibold transition-all border flex-shrink-0 ${
                         saltadoEjIds.has(ej.id)
                           ? "bg-amber-500/15 border-amber-500/30 text-amber-400"
-                          : "ml-auto bg-transparent border-white/[0.05] text-zinc-600 hover:border-amber-500/30 hover:text-amber-400"
+                          : "ml-auto bg-transparent border-border dark:border-white/[0.05] text-muted-foreground/70 dark:text-zinc-600 hover:border-amber-500/30 hover:text-amber-400"
                       }`}
                     >
                       <SkipForward className="h-3 w-3" />
@@ -1343,10 +1343,10 @@ export function StudentPlanificacionSection({
                           onClick={() => scrollToSerie(ej.id, i)}
                           className={`relative flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all border ${
                             active
-                              ? "bg-white/[0.12] border-green-400/60 text-white shadow-[0_0_12px_rgba(74,222,128,0.25)] scale-[1.03] z-10"
+                              ? "bg-muted dark:bg-white/[0.12] border-green-400/60 text-foreground dark:text-white shadow-[0_0_12px_rgba(74,222,128,0.25)] scale-[1.03] z-10"
                               : filled
-                              ? "bg-green-500/15 border-green-500/30 text-white/80"
-                              : "bg-transparent border-white/[0.05] text-zinc-600"
+                              ? "bg-green-500/15 border-green-500/30 text-foreground/80 dark:text-foreground dark:text-white/80"
+                              : "bg-transparent border-border dark:border-white/[0.05] text-muted-foreground/70 dark:text-zinc-600"
                           }`}
                         >
                           Serie {i + 1}
@@ -1382,7 +1382,7 @@ export function StudentPlanificacionSection({
                           {/* 3-col grid: peso / reps / rpe */}
                           <div className="grid grid-cols-3 gap-2">
                             <div className="space-y-1.5">
-                              <label className="flex items-center justify-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                              <label className="flex items-center justify-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground dark:text-zinc-500">
                                 <Weight className="h-2.5 w-2.5" />
                                 Peso kg
                               </label>
@@ -1395,11 +1395,11 @@ export function StudentPlanificacionSection({
                                 value={serie.peso_kg}
                                 onChange={(e) => handleSerieChange(ej.id, serieIdx, "peso_kg", e.target.value)}
                                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNextInput(ej.id, serieIdx, "peso_kg") } }}
-                                className="bg-zinc-900/80 border-white/[0.08] focus:border-green-500/50 focus:ring-green-500/20 text-white placeholder:text-zinc-600 h-12 text-base font-bold text-center rounded-xl"
+                                className="bg-card/80 dark:bg-card dark:bg-zinc-900/80 border-border dark:border-white/[0.08] focus:border-green-500/50 focus:ring-green-500/20 text-foreground dark:text-white placeholder:text-muted-foreground/70 dark:text-zinc-600 h-12 text-base font-bold text-center rounded-xl"
                               />
                             </div>
                             <div className="space-y-1.5">
-                              <label className="flex items-center justify-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                              <label className="flex items-center justify-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground dark:text-zinc-500">
                                 <RotateCcw className="h-2.5 w-2.5" />
                                 Reps
                               </label>
@@ -1412,11 +1412,11 @@ export function StudentPlanificacionSection({
                                 value={serie.repeticiones}
                                 onChange={(e) => handleSerieChange(ej.id, serieIdx, "repeticiones", e.target.value)}
                                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNextInput(ej.id, serieIdx, "repeticiones") } }}
-                                className="bg-zinc-900/80 border-white/[0.08] focus:border-green-500/50 focus:ring-green-500/20 text-white placeholder:text-zinc-600 h-12 text-base font-bold text-center rounded-xl"
+                                className="bg-card/80 dark:bg-card dark:bg-zinc-900/80 border-border dark:border-white/[0.08] focus:border-green-500/50 focus:ring-green-500/20 text-foreground dark:text-white placeholder:text-muted-foreground/70 dark:text-zinc-600 h-12 text-base font-bold text-center rounded-xl"
                               />
                             </div>
                             <div className="space-y-1.5">
-                              <label className="flex items-center justify-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                              <label className="flex items-center justify-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground dark:text-zinc-500">
                                 <Flame className="h-2.5 w-2.5" />
                                 RPE
                               </label>
@@ -1429,7 +1429,7 @@ export function StudentPlanificacionSection({
                                 value={serie.rpe}
                                 onChange={(e) => handleSerieChange(ej.id, serieIdx, "rpe", e.target.value)}
                                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNextInput(ej.id, serieIdx, "rpe") } }}
-                                className="bg-zinc-900/80 border-white/[0.08] focus:border-green-500/50 focus:ring-green-500/20 text-white placeholder:text-zinc-600 h-12 text-base font-bold text-center rounded-xl"
+                                className="bg-card/80 dark:bg-card dark:bg-zinc-900/80 border-border dark:border-white/[0.08] focus:border-green-500/50 focus:ring-green-500/20 text-foreground dark:text-white placeholder:text-muted-foreground/70 dark:text-zinc-600 h-12 text-base font-bold text-center rounded-xl"
                               />
                             </div>
                           </div>
@@ -1447,29 +1447,29 @@ export function StudentPlanificacionSection({
                                 <div className="flex items-stretch divide-x divide-white/[0.06] pb-2 px-1">
                                   {anteriorSerie.peso_kg !== null && (
                                     <div className="flex flex-col items-center flex-1 py-1 px-2">
-                                      <span className="text-[9px] font-semibold uppercase tracking-wider text-zinc-500">Peso</span>
-                                      <span className="text-base font-black text-white leading-tight">{anteriorSerie.peso_kg}</span>
-                                      <span className="text-[9px] text-zinc-500">kg</span>
+                                      <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground dark:text-zinc-500">Peso</span>
+                                      <span className="text-base font-black text-foreground dark:text-white leading-tight">{anteriorSerie.peso_kg}</span>
+                                      <span className="text-[9px] text-muted-foreground dark:text-zinc-500">kg</span>
                                     </div>
                                   )}
                                   {anteriorSerie.repeticiones !== null && (
                                     <div className="flex flex-col items-center flex-1 py-1 px-2">
-                                      <span className="text-[9px] font-semibold uppercase tracking-wider text-zinc-500">Reps</span>
-                                      <span className="text-base font-black text-white leading-tight">{anteriorSerie.repeticiones}</span>
-                                      <span className="text-[9px] text-zinc-500">rep</span>
+                                      <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground dark:text-zinc-500">Reps</span>
+                                      <span className="text-base font-black text-foreground dark:text-white leading-tight">{anteriorSerie.repeticiones}</span>
+                                      <span className="text-[9px] text-muted-foreground dark:text-zinc-500">rep</span>
                                     </div>
                                   )}
                                   {anteriorSerie.rpe !== null && (
                                     <div className="flex flex-col items-center flex-1 py-1 px-2">
-                                      <span className="text-[9px] font-semibold uppercase tracking-wider text-zinc-500">RPE</span>
-                                      <span className="text-base font-black text-white leading-tight">{anteriorSerie.rpe}</span>
-                                      <span className="text-[9px] text-zinc-500">/10</span>
+                                      <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground dark:text-zinc-500">RPE</span>
+                                      <span className="text-base font-black text-foreground dark:text-white leading-tight">{anteriorSerie.rpe}</span>
+                                      <span className="text-[9px] text-muted-foreground dark:text-zinc-500">/10</span>
                                     </div>
                                   )}
                                 </div>
                               ) : (
                                 <div className="flex items-center justify-center pb-2 px-1 h-[52px]">
-                                  <p className="text-[10px] text-zinc-500">Sin registros en esta serie</p>
+                                  <p className="text-[10px] text-muted-foreground dark:text-zinc-500">Sin registros en esta serie</p>
                                 </div>
                               )}
                             </div>
@@ -1479,20 +1479,33 @@ export function StudentPlanificacionSection({
                     })}
                   </div>
 
+                  {/* Notas del profesor */}
+                  {ej.notas_profesor && (
+                    <div className="px-4 pt-3 space-y-1.5">
+                      <label className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
+                        <StickyNote className="h-2.5 w-2.5" />
+                        Notas del profesor
+                      </label>
+                      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.06] px-3 py-2 text-sm text-emerald-100 whitespace-pre-wrap">
+                        {ej.notas_profesor}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Notas */}
                   <div className="px-4 pt-3 space-y-1.5">
-                    <label className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                    <label className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground dark:text-zinc-500">
                       <StickyNote className="h-2.5 w-2.5" />
-                      Notas
+                      Mis notas
                     </label>
                     <Textarea
                       placeholder="Opcional…"
                       maxLength={100}
-                      className="min-h-16 resize-none bg-zinc-900/80 border-white/[0.08] focus:border-green-500/50 focus:ring-green-500/20 text-white placeholder:text-zinc-600 text-sm rounded-xl"
+                      className="min-h-16 resize-none bg-card/80 dark:bg-card dark:bg-zinc-900/80 border-border dark:border-white/[0.08] focus:border-green-500/50 focus:ring-green-500/20 text-foreground dark:text-white placeholder:text-muted-foreground/70 dark:text-zinc-600 text-sm rounded-xl"
                       value={row.notas}
                       onChange={(e) => handleNotasChange(ej.id, e.target.value)}
                     />
-                    <span className="text-[9px] text-zinc-600 text-right block">{row.notas.length}/100</span>
+                    <span className="text-[9px] text-muted-foreground/70 dark:text-zinc-600 text-right block">{row.notas.length}/100</span>
                   </div>
                 </div>
               </div>
@@ -1507,19 +1520,19 @@ export function StudentPlanificacionSection({
       <div className="fixed bottom-6 right-6 z-50 pointer-events-none">
         <div className={`rounded-full flex items-center justify-center transition-all duration-300 shadow-lg ${
           saveMutation.isPending
-            ? "h-14 w-14 bg-zinc-800 border border-white/[0.1]"
+            ? "h-14 w-14 bg-muted dark:bg-zinc-800 border border-border dark:border-white/[0.1]"
             : savedSuccess
             ? "h-14 w-14 bg-green-500/20 border border-green-500/30"
             : saveMessage
             ? "h-14 w-14 bg-red-500/20 border border-red-500/30"
             : isDirty.current
-            ? "h-11 w-11 bg-zinc-800/80 border border-white/[0.08] opacity-70"
+            ? "h-11 w-11 bg-muted/80 dark:bg-muted dark:bg-zinc-800/80 border border-border dark:border-white/[0.08] opacity-70"
             : allCompleted
             ? "h-11 w-11 bg-green-500/10 border border-green-500/20 opacity-60"
             : "h-0 w-0 opacity-0"
         }`}>
           {saveMutation.isPending ? (
-            <Loader2 className="h-5 w-5 animate-spin text-white/80" />
+            <Loader2 className="h-5 w-5 animate-spin text-foreground/80 dark:text-foreground dark:text-white/80" />
           ) : savedSuccess && allCompleted ? (
             <CheckCircle2 className="h-5 w-5 text-green-400" />
           ) : savedSuccess ? (
@@ -1527,7 +1540,7 @@ export function StudentPlanificacionSection({
           ) : saveMessage ? (
             <X className="h-5 w-5 text-red-400" />
           ) : isDirty.current ? (
-            <Loader2 className="h-4 w-4 animate-spin text-white/30" />
+            <Loader2 className="h-4 w-4 animate-spin text-foreground/30 dark:text-foreground dark:text-white/30" />
           ) : allCompleted ? (
             <CheckCircle2 className="h-4 w-4 text-green-400/60" />
           ) : null}
@@ -1541,31 +1554,31 @@ export function StudentPlanificacionSection({
           onClick={() => setVideoModal(null)}
         >
           <div
-            className="w-full max-w-lg rounded-2xl border border-white/[0.08] bg-zinc-950 overflow-hidden shadow-2xl"
+            className="w-full max-w-lg rounded-2xl border border-border dark:border-white/[0.08] bg-background dark:bg-zinc-950 overflow-hidden shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
-              <p className="text-sm font-bold text-white truncate pr-4">{videoModal.nombre}</p>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border dark:border-white/[0.06]">
+              <p className="text-sm font-bold text-foreground dark:text-white truncate pr-4">{videoModal.nombre}</p>
               <button
                 onClick={() => setVideoModal(null)}
-                className="h-7 w-7 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] flex items-center justify-center transition-colors flex-shrink-0"
+                className="h-7 w-7 rounded-lg bg-muted/60 dark:bg-white/[0.06] hover:bg-muted/80 dark:bg-white/[0.1] flex items-center justify-center transition-colors flex-shrink-0"
               >
-                <X className="h-3.5 w-3.5 text-zinc-400" />
+                <X className="h-3.5 w-3.5 text-muted-foreground dark:text-zinc-400" />
               </button>
             </div>
-            <div className="aspect-video w-full bg-zinc-900 flex flex-col items-center justify-center gap-4 p-6 text-center">
+            <div className="aspect-video w-full bg-card dark:bg-zinc-900 flex flex-col items-center justify-center gap-4 p-6 text-center">
               <div className="h-14 w-14 rounded-full bg-red-600 flex items-center justify-center">
-                <Play className="h-6 w-6 text-white" fill="white" />
+                <Play className="h-6 w-6 text-foreground dark:text-white" fill="white" />
               </div>
               <div className="space-y-1">
-                <p className="text-sm font-semibold text-white">Ver video del ejercicio</p>
-                <p className="text-xs text-zinc-500">Se abrirá en una nueva pestaña</p>
+                <p className="text-sm font-semibold text-foreground dark:text-white">Ver video del ejercicio</p>
+                <p className="text-xs text-muted-foreground dark:text-zinc-500">Se abrirá en una nueva pestaña</p>
               </div>
               <a
                 href={videoModal.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm font-bold px-5 py-2.5 transition-colors"
+                className="inline-flex items-center gap-2 rounded-xl bg-red-600 hover:bg-red-500 text-foreground dark:text-white text-sm font-bold px-5 py-2.5 transition-colors"
               >
                 <Play className="h-3.5 w-3.5" fill="white" />
                 Abrir video
