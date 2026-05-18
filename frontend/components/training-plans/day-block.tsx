@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Trash2, Youtube, ChevronDown, ChevronUp, Loader2, GripVertical, Pencil, Plus, ArrowUp, ArrowDown, StickyNote } from "lucide-react"
+import { Trash2, Youtube, ChevronDown, ChevronUp, Loader2, GripVertical, GripHorizontal, Pencil, Plus, ArrowUp, ArrowDown, StickyNote } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import axios from "axios"
 import { useQueryClient } from "@tanstack/react-query"
@@ -480,10 +480,11 @@ function SortableExerciseRow({
           <button
             {...attributes}
             {...listeners}
-            className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none shrink-0"
+            className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none shrink-0 flex items-center justify-center h-12 w-12 md:h-auto md:w-auto md:p-0 -ml-1 md:ml-0 rounded-md"
             tabIndex={-1}
           >
-            <GripVertical className="h-3.5 w-3.5" />
+            <GripHorizontal className="h-9 w-9 md:hidden" />
+            <GripVertical className="hidden md:block h-3.5 w-3.5" />
           </button>
           <CategoriaSelect value={categoria} onChange={(v) => onCategoriaChange(ej.id, v)} />
         </div>

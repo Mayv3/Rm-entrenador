@@ -955,7 +955,7 @@ function PlanPreviewDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="overflow-y-auto flex-1 px-6 py-5 space-y-8">
+        <div className="overflow-y-auto flex-1 px-2 sm:px-6 py-5 space-y-8">
           {!activeHoja ? (
             <p className="text-sm text-muted-foreground text-center py-10">Sin hoja seleccionada.</p>
           ) : (
@@ -1189,7 +1189,7 @@ function PlanProgresoDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl w-full flex flex-col p-0 max-h-[88vh]">
+      <DialogContent className="max-w-[98vw] md:max-w-[1500px] w-full flex flex-col p-0 max-h-[92vh]">
         <DialogHeader className="px-6 pt-5 pb-4 border-b shrink-0">
           <DialogTitle className="text-base flex items-center gap-2">
             <TrendingUp className="h-4 w-4 text-emerald-500" />
@@ -1198,7 +1198,7 @@ function PlanProgresoDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="overflow-y-auto flex-1 px-6 py-5 space-y-8">
+        <div className="overflow-y-auto flex-1 px-2 sm:px-6 py-5 space-y-8">
           {loading ? (
             <div className="flex items-center justify-center py-20"><Loader /></div>
           ) : !data ? (
@@ -1220,7 +1220,7 @@ function PlanProgresoDialog({
                   </h3>
 
                   <div className="overflow-x-auto rounded-xl border bg-card">
-                    <table className="w-full text-sm">
+                    <table className="w-full min-w-[1100px] text-sm">
                       <thead>
                         <tr className="border-b bg-muted/40">
                           <th className="px-4 py-2.5 text-left font-medium text-muted-foreground w-14">#</th>
@@ -1237,7 +1237,7 @@ function PlanProgresoDialog({
                             const active = sesion ? flags.filter((f) => !!sesion[f.key]) : []
                             const popoverKey = `${dia.id}-${s}`
                             return (
-                              <th key={s} className={`px-0 py-2.5 text-center font-semibold w-[144px] relative ${s > 1 ? "border-l-2 border-border" : ""}`}>
+                              <th key={s} className={`px-0 py-2.5 text-center font-semibold w-[200px] relative ${s > 1 ? "border-l-2 border-border" : ""}`}>
                                 <div className="flex items-center justify-center gap-1 mb-1">
                                   <span>S{s}</span>
                                   {sesion && (
@@ -1279,7 +1279,7 @@ function PlanProgresoDialog({
                           return (
                             <tr key={ej.id} style={CATEGORIA_ROW_STYLE[categoria]} className="hover:brightness-95 transition-colors">
                               <td className="px-4 py-3 text-muted-foreground text-xs">{idx + 1}</td>
-                              <td className="px-4 py-3 font-medium">{ej.ejercicios.nombre}</td>
+                              <td className="px-4 py-3 font-medium text-xs">{ej.ejercicios.nombre}</td>
                               <td className="px-4 py-3">
                                 <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${CATEGORIA_COLORS[categoria] ?? ""}`}>
                                   {categoria}
@@ -1301,7 +1301,7 @@ function PlanProgresoDialog({
                                         value={presc.dosis}
                                         onChange={(e) => setPrescripcionField(ej.id, semana, "dosis", e.target.value, presc)}
                                         placeholder="Dosis"
-                                        className="h-6 text-[10px] text-center px-1 flex-1 min-w-0"
+                                        className="h-7 text-[11px] text-center px-1 flex-1 min-w-0"
                                       />
                                       <Select
                                         value={presc.rpe || "none"}
@@ -1310,7 +1310,7 @@ function PlanProgresoDialog({
                                           setPrescripcionField(ej.id, semana, "rpe", newVal, presc)
                                         }}
                                       >
-                                        <SelectTrigger className="h-6 w-9 text-[10px] px-1 shrink-0">
+                                        <SelectTrigger className="h-7 w-12 text-[11px] px-1 shrink-0">
                                           <SelectValue placeholder="-" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -1325,14 +1325,14 @@ function PlanProgresoDialog({
                                       value={presc.notas}
                                       onChange={(e) => setPrescripcionField(ej.id, semana, "notas", e.target.value, presc)}
                                       placeholder={`Nota S${semana}`}
-                                      className="h-6 text-[10px] px-1 placeholder:text-muted-foreground/40 bg-background/60 border-dashed"
+                                      className="h-7 text-[11px] px-1 placeholder:text-muted-foreground/40 bg-background/60 border-dashed"
                                     />
                                     {isDirty && (
                                       <Button
                                         size="sm"
                                         onClick={() => savePrescripcion(ej.id, semana)}
                                         disabled={isSaving}
-                                        className="h-6 text-[10px] px-2 bg-[var(--primary-color)] hover:bg-[var(--primary-color)]/90 text-white"
+                                        className="h-7 text-[11px] px-2 bg-[var(--primary-color)] hover:bg-[var(--primary-color)]/90 text-white"
                                       >
                                         {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : "Guardar"}
                                       </Button>
@@ -1387,7 +1387,7 @@ function PlanProgresoDialog({
                                       {nota && (
                                         <button
                                           onClick={(e) => { e.stopPropagation(); setComentarioModal({ ejercicio: ej.ejercicios.nombre, comentario: nota }) }}
-                                          className="px-1 pb-1 text-[9px] text-blue-400 hover:text-blue-300 italic flex items-center justify-center gap-0.5 w-full"
+                                          className="px-1 pb-1 text-[11px] text-blue-400 hover:text-blue-300 italic flex items-center justify-center gap-0.5 w-full"
                                         >
                                           <StickyNote className="h-2.5 w-2.5" />
                                           Comentario
@@ -1404,17 +1404,17 @@ function PlanProgresoDialog({
                                     <div className="divide-y">
                                       {series.map((s: any, si: number) => (
                                         <div key={si} className="flex">
-                                          <div className="flex items-center justify-center w-6 text-[10px] text-muted-foreground/50 font-medium border-r">
+                                          <div className="flex items-center justify-center w-6 text-[11px] text-muted-foreground/50 font-medium border-r">
                                             S{si + 1}
                                           </div>
                                           <div className="grid grid-cols-3 divide-x flex-1">
-                                            <div className="flex items-center justify-center px-2 py-1.5 font-bold text-xs tabular-nums">
+                                            <div className="flex items-center justify-center px-2 py-1.5 font-bold text-sm tabular-nums">
                                               {s.peso_kg ?? "—"}
                                             </div>
-                                            <div className="flex items-center justify-center px-2 py-1.5 text-[11px] text-muted-foreground tabular-nums">
+                                            <div className="flex items-center justify-center px-2 py-1.5 text-xs text-muted-foreground tabular-nums">
                                               {s.repeticiones ?? "—"}
                                             </div>
-                                            <div className="flex items-center justify-center px-2 py-1.5 text-[11px] text-muted-foreground/70 tabular-nums">
+                                            <div className="flex items-center justify-center px-2 py-1.5 text-xs text-muted-foreground/70 tabular-nums">
                                               {s.rpe ?? "—"}
                                             </div>
                                           </div>
@@ -1424,9 +1424,9 @@ function PlanProgresoDialog({
                                     {nota && (
                                       <button
                                         onClick={(e) => { e.stopPropagation(); setComentarioModal({ ejercicio: ej.ejercicios.nombre, comentario: nota }) }}
-                                        className="px-1 py-0.5 text-[9px] text-blue-400 hover:text-blue-300 italic flex items-center justify-center gap-0.5 w-full border-t border-border/30"
+                                        className="px-1 py-0.5 text-[11px] text-blue-400 hover:text-blue-300 italic flex items-center justify-center gap-0.5 w-full border-t border-border/30"
                                       >
-                                        <StickyNote className="h-2.5 w-2.5" />
+                                        <StickyNote className="h-3 w-3" />
                                         Comentario
                                       </button>
                                     )}
