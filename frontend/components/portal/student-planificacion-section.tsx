@@ -174,10 +174,17 @@ export function StudentPlanificacionSection({
 
   const clampSerieValue = (field: keyof SerieRow, value: string): string => {
     if (value === "") return ""
-    const num = parseInt(value, 10)
+    const normalized = value.replace(",", ".")
+    if (field === "repeticiones") {
+      const num = parseInt(normalized, 10)
+      if (isNaN(num)) return ""
+      return String(Math.min(30, Math.max(1, num)))
+    }
+    if (/^\d*\.?\d*$/.test(normalized) === false) return ""
+    if (normalized === "." || normalized.endsWith(".")) return normalized
+    const num = parseFloat(normalized)
     if (isNaN(num)) return ""
     if (field === "peso_kg") return String(Math.min(500, Math.max(0, num)))
-    if (field === "repeticiones") return String(Math.min(30, Math.max(1, num)))
     if (field === "rpe") return String(Math.min(10, Math.max(6, num)))
     return value
   }
@@ -1465,10 +1472,9 @@ export function StudentPlanificacionSection({
                               </label>
                               <Input
                                 ref={(el) => { if (el) inputRefs.current.set(`${ej.id}-${serieIdx}-peso_kg`, el) }}
-                                type="number"
+                                type="text"
+                                inputMode="decimal"
                                 placeholder="0"
-                                min={0}
-                                max={500}
                                 value={serie.peso_kg}
                                 onChange={(e) => handleSerieChange(ej.id, serieIdx, "peso_kg", e.target.value)}
                                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNextInput(ej.id, serieIdx, "peso_kg") } }}
@@ -1499,10 +1505,9 @@ export function StudentPlanificacionSection({
                               </label>
                               <Input
                                 ref={(el) => { if (el) inputRefs.current.set(`${ej.id}-${serieIdx}-rpe`, el) }}
-                                type="number"
+                                type="text"
+                                inputMode="decimal"
                                 placeholder="0"
-                                min={6}
-                                max={10}
                                 value={serie.rpe}
                                 onChange={(e) => handleSerieChange(ej.id, serieIdx, "rpe", e.target.value)}
                                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNextInput(ej.id, serieIdx, "rpe") } }}
