@@ -121,48 +121,42 @@ export async function getPlanificacionById(req, res) {
   const cached = cache.get(KEYS.plan(id))
   if (cached) return res.json(cached)
 
-  // 1. Get plan
-  const { data: plan, error: planError } = await supabase
-    .from("planificaciones")
-    .select("*, alumnos(id, nombre)")
-    .eq("id", id)
-    .single();
+  // 1. Plan + hojas en paralelo
+  const [planRes, hojasRes] = await Promise.all([
+    supabase.from("planificaciones").select("*, alumnos(id, nombre)").eq("id", id).single(),
+    supabase.from("planificacion_hojas").select("*").eq("planificacion_id", id).order("numero", { ascending: true }),
+  ]);
 
-  if (planError) return res.status(500).json({ error: planError.message });
-  if (!plan) return res.status(404).json({ error: "Planificación no encontrada" });
+  if (planRes.error) return res.status(500).json({ error: planRes.error.message });
+  if (!planRes.data) return res.status(404).json({ error: "Planificación no encontrada" });
+  if (hojasRes.error) return res.status(500).json({ error: hojasRes.error.message });
 
-  // 2. Get hojas ordered by numero
-  const { data: hojas, error: hojasError } = await supabase
-    .from("planificacion_hojas")
-    .select("*")
-    .eq("planificacion_id", id)
-    .order("numero", { ascending: true });
+  const plan = planRes.data;
+  const hojas = hojasRes.data ?? [];
 
-  if (hojasError) return res.status(500).json({ error: hojasError.message });
-
-  // 3. If no hojas, return early
-  if (!hojas || hojas.length === 0) {
+  if (hojas.length === 0) {
     return res.json({ ...plan, hojas: [] });
   }
 
   const hojaIds = hojas.map((h) => h.id);
 
-  // 4. Get dias filtered by hoja_id IN hojaIds
-  const { data: dias, error: diasError } = await supabase
-    .from("planificacion_dias")
-    .select("*")
-    .in("hoja_id", hojaIds)
-    .order("orden", { ascending: true });
+  // 2. Dias + movilidad en paralelo
+  const [diasRes, movRes] = await Promise.all([
+    supabase.from("planificacion_dias").select("*").in("hoja_id", hojaIds).order("orden", { ascending: true }),
+    supabase.from("planificacion_movilidad").select("*").in("hoja_id", hojaIds).order("orden", { ascending: true }),
+  ]);
 
-  if (diasError) return res.status(500).json({ error: diasError.message });
+  if (diasRes.error) return res.status(500).json({ error: diasRes.error.message });
+  const dias = diasRes.data ?? [];
+  const movilidad = movRes.data ?? [];
 
-  if (!dias || dias.length === 0) {
-    return res.json({ ...plan, hojas: hojas.map((h) => ({ ...h, dias: [] })) });
+  if (dias.length === 0) {
+    return res.json({ ...plan, hojas: hojas.map((h) => ({ ...h, dias: [], movilidad: movilidad.filter((m) => m.hoja_id === h.id) })) });
   }
 
   const diaIds = dias.map((d) => d.id);
 
-  // 5. Get ejercicios filtered by planificacion_dia_id IN diaIds
+  // 3. Ejercicios
   const { data: ejercicios, error: ejerciciosError } = await supabase
     .from("planificacion_ejercicios")
     .select("*, ejercicios(id, nombre, grupo_muscular, video_url)")
@@ -173,7 +167,7 @@ export async function getPlanificacionById(req, res) {
 
   const ejercicioIds = (ejercicios ?? []).map((e) => e.id);
 
-  // 6. Get semanas filtered by planificacion_ejercicio_id IN ejercicioIds
+  // 4. Semanas
   let semanas = [];
   if (ejercicioIds.length > 0) {
     const { data: semanasData, error: semanasError } = await supabase
@@ -185,15 +179,6 @@ export async function getPlanificacionById(req, res) {
     if (semanasError) return res.status(500).json({ error: semanasError.message });
     semanas = semanasData ?? [];
   }
-
-  // 7. Get movilidad for all hojas
-  const { data: movilidadData } = await supabase
-    .from("planificacion_movilidad")
-    .select("*")
-    .in("hoja_id", hojaIds)
-    .order("orden", { ascending: true });
-
-  const movilidad = movilidadData ?? [];
 
   // 8. Build nested structure: hojas → dias → ejercicios → semanas + movilidad
   const hojasCompletas = hojas.map((hoja) => ({
@@ -739,16 +724,27 @@ export async function saveAll(req, res) {
     })())
   }
 
-  // 4. Bulk orden
+  // 4. Bulk orden — 1 upsert en vez de N updates
   if (orden.length > 0) {
     ops.push((async () => {
-      const results = await Promise.all(
-        orden.map(({ id, orden: o }) =>
-          supabase.from("planificacion_ejercicios").update({ orden: o }).eq("id", id)
-        )
-      )
-      const failed = results.find((r) => r.error)
-      if (failed) throw new Error(failed.error.message)
+      // Necesitamos todas las columnas requeridas para upsert; trae registros mínimos
+      const ids = orden.map((o) => o.id)
+      const { data: existing, error: fetchError } = await supabase
+        .from("planificacion_ejercicios")
+        .select("id, planificacion_dia_id, ejercicio_id, categoria, notas_profesor")
+        .in("id", ids)
+      if (fetchError) throw new Error(fetchError.message)
+
+      const ordenMap = new Map(orden.map((o) => [o.id, o.orden]))
+      const upsertRows = (existing ?? []).map((row) => ({
+        ...row,
+        orden: ordenMap.get(row.id) ?? 0,
+      }))
+
+      const { error } = await supabase
+        .from("planificacion_ejercicios")
+        .upsert(upsertRows, { onConflict: "id" })
+      if (error) throw new Error(error.message)
     })())
   }
 
@@ -772,16 +768,20 @@ export async function bulkUpdateOrden(req, res) {
     return res.status(400).json({ error: "ejercicios debe ser un array no vacío" });
   }
 
-  const ops = ejercicios.map(({ id, orden }) =>
-    supabase
-      .from("planificacion_ejercicios")
-      .update({ orden })
-      .eq("id", id)
-  );
+  const ids = ejercicios.map((e) => e.id)
+  const { data: existing, error: fetchError } = await supabase
+    .from("planificacion_ejercicios")
+    .select("id, planificacion_dia_id, ejercicio_id, categoria, notas_profesor")
+    .in("id", ids)
+  if (fetchError) return res.status(500).json({ error: fetchError.message })
 
-  const results = await Promise.all(ops);
-  const failed = results.find((r) => r.error);
-  if (failed) return res.status(500).json({ error: failed.error.message });
+  const ordenMap = new Map(ejercicios.map((e) => [e.id, e.orden]))
+  const rows = (existing ?? []).map((row) => ({ ...row, orden: ordenMap.get(row.id) ?? 0 }))
+
+  const { error } = await supabase
+    .from("planificacion_ejercicios")
+    .upsert(rows, { onConflict: "id" })
+  if (error) return res.status(500).json({ error: error.message });
 
   invalidatePlanes()
   res.json({ ok: true });
@@ -877,17 +877,18 @@ export async function updateDosisBulk(req, res) {
     return res.status(400).json({ error: "semanas debe ser un array" });
   }
 
-  const updates = semanas.map(({ semana, dosis, rpe }) =>
-    supabase
-      .from("planificacion_semanas")
-      .update({ dosis, rpe: rpe ?? null })
-      .eq("planificacion_ejercicio_id", planEjId)
-      .eq("semana", semana)
-  );
+  const rows = semanas.map(({ semana, dosis, rpe }) => ({
+    planificacion_ejercicio_id: Number(planEjId),
+    semana,
+    dosis: dosis ?? null,
+    rpe: rpe ?? null,
+  }))
 
-  const results = await Promise.all(updates);
-  const failed = results.find((r) => r.error);
-  if (failed) return res.status(500).json({ error: failed.error.message });
+  const { error } = await supabase
+    .from("planificacion_semanas")
+    .upsert(rows, { onConflict: "planificacion_ejercicio_id,semana" })
+
+  if (error) return res.status(500).json({ error: error.message });
 
   res.json({ ok: true });
 }

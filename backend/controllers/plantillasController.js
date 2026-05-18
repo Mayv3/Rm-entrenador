@@ -14,21 +14,19 @@ function invalidatePlantillas(id) {
 
 // Build árbol con UNA hoja específica → jsonb data
 async function buildDataFromHoja(hojaId) {
-  const { data: hoja, error: hError } = await supabase
-    .from("planificacion_hojas")
-    .select("*")
-    .eq("id", hojaId)
-    .single()
-  if (hError) throw new Error(hError.message)
+  // Hoja + dias + movilidad en paralelo
+  const [hojaRes, diasRes, movRes] = await Promise.all([
+    supabase.from("planificacion_hojas").select("*").eq("id", hojaId).single(),
+    supabase.from("planificacion_dias").select("*").eq("hoja_id", hojaId).order("orden", { ascending: true }),
+    supabase.from("planificacion_movilidad").select("*").eq("hoja_id", hojaId).order("orden", { ascending: true }),
+  ])
+  if (hojaRes.error) throw new Error(hojaRes.error.message)
+  const hoja = hojaRes.data
   if (!hoja) return { hojas: [] }
 
-  const { data: dias } = await supabase
-    .from("planificacion_dias")
-    .select("*")
-    .eq("hoja_id", hojaId)
-    .order("orden", { ascending: true })
-
-  const diaIds = (dias ?? []).map((d) => d.id)
+  const dias = diasRes.data ?? []
+  const movilidad = movRes.data ?? []
+  const diaIds = dias.map((d) => d.id)
 
   let ejercicios = []
   if (diaIds.length > 0) {
@@ -51,12 +49,6 @@ async function buildDataFromHoja(hojaId) {
       .order("semana", { ascending: true })
     semanas = data ?? []
   }
-
-  const { data: movilidad } = await supabase
-    .from("planificacion_movilidad")
-    .select("*")
-    .eq("hoja_id", hojaId)
-    .order("orden", { ascending: true })
 
   return {
     hojas: [{
@@ -96,14 +88,16 @@ async function buildDataFromPlan(planId) {
 
   const hojaIds = hojas.map((h) => h.id)
 
-  const { data: dias, error: diasError } = await supabase
-    .from("planificacion_dias")
-    .select("*")
-    .in("hoja_id", hojaIds)
-    .order("orden", { ascending: true })
-  if (diasError) throw new Error(diasError.message)
+  // Dias + movilidad en paralelo
+  const [diasRes, movRes] = await Promise.all([
+    supabase.from("planificacion_dias").select("*").in("hoja_id", hojaIds).order("orden", { ascending: true }),
+    supabase.from("planificacion_movilidad").select("*").in("hoja_id", hojaIds).order("orden", { ascending: true }),
+  ])
+  if (diasRes.error) throw new Error(diasRes.error.message)
+  const dias = diasRes.data ?? []
+  const movilidad = movRes.data ?? []
 
-  const diaIds = (dias ?? []).map((d) => d.id)
+  const diaIds = dias.map((d) => d.id)
 
   let ejercicios = []
   if (diaIds.length > 0) {
@@ -128,12 +122,6 @@ async function buildDataFromPlan(planId) {
     if (error) throw new Error(error.message)
     semanas = data ?? []
   }
-
-  const { data: movilidad } = await supabase
-    .from("planificacion_movilidad")
-    .select("*")
-    .in("hoja_id", hojaIds)
-    .order("orden", { ascending: true })
 
   return {
     hojas: hojas.map((h) => ({
@@ -423,8 +411,9 @@ export async function syncPlantilla(req, res) {
   res.json({ ok: true })
 }
 
-// Inserta una hoja completa (con movilidad/días/ejercicios/semanas) dentro de una planificación
+// Inserta hoja completa (movilidad/días/ejercicios/semanas) en bulk (~4 queries total)
 async function insertHojaTree(planificacionId, hojaNode, semanasTotal, numero, nombreOverride) {
+  // 1. Hoja
   const { data: hojaIns, error: hError } = await supabase
     .from("planificacion_hojas")
     .insert([{
@@ -437,73 +426,93 @@ async function insertHojaTree(planificacionId, hojaNode, semanasTotal, numero, n
     .single()
   if (hError) throw new Error(hError.message)
 
-  // Movilidad
+  // 2. Movilidad en paralelo
   const movItems = Array.isArray(hojaNode.movilidad) ? hojaNode.movilidad : []
-  if (movItems.length > 0) {
-    const movRows = movItems.map((m, i) => ({
-      hoja_id: hojaIns.id,
-      nombre: m.nombre,
-      imagen_url: m.imagen_url ?? null,
-      orden: m.orden ?? i,
-    }))
-    const { error: mError } = await supabase
-      .from("planificacion_movilidad")
-      .insert(movRows)
-    if (mError) throw new Error(mError.message)
-  }
+  const movPromise = movItems.length === 0
+    ? Promise.resolve({ error: null })
+    : supabase.from("planificacion_movilidad").insert(
+        movItems.map((m, i) => ({
+          hoja_id: hojaIns.id,
+          nombre: m.nombre,
+          imagen_url: m.imagen_url ?? null,
+          orden: m.orden ?? i,
+        }))
+      )
 
-  // Días
   const dias = Array.isArray(hojaNode.dias) ? hojaNode.dias : []
-  for (const dia of dias) {
-    const { data: diaIns, error: dError } = await supabase
-      .from("planificacion_dias")
-      .insert([{
-        hoja_id: hojaIns.id,
-        numero_dia: dia.numero_dia,
-        nombre: dia.nombre,
-        orden: dia.orden,
-      }])
-      .select()
-      .single()
-    if (dError) throw new Error(dError.message)
-
-    const ejs = Array.isArray(dia.ejercicios) ? dia.ejercicios : []
-    if (ejs.length === 0) continue
-
-    const ejRows = ejs.map((e) => ({
-      planificacion_dia_id: diaIns.id,
-      ejercicio_id: e.ejercicio_id,
-      categoria: e.categoria ?? "A",
-      orden: e.orden ?? 0,
-      notas_profesor: e.notas_profesor ?? null,
-    }))
-    const { data: insertedEjs, error: eError } = await supabase
-      .from("planificacion_ejercicios")
-      .insert(ejRows)
-      .select("id")
-    if (eError) throw new Error(eError.message)
-
-    const semanasRows = []
-    insertedEjs.forEach((ejIns, idx) => {
-      const sems = Array.isArray(ejs[idx]?.semanas) ? ejs[idx].semanas : []
-      for (let s = 1; s <= semanasTotal; s++) {
-        const found = sems.find((sw) => sw.semana === s)
-        semanasRows.push({
-          planificacion_ejercicio_id: ejIns.id,
-          semana: s,
-          dosis: found?.dosis ?? null,
-          rpe: found?.rpe ?? null,
-        })
-      }
-    })
-
-    if (semanasRows.length > 0) {
-      const { error: sError } = await supabase
-        .from("planificacion_semanas")
-        .insert(semanasRows)
-      if (sError) throw new Error(sError.message)
-    }
+  if (dias.length === 0) {
+    const { error } = await movPromise
+    if (error) throw new Error(error.message)
+    return hojaIns
   }
+
+  // 3. Bulk insert todos los días
+  const diaRows = dias.map((d) => ({
+    hoja_id: hojaIns.id,
+    numero_dia: d.numero_dia,
+    nombre: d.nombre,
+    orden: d.orden,
+  }))
+  const { data: insertedDias, error: dError } = await supabase
+    .from("planificacion_dias")
+    .insert(diaRows)
+    .select("id")
+  if (dError) throw new Error(dError.message)
+  // insertedDias preserva orden de inserción → mapeable por índice
+
+  // 4. Bulk insert todos los ejercicios
+  const allEjRows = []
+  const ejNodes = []
+  dias.forEach((dia, diaIdx) => {
+    const diaId = insertedDias[diaIdx].id
+    const ejs = Array.isArray(dia.ejercicios) ? dia.ejercicios : []
+    ejs.forEach((e) => {
+      allEjRows.push({
+        planificacion_dia_id: diaId,
+        ejercicio_id: e.ejercicio_id,
+        categoria: e.categoria ?? "A",
+        orden: e.orden ?? 0,
+        notas_profesor: e.notas_profesor ?? null,
+      })
+      ejNodes.push(e)
+    })
+  })
+
+  if (allEjRows.length === 0) {
+    const { error } = await movPromise
+    if (error) throw new Error(error.message)
+    return hojaIns
+  }
+
+  const { data: insertedEjs, error: eError } = await supabase
+    .from("planificacion_ejercicios")
+    .insert(allEjRows)
+    .select("id")
+  if (eError) throw new Error(eError.message)
+
+  // 5. Bulk insert todas las semanas
+  const allSemanasRows = []
+  insertedEjs.forEach((ejIns, idx) => {
+    const sems = Array.isArray(ejNodes[idx]?.semanas) ? ejNodes[idx].semanas : []
+    for (let s = 1; s <= semanasTotal; s++) {
+      const found = sems.find((sw) => sw.semana === s)
+      allSemanasRows.push({
+        planificacion_ejercicio_id: ejIns.id,
+        semana: s,
+        dosis: found?.dosis ?? null,
+        rpe: found?.rpe ?? null,
+      })
+    }
+  })
+
+  const semanasPromise = allSemanasRows.length === 0
+    ? Promise.resolve({ error: null })
+    : supabase.from("planificacion_semanas").insert(allSemanasRows)
+
+  // 6. Esperar movilidad + semanas en paralelo
+  const [movRes, semRes] = await Promise.all([movPromise, semanasPromise])
+  if (movRes?.error) throw new Error(movRes.error.message)
+  if (semRes?.error) throw new Error(semRes.error.message)
 
   return hojaIns
 }

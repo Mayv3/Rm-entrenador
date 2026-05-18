@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Loader2, CreditCard } from "lucide-react"
 import axios from "axios"
-import { calculateDueDate } from "@/lib/utils"
+import { calculateDueDate, isoToDisplayDate, displayDateToIso } from "@/lib/utils"
 import { useDialogBackButton } from "@/hooks/use-dialog-back-button"
 import { useQueryClient } from "@tanstack/react-query"
 import { queryKeys } from "@/lib/query-keys"
@@ -60,6 +60,22 @@ export function AddPaymentDialog({ open, onOpenChange, onPaymentUpdated }: AddPa
   const [students, setStudents] = useState<Student[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [dateDisplay, setDateDisplay] = useState(isoToDisplayDate(new Date().toISOString().split("T")[0]))
+  const [dueDateDisplay, setDueDateDisplay] = useState(isoToDisplayDate(calculateDueDate(new Date().toISOString().split("T")[0], 1)))
+
+  useEffect(() => { setDateDisplay(isoToDisplayDate(formData.date)) }, [formData.date])
+  useEffect(() => { setDueDateDisplay(isoToDisplayDate(formData.dueDate)) }, [formData.dueDate])
+
+  const handleDateDisplayChange = (val: string) => {
+    setDateDisplay(val)
+    const iso = displayDateToIso(val)
+    if (iso) setFormData((prev) => ({ ...prev, date: iso }))
+  }
+  const handleDueDateDisplayChange = (val: string) => {
+    setDueDateDisplay(val)
+    const iso = displayDateToIso(val)
+    if (iso) setFormData((prev) => ({ ...prev, dueDate: iso }))
+  }
 
   useEffect(() => {
     axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/getallstudents`)
@@ -178,8 +194,8 @@ export function AddPaymentDialog({ open, onOpenChange, onPaymentUpdated }: AddPa
                 <div className="flex justify-between px-4 py-2.5"><span className="text-muted-foreground">Alumno</span><span className="font-medium">{formData.name}</span></div>
                 <div className="flex justify-between px-4 py-2.5"><span className="text-muted-foreground">Plan</span><span className="font-medium">{formData.modalidad}</span></div>
                 <div className="flex justify-between px-4 py-2.5"><span className="text-muted-foreground">Monto</span><span className="font-medium">${Number(formData.amount).toLocaleString("es-AR")}</span></div>
-                <div className="flex justify-between px-4 py-2.5"><span className="text-muted-foreground">Fecha de pago</span><span className="font-medium">{formData.date}</span></div>
-                <div className="flex justify-between px-4 py-2.5"><span className="text-muted-foreground">Vencimiento</span><span className="font-medium">{formData.dueDate}</span></div>
+                <div className="flex justify-between px-4 py-2.5"><span className="text-muted-foreground">Fecha de pago</span><span className="font-medium">{isoToDisplayDate(formData.date)}</span></div>
+                <div className="flex justify-between px-4 py-2.5"><span className="text-muted-foreground">Vencimiento</span><span className="font-medium">{isoToDisplayDate(formData.dueDate)}</span></div>
               </div>
             </div>
             <DialogFooter className="px-5 py-3 border-t bg-muted/40 flex flex-row gap-3">
@@ -249,13 +265,13 @@ export function AddPaymentDialog({ open, onOpenChange, onPaymentUpdated }: AddPa
                 </div>
                 <div className="grid gap-1.5">
                   <Label htmlFor="date" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Fecha de pago</Label>
-                  <Input id="date" name="date" type="date" value={formData.date} onChange={handleChange} className="h-9" required />
+                  <Input id="date" name="date" type="text" inputMode="numeric" placeholder="dd/mm/yyyy" value={dateDisplay} onChange={(e) => handleDateDisplayChange(e.target.value)} className="h-9" required />
                 </div>
               </div>
 
               <div className="grid gap-1.5">
                 <Label htmlFor="dueDate" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Fecha de vencimiento</Label>
-                <Input id="dueDate" name="dueDate" type="date" value={formData.dueDate} readOnly className="h-9 bg-muted/50 cursor-default" />
+                <Input id="dueDate" name="dueDate" type="text" inputMode="numeric" placeholder="dd/mm/yyyy" value={dueDateDisplay} onChange={(e) => handleDueDateDisplayChange(e.target.value)} className="h-9" />
               </div>
 
             </div>

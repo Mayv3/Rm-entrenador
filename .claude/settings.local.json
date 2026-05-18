@@ -4,7 +4,8 @@
       "Bash(npx tsc *)",
       "Bash(xargs grep *)",
       "Bash(grep -E \"\\\\.\\(js|ts\\)$\")",
-      "Bash(python3 *)"
+      "Bash(python3 *)",
+      "Bash(node *)"
     ]
   },
   "enableAllProjectMcpServers": true,
