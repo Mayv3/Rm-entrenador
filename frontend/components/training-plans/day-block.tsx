@@ -41,7 +41,7 @@ interface DayBlockProps {
   isActive: boolean
   onActivate: () => void
   onDeleted: () => void
-  onSemanaChange: (planEjId: number, semana: number, field: "dosis" | "rpe", value: string) => void
+  onSemanaChange: (planEjId: number, semana: number, field: "dosis" | "rpe" | "notas", value: string) => void
   onCategoriaChange: (planEjId: number, categoria: string) => void
   onNotasProfesorChange: (planEjId: number, value: string) => void
   onPendingChange: (pending: PendingEjercicio[]) => void
@@ -125,6 +125,7 @@ export function DayBlock({
         notas_profesor: "",
         dosis: {},
         rpe: {},
+        notas: {},
       }
       onPendingChange([...pending, newPending])
       setCollapsed(false)
@@ -193,7 +194,7 @@ export function DayBlock({
     }
   }
 
-  const setPendingField = (tempId: string, field: "categoria" | "dosis" | "rpe" | "notas_profesor", semana: number | null, value: string) => {
+  const setPendingField = (tempId: string, field: "categoria" | "dosis" | "rpe" | "notas_profesor" | "notas_semana", semana: number | null, value: string) => {
     if (field === "categoria") {
       const idx = pending.findIndex((p) => p.tempId === tempId)
       onPendingChange(pending.map((p, i) => {
@@ -229,6 +230,11 @@ export function DayBlock({
           newRpe[semana] = value
         }
         return { ...p, rpe: newRpe }
+      }
+      if (field === "notas_semana" && semana !== null) {
+        const newNotas = { ...p.notas }
+        newNotas[semana] = value
+        return { ...p, notas: newNotas }
       }
       return p
     }))
@@ -364,18 +370,26 @@ export function DayBlock({
                         {SEMANAS.map((s) => {
                           const pendingRpe = p.rpe[s] || (s % 2 === 0 ? (p.rpe[s - 1] ?? "") : "")
                           return (
-                          <td key={s} className="px-1 py-1">
-                            <div className="flex gap-1">
+                          <td key={s} className="px-1 py-1 align-top">
+                            <div className="flex flex-col gap-1">
+                              <div className="flex gap-1">
+                                <Input
+                                  value={p.dosis[s] ?? ""}
+                                  onChange={(e) => setPendingField(p.tempId, "dosis", s, e.target.value)}
+                                  placeholder="Dosis"
+                                  className="h-7 text-xs text-center px-1 placeholder:text-gray-300 min-w-[80px] md:min-w-0 flex-1"
+                                />
+                                <RpeSelect
+                                  value={pendingRpe}
+                                  onChange={(v) => setPendingField(p.tempId, "rpe", s, v)}
+                                  exerciseName={p.ejercicio.nombre}
+                                />
+                              </div>
                               <Input
-                                value={p.dosis[s] ?? ""}
-                                onChange={(e) => setPendingField(p.tempId, "dosis", s, e.target.value)}
-                                placeholder="Dosis"
-                                className="h-7 text-xs text-center px-1 placeholder:text-gray-300 min-w-[80px] md:min-w-0 flex-1"
-                              />
-                              <RpeSelect
-                                value={pendingRpe}
-                                onChange={(v) => setPendingField(p.tempId, "rpe", s, v)}
-                                exerciseName={p.ejercicio.nombre}
+                                value={p.notas[s] ?? ""}
+                                onChange={(e) => setPendingField(p.tempId, "notas_semana", s, e.target.value)}
+                                placeholder={`Nota S${s}`}
+                                className="h-7 text-xs placeholder:text-muted-foreground/40 bg-background/60 border-dashed"
                               />
                             </div>
                           </td>
@@ -387,19 +401,6 @@ export function DayBlock({
                             <Trash2 className="h-3 w-3" />
                           </Button>
                         </td>
-                      </tr>
-                      <tr style={CATEGORIA_ROW_STYLE[p.categoria]}>
-                        <td className="px-1 pb-2 pt-0" />
-                        <td className="px-3 pb-2 pt-0" />
-                        <td colSpan={6} className="px-1 pb-2 pt-0">
-                          <Input
-                            value={p.notas_profesor}
-                            onChange={(e) => setPendingField(p.tempId, "notas_profesor", null, e.target.value)}
-                            placeholder="Comentario para el alumno (opcional)"
-                            className="h-8 text-xs placeholder:text-muted-foreground/50 bg-background/60 border-dashed"
-                          />
-                        </td>
-                        <td className="px-2 pb-2 pt-0" />
                       </tr>
                       </React.Fragment>
                     ))}
@@ -453,7 +454,7 @@ function SortableExerciseRow({
 }: {
   ej: PlanEjercicio
   localData: Record<number, EjercicioLocal>
-  onSemanaChange: (planEjId: number, semana: number, field: "dosis" | "rpe", value: string) => void
+  onSemanaChange: (planEjId: number, semana: number, field: "dosis" | "rpe" | "notas", value: string) => void
   onCategoriaChange: (planEjId: number, categoria: string) => void
   onNotasProfesorChange: (planEjId: number, value: string) => void
   onDelete: (planEjId: number) => void
@@ -463,7 +464,6 @@ function SortableExerciseRow({
 
   const local = localData[ej.id]
   const categoria = local?.categoria ?? ej.categoria
-  const notasProfesor = local?.notas_profesor ?? ej.notas_profesor ?? ""
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -503,19 +503,28 @@ function SortableExerciseRow({
         const sem = local?.semanas?.[s]
         const prevSem = s % 2 === 0 ? local?.semanas?.[s - 1] : undefined
         const rpeValue = sem?.rpe || (s % 2 === 0 ? (prevSem?.rpe ?? "") : "")
+        const notaSem = sem?.notas ?? ""
         return (
-          <td key={s} className="px-1 py-1">
-            <div className="flex gap-1">
+          <td key={s} className="px-1 py-1 align-top">
+            <div className="flex flex-col gap-1">
+              <div className="flex gap-1">
+                <Input
+                  value={sem?.dosis ?? ""}
+                  onChange={(e) => onSemanaChange(ej.id, s, "dosis", e.target.value)}
+                  placeholder="Dosis"
+                  className="h-7 text-xs text-center px-1 placeholder:text-gray-300 min-w-[80px] md:min-w-0 flex-1"
+                />
+                <RpeSelect
+                  value={rpeValue}
+                  onChange={(v) => onSemanaChange(ej.id, s, "rpe", v)}
+                  exerciseName={ej.ejercicios.nombre}
+                />
+              </div>
               <Input
-                value={sem?.dosis ?? ""}
-                onChange={(e) => onSemanaChange(ej.id, s, "dosis", e.target.value)}
-                placeholder="Dosis"
-                className="h-7 text-xs text-center px-1 placeholder:text-gray-300 min-w-[80px] md:min-w-0 flex-1"
-              />
-              <RpeSelect
-                value={rpeValue}
-                onChange={(v) => onSemanaChange(ej.id, s, "rpe", v)}
-                exerciseName={ej.ejercicios.nombre}
+                value={notaSem}
+                onChange={(e) => onSemanaChange(ej.id, s, "notas", e.target.value)}
+                placeholder={`Nota S${s}`}
+                className="h-7 text-xs placeholder:text-muted-foreground/40 bg-background/60 border-dashed"
               />
             </div>
           </td>
@@ -534,19 +543,6 @@ function SortableExerciseRow({
           </Button>
         </div>
       </td>
-    </tr>
-    <tr style={CATEGORIA_ROW_STYLE[categoria]}>
-      <td className="px-1 pb-2 pt-0" />
-      <td className="px-3 pb-2 pt-0" />
-      <td colSpan={6} className="px-1 pb-2 pt-0">
-        <Input
-          value={notasProfesor}
-          onChange={(e) => onNotasProfesorChange(ej.id, e.target.value)}
-          placeholder="Comentario para el alumno (opcional)"
-          className="h-8 text-xs placeholder:text-muted-foreground/50 bg-background/60 border-dashed"
-        />
-      </td>
-      <td className="px-2 pb-2 pt-0" />
     </tr>
     </>
   )

@@ -21,7 +21,7 @@ import { CATEGORIA_COLORS, CATEGORIA_ROW_STYLE } from "@/types/planificaciones"
 
 const CATEGORIA_ORDER = ["ACTIVADOR", "A", "B", "C", "D", "E"]
 
-export type SemanaLocal = { dosis: string; rpe: string }
+export type SemanaLocal = { dosis: string; rpe: string; notas: string }
 export type EjercicioLocal = { categoria: string; notas_profesor: string; semanas: Record<number, SemanaLocal> }
 export type PendingEjercicio = {
   tempId: string
@@ -30,6 +30,7 @@ export type PendingEjercicio = {
   notas_profesor: string
   dosis: Record<number, string>
   rpe: Record<number, string>
+  notas: Record<number, string>
 }
 
 interface PlanBuilderProps {
@@ -111,7 +112,7 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
           categoria: ej.categoria,
           notas_profesor: ej.notas_profesor ?? "",
           semanas: Object.fromEntries(
-            ej.semanas.map((s) => [s.semana, { dosis: s.dosis ?? "", rpe: s.rpe?.toString() ?? "" }])
+            ej.semanas.map((s) => [s.semana, { dosis: s.dosis ?? "", rpe: s.rpe?.toString() ?? "", notas: s.notas_profesor ?? "" }])
           ),
         }
       })
@@ -163,7 +164,7 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
               categoria: ej.categoria,
               notas_profesor: ej.notas_profesor ?? "",
               semanas: Object.fromEntries(
-                ej.semanas.map((s) => [s.semana, { dosis: s.dosis ?? "", rpe: s.rpe?.toString() ?? "" }])
+                ej.semanas.map((s) => [s.semana, { dosis: s.dosis ?? "", rpe: s.rpe?.toString() ?? "", notas: s.notas_profesor ?? "" }])
               ),
             },
           }))
@@ -177,7 +178,7 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
   const markDirty = () => setIsDirty(true)
 
   // ── Cambios en semanas ──────────────────────────────────────────────────────
-  const handleSemanaChange = (planEjId: number, semana: number, field: "dosis" | "rpe", value: string) => {
+  const handleSemanaChange = (planEjId: number, semana: number, field: "dosis" | "rpe" | "notas", value: string) => {
     setLocalData((prev) => {
       const newSemanas = { ...prev[planEjId]?.semanas }
       if (field === "dosis") {
@@ -188,7 +189,7 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
         } else {
           newSemanas[semana] = { ...newSemanas[semana], dosis: value }
         }
-      } else {
+      } else if (field === "rpe") {
         const baseRpe = parseInt(value)
         if (semana % 2 === 1 && !isNaN(baseRpe)) {
           let step = 0
@@ -199,6 +200,8 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
         } else {
           newSemanas[semana] = { ...newSemanas[semana], rpe: value }
         }
+      } else {
+        newSemanas[semana] = { ...newSemanas[semana], notas: value }
       }
       return { ...prev, [planEjId]: { ...prev[planEjId], semanas: newSemanas } }
     })
@@ -261,7 +264,7 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
 
     try {
       // Construir semanas y categorías de ejercicios ya persistidos
-      const semanas: { planificacion_ejercicio_id: number; semana: number; dosis: string | null; rpe: number | null }[] = []
+      const semanas: { planificacion_ejercicio_id: number; semana: number; dosis: string | null; rpe: number | null; notas_profesor: string | null }[] = []
       const categorias: { planificacion_ejercicio_id: number; categoria: string }[] = []
       const notasProfesor: { planificacion_ejercicio_id: number; notas_profesor: string }[] = []
 
@@ -280,19 +283,21 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
             const serverSem = ej.semanas.find((sw) => sw.semana === s)
             const dosisChanged = (localSem?.dosis ?? "") !== (serverSem?.dosis ?? "")
             const rpeChanged = (localSem?.rpe ?? "") !== (serverSem?.rpe?.toString() ?? "")
-            if (dosisChanged || rpeChanged) {
+            const notasChanged = (localSem?.notas ?? "") !== (serverSem?.notas_profesor ?? "")
+            if (dosisChanged || rpeChanged || notasChanged) {
               semanas.push({
                 planificacion_ejercicio_id: ej.id,
                 semana: s,
                 dosis: localSem?.dosis || null,
                 rpe: localSem?.rpe ? Number(localSem.rpe) : null,
+                notas_profesor: localSem?.notas || null,
               })
             }
           }
         })
       })
 
-      const pendingByDayPayload: Record<string, { ejercicio_id: number; categoria: string; orden: number; notas_profesor: string | null; semanas: { semana: number; dosis: string | null; rpe: number | null }[] }[]> = {}
+      const pendingByDayPayload: Record<string, { ejercicio_id: number; categoria: string; orden: number; notas_profesor: string | null; semanas: { semana: number; dosis: string | null; rpe: number | null; notas_profesor: string | null }[] }[]> = {}
       for (const [diaId, pending] of Object.entries(snapshotPendingByDay)) {
         if (!pending.length) continue
         pendingByDayPayload[diaId] = [...pending]
@@ -306,6 +311,7 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
               semana: s,
               dosis: p.dosis[s] || null,
               rpe: p.rpe[s] ? Number(p.rpe[s]) : null,
+              notas_profesor: p.notas[s] || null,
             })),
           }))
       }
@@ -1097,10 +1103,53 @@ function PlanProgresoDialog({
   activeHoja: Planificacion["hojas"][number] | undefined
   localData: Record<number, EjercicioLocal>
 }) {
+  const queryClient = useQueryClient()
   const [data, setData] = useState<{ sesiones: any[]; registros: any[] } | null>(null)
   const [loading, setLoading] = useState(false)
   const [estadoPopover, setEstadoPopover] = useState<string | null>(null)
   const [comentarioModal, setComentarioModal] = useState<{ ejercicio: string; comentario: string } | null>(null)
+  const [prescripcionEdits, setPrescripcionEdits] = useState<Record<string, { dosis: string; rpe: string; notas: string }>>({})
+  const [savingKey, setSavingKey] = useState<string | null>(null)
+
+  const prescripcionKey = (ejId: number, semana: number) => `${ejId}-${semana}`
+
+  const getPrescripcion = (ej: any, semana: number) => {
+    const key = prescripcionKey(ej.id, semana)
+    if (prescripcionEdits[key]) return prescripcionEdits[key]
+    const sem = ej.semanas?.find((sw: any) => sw.semana === semana)
+    return { dosis: sem?.dosis ?? "", rpe: sem?.rpe != null ? String(sem.rpe) : "", notas: sem?.notas_profesor ?? "" }
+  }
+
+  const setPrescripcionField = (ejId: number, semana: number, field: "dosis" | "rpe" | "notas", value: string, current: { dosis: string; rpe: string; notas: string }) => {
+    const key = prescripcionKey(ejId, semana)
+    setPrescripcionEdits((prev) => {
+      const base = prev[key] ?? current
+      return { ...prev, [key]: { ...base, [field]: value } }
+    })
+  }
+
+  const savePrescripcion = async (ejId: number, semana: number) => {
+    const key = prescripcionKey(ejId, semana)
+    const edit = prescripcionEdits[key]
+    if (!edit) return
+    setSavingKey(key)
+    try {
+      await axios.put(
+        `${process.env.NEXT_PUBLIC_URL_BACKEND}/planificaciones/ejercicios/${ejId}/semanas/${semana}`,
+        { dosis: edit.dosis || null, rpe: edit.rpe ? Number(edit.rpe) : null, notas_profesor: edit.notas || null }
+      )
+      queryClient.invalidateQueries({ queryKey: queryKeys.planificacionById(planId) })
+      setPrescripcionEdits((prev) => {
+        const next = { ...prev }
+        delete next[key]
+        return next
+      })
+    } catch (err) {
+      console.error("Error guardando prescripción:", err)
+    } finally {
+      setSavingKey(null)
+    }
+  }
 
   useEffect(() => {
     if (!open || !plan.alumno_id) return
@@ -1240,11 +1289,64 @@ function PlanProgresoDialog({
                                 const sesion = sesionMap.get(`${dia.id}-${semana}`)
                                 const registro = sesion ? registroMap.get(`${sesion.id}-${ej.id}`) : null
                                 const borderSemana = semana > 1 ? "border-l-2 border-border" : ""
+                                const presc = getPrescripcion(ej, semana)
+                                const presKey = prescripcionKey(ej.id, semana)
+                                const isDirty = !!prescripcionEdits[presKey]
+                                const isSaving = savingKey === presKey
+
+                                const prescripcionStrip = (
+                                  <div className="px-1 pt-1 pb-1 border-b border-border/40 bg-muted/30 flex flex-col gap-1">
+                                    <div className="flex gap-1">
+                                      <Input
+                                        value={presc.dosis}
+                                        onChange={(e) => setPrescripcionField(ej.id, semana, "dosis", e.target.value, presc)}
+                                        placeholder="Dosis"
+                                        className="h-6 text-[10px] text-center px-1 flex-1 min-w-0"
+                                      />
+                                      <Select
+                                        value={presc.rpe || "none"}
+                                        onValueChange={(v) => {
+                                          const newVal = v === "none" ? "" : v
+                                          setPrescripcionField(ej.id, semana, "rpe", newVal, presc)
+                                        }}
+                                      >
+                                        <SelectTrigger className="h-6 w-9 text-[10px] px-1 shrink-0">
+                                          <SelectValue placeholder="-" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="none"><span className="text-muted-foreground">—</span></SelectItem>
+                                          {[6, 7, 8, 9, 10].map((n) => (
+                                            <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                    <Input
+                                      value={presc.notas}
+                                      onChange={(e) => setPrescripcionField(ej.id, semana, "notas", e.target.value, presc)}
+                                      placeholder={`Nota S${semana}`}
+                                      className="h-6 text-[10px] px-1 placeholder:text-muted-foreground/40 bg-background/60 border-dashed"
+                                    />
+                                    {isDirty && (
+                                      <Button
+                                        size="sm"
+                                        onClick={() => savePrescripcion(ej.id, semana)}
+                                        disabled={isSaving}
+                                        className="h-6 text-[10px] px-2 bg-[var(--primary-color)] hover:bg-[var(--primary-color)]/90 text-white"
+                                      >
+                                        {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : "Guardar"}
+                                      </Button>
+                                    )}
+                                  </div>
+                                )
 
                                 if (!registro) {
                                   return (
-                                    <td key={semana} className={`px-3 py-3 text-center ${borderSemana}`}>
-                                      <span className="text-muted-foreground/25 text-xs">—</span>
+                                    <td key={semana} className={`p-0 align-top ${borderSemana}`}>
+                                      {prescripcionStrip}
+                                      <div className="px-3 py-3 text-center">
+                                        <span className="text-muted-foreground/25 text-xs">—</span>
+                                      </div>
                                     </td>
                                   )
                                 }
@@ -1257,8 +1359,11 @@ function PlanProgresoDialog({
 
                                 if (esSaltado) {
                                   return (
-                                    <td key={semana} className={`px-3 py-2 text-center align-middle ${borderSemana}`}>
-                                      <span className="text-[10px] text-amber-400/70 font-medium italic">Saltado</span>
+                                    <td key={semana} className={`p-0 align-top ${borderSemana}`}>
+                                      {prescripcionStrip}
+                                      <div className="px-3 py-2 text-center">
+                                        <span className="text-[10px] text-amber-400/70 font-medium italic">Saltado</span>
+                                      </div>
                                     </td>
                                   )
                                 }
@@ -1266,7 +1371,8 @@ function PlanProgresoDialog({
                                 if (series.length === 0) {
                                   const nota = registro.notas as string | null
                                   return (
-                                    <td key={semana} className={`p-0 text-center align-middle ${borderSemana}`}>
+                                    <td key={semana} className={`p-0 text-center align-top ${borderSemana}`}>
+                                      {prescripcionStrip}
                                       <div className="grid grid-cols-3 divide-x h-full min-h-[40px]">
                                         <div className="flex items-center justify-center px-2 font-bold text-sm tabular-nums">
                                           {registro.peso_kg ?? "—"}
@@ -1294,6 +1400,7 @@ function PlanProgresoDialog({
                                 const nota = registro.notas as string | null
                                 return (
                                   <td key={semana} className={`p-0 text-center align-top ${borderSemana}`}>
+                                    {prescripcionStrip}
                                     <div className="divide-y">
                                       {series.map((s: any, si: number) => (
                                         <div key={si} className="flex">

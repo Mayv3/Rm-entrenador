@@ -22,6 +22,7 @@ export interface PlanSemana {
   semana: number
   dosis: string | null
   rpe: number | null
+  notas_profesor: string | null
 }
 
 export interface PlanEjercicio {

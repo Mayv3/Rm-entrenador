@@ -277,23 +277,23 @@ export function AntroView({ data, hideScoreZ, fechaFallback }: { data: ParsedAnt
           <p className="text-lg font-bold text-white leading-tight">{data.nombre ?? "—"}</p>
         </div>
         <div className="grid grid-cols-4 divide-x divide-gray-100 dark:divide-gray-800">
-          <div className="flex flex-col items-center py-3 px-2 gap-0.5">
-            <span className="text-[9px] font-semibold uppercase tracking-widest text-gray-400">Edad</span>
-            <span className="text-base font-bold text-gray-800 dark:text-gray-100">{data.edad ?? "—"}</span>
+          <div className="flex flex-col items-center py-2 px-1.5 gap-0.5">
+            <span className="text-[7px] font-semibold uppercase tracking-widest text-gray-400">Edad</span>
+            <span className="text-[10px] font-bold text-gray-800 dark:text-gray-100">{data.edad ?? "—"}</span>
           </div>
-          <div className="flex flex-col items-center py-3 px-2 gap-0.5">
-            <span className="text-[9px] font-semibold uppercase tracking-widest text-gray-400">Talla</span>
-            <span className="text-base font-bold text-gray-800 dark:text-gray-100">
+          <div className="flex flex-col items-center py-2 px-1.5 gap-0.5">
+            <span className="text-[7px] font-semibold uppercase tracking-widest text-gray-400">Talla</span>
+            <span className="text-[10px] font-bold text-gray-800 dark:text-gray-100">
               {data.basicos.talla.actual ? `${data.basicos.talla.actual} cm` : "—"}
             </span>
           </div>
-          <div className="flex flex-col items-center py-3 px-2 gap-0.5">
-            <span className="text-[9px] font-semibold uppercase tracking-widest text-gray-400">Medición</span>
-            <span className="text-base font-bold text-gray-800 dark:text-gray-100">#{data.nMedicion ?? "—"}</span>
+          <div className="flex flex-col items-center py-2 px-1.5 gap-0.5">
+            <span className="text-[7px] font-semibold uppercase tracking-widest text-gray-400">Medición</span>
+            <span className="text-[10px] font-bold text-gray-800 dark:text-gray-100">#{data.nMedicion ?? "—"}</span>
           </div>
-          <div className="flex flex-col items-center py-3 px-2 gap-0.5">
-            <span className="text-[9px] font-semibold uppercase tracking-widest text-gray-400">Fecha</span>
-            <span className="text-base font-bold text-gray-800 dark:text-gray-100">
+          <div className="flex flex-col items-center py-2 px-1.5 gap-0.5">
+            <span className="text-[7px] font-semibold uppercase tracking-widest text-gray-400">Fecha</span>
+            <span className="text-[10px] font-bold text-gray-800 dark:text-gray-100">
               {(() => {
                 const raw = data.fecha ?? fechaFallback
                 if (!raw) return "—"

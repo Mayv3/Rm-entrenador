@@ -226,6 +226,15 @@ export default function PortalPage() {
     enabled: !!student?.id,
   })
 
+  const { data: appPlanResp, isLoading: loadingAppPlan, isFetching: fetchingAppPlan } = useQuery<{ planificacion: any | null }>({
+    queryKey: ["portalAppPlan", student?.id],
+    queryFn: () =>
+      axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/portal/alumnos/${student!.id}/planificacion`).then(r => r.data),
+    enabled: !!student?.id,
+  })
+  const hasAppPlan = !!appPlanResp?.planificacion
+  const appPlanChecked = !!student?.id && !loadingAppPlan && !fetchingAppPlan && appPlanResp !== undefined
+
   const latestPayment = payments
     .sort((a, b) => new Date(b.fecha_de_pago).getTime() - new Date(a.fecha_de_pago).getTime())[0]
 
@@ -282,41 +291,46 @@ export default function PortalPage() {
 
       <main className="max-w-lg mx-auto px-4 py-6 flex flex-col gap-5">
 
-        {/* Perfil */}
-        <div>
-          <h1 className="font-bold text-2xl leading-tight">{student.nombre}</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">{student.email}</p>
-        </div>
+        {/* Resumen unificado: perfil + estado plan + planes disponibles */}
+        <div className="rounded-xl overflow-hidden border border-[var(--primary-color)]/40 bg-card shadow-sm">
+          {/* Perfil */}
+          <div className="px-5 py-4 flex items-center gap-4 border-b border-border">
+            <div className="h-12 w-12 rounded-full bg-[var(--primary-color)]/10 flex items-center justify-center ring-1 ring-[var(--primary-color)]/30 flex-shrink-0">
+              <span className="text-lg font-black text-[var(--primary-color)]">
+                {(student.nombre ?? "?").trim().charAt(0).toUpperCase()}
+              </span>
+            </div>
+            <div className="flex flex-col min-w-0 flex-1">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--primary-color)]">Alumno</span>
+              <h1 className="font-bold text-lg leading-tight truncate text-foreground">{student.nombre}</h1>
+              <p className="text-xs text-muted-foreground mt-0.5 truncate">{student.email}</p>
+            </div>
+          </div>
 
-
-
-        {/* Pago activo */}
-        {latestPayment && (
-          <div className="flex flex-col gap-2">
-            <div className="rounded-2xl overflow-hidden border border-border bg-card">
-              {/* Header */}
+          {/* Estado del plan */}
+          {latestPayment && (
+            <>
               <div
-                className="px-4 py-3 flex items-center justify-between"
-                style={{ backgroundColor: `${getStatusColor(subscriptionStatus)}15`, borderBottom: `1px solid ${getStatusColor(subscriptionStatus)}30` }}
+                className="px-4 py-2.5 flex items-center justify-between"
+                style={{ backgroundColor: `${getStatusColor(subscriptionStatus)}10`, borderBottom: `1px solid ${getStatusColor(subscriptionStatus)}25` }}
               >
                 <div className="flex items-center gap-2">
                   <div className="h-2 w-2 rounded-full animate-pulse" style={{ backgroundColor: getStatusColor(subscriptionStatus) }} />
-                  <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Estado del plan</span>
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Estado del plan</span>
                 </div>
                 <span
-                  className="text-xs font-bold px-3 py-1 rounded-full"
+                  className="text-[10px] font-bold px-2.5 py-0.5 rounded-full"
                   style={{ color: getStatusColor(subscriptionStatus), backgroundColor: `${getStatusColor(subscriptionStatus)}20` }}
                 >
                   {subscriptionStatus === "Pagado" ? "Activo" : subscriptionStatus === "Indefinido" ? "Indefinido" : "Inactivo"}
                 </span>
               </div>
-              {/* Body */}
-              <div className="grid grid-cols-4 divide-x divide-border">
-                <div className="flex flex-col items-center justify-center gap-1 px-2 py-4">
+              <div className="grid grid-cols-4 divide-x divide-border border-b border-border">
+                <div className="flex flex-col items-center justify-center gap-0.5 px-2 py-3">
                   <span className="text-[9px] uppercase tracking-widest text-muted-foreground font-medium">Plan</span>
                   <span className="font-bold text-xs text-center">{latestPayment.modalidad}</span>
                 </div>
-                <div className="flex flex-col items-center justify-center gap-1 px-2 py-4">
+                <div className="flex flex-col items-center justify-center gap-0.5 px-2 py-3">
                   <span className="text-[9px] uppercase tracking-widest text-muted-foreground font-medium">Precio</span>
                   <span className="font-bold text-xs" style={{ color: getStatusColor(subscriptionStatus) }}>
                     {(() => {
@@ -325,77 +339,100 @@ export default function PortalPage() {
                     })()}
                   </span>
                 </div>
-                <div className="flex flex-col items-center justify-center gap-1 px-2 py-4">
+                <div className="flex flex-col items-center justify-center gap-0.5 px-2 py-3">
                   <span className="text-[9px] uppercase tracking-widest text-muted-foreground font-medium">Inicio</span>
                   <span className="font-bold text-xs text-center">{formatDate(student.fecha_de_inicio)}</span>
                 </div>
-                <div className="flex flex-col items-center justify-center gap-1 px-2 py-4">
+                <div className="flex flex-col items-center justify-center gap-0.5 px-2 py-3">
                   <span className="text-[9px] uppercase tracking-widest text-muted-foreground font-medium">Vence</span>
                   <span className="font-bold text-xs text-center">{formatDate(latestPayment.fecha_de_vencimiento)}</span>
                 </div>
               </div>
-            </div>
-          </div>
-        )}
+            </>
+          )}
 
-        {/* Planes disponibles */}
-        <button
-          onClick={() => setShowPlanes(true)}
-          className="w-full rounded-2xl border border-border bg-card px-4 py-4 flex items-center gap-3 hover:bg-muted/40 transition-colors active:scale-[0.98] text-left"
-        >
-          <div className="flex-shrink-0 h-9 w-9 rounded-xl bg-[var(--primary-color)]/10 flex items-center justify-center">
-            <Dumbbell className="h-5 w-5 text-[var(--primary-color)]" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-bold text-sm">Planes disponibles</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Ver todos los planes</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1">
-              {planes.slice(0, 5).map((p) => (
-                <span
-                  key={p.id}
-                  className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40"
-                />
-              ))}
+          {/* Planes disponibles */}
+          <button
+            onClick={() => setShowPlanes(true)}
+            className="group w-full px-5 py-3.5 flex items-center gap-3 hover:bg-muted/40 active:scale-[0.99] transition-all text-left"
+          >
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-sm text-foreground">Planes disponibles</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Ver todos los planes</p>
             </div>
-            <span className="text-xs text-muted-foreground font-medium flex items-center gap-0.5">
-              Ver <ArrowRight className="h-3 w-3" />
-            </span>
-          </div>
-        </button>
+            <ArrowRight className="h-5 w-5 text-[var(--primary-color)] transition-transform group-hover:translate-x-1" />
+          </button>
+        </div>
 
-        {/* Acciones */}
+        {/* Acciones — con fondo */}
         <div className="grid grid-cols-2 gap-3">
           <a
             href="https://wa.me/543516671026"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 py-2.5 rounded-lg bg-[var(--primary-color)] text-white text-sm font-medium"
+            className="group relative overflow-hidden flex flex-col items-center justify-center gap-2 py-5 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.97] transition-all duration-200 border border-white/10"
           >
-            <MessageSquare className="h-4 w-4" />
-            WhatsApp
+            <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="relative flex flex-col items-center gap-1.5">
+              <div className="h-10 w-10 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center ring-1 ring-white/20">
+                <MessageSquare className="h-5 w-5" />
+              </div>
+              <span className="text-sm font-bold tracking-tight">WhatsApp</span>
+              <span className="text-[10px] text-white/70 uppercase tracking-widest">Contactar</span>
+            </div>
           </a>
 
-          <button
-            onClick={() => setShowMiPlan(true)}
-            className="flex items-center justify-center gap-2 py-2.5 rounded-lg bg-violet-600 text-white text-sm font-medium"
-          >
-            <Dumbbell className="h-4 w-4" />
-            Mi planificación
-          </button>
-
-          {student.plan && (
+          {!appPlanChecked ? (
+            <div className="flex flex-col items-center justify-center gap-2 py-5 rounded-xl bg-muted/40 border border-border select-none">
+              <Loader2 className="h-6 w-6 animate-spin text-[var(--primary-color)]" />
+              <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Cargando…</span>
+            </div>
+          ) : hasAppPlan ? (
+            <button
+              onClick={() => setShowMiPlan(true)}
+              className="group relative overflow-hidden flex flex-col items-center justify-center gap-2 py-5 rounded-xl bg-gradient-to-br from-[var(--primary-color)] to-[color-mix(in_srgb,var(--primary-color)_55%,black)] text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.97] transition-all duration-200 border border-white/10"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="relative flex flex-col items-center gap-1.5">
+                <div className="h-10 w-10 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center ring-1 ring-white/20">
+                  <Dumbbell className="h-5 w-5" />
+                </div>
+                <span className="text-sm font-bold tracking-tight">Mi planificación</span>
+                <span className="text-[10px] text-white/70 uppercase tracking-widest">Entrenar</span>
+              </div>
+            </button>
+          ) : student.plan ? (
             <a
               href={student.plan}
               target="_blank"
               rel="noopener noreferrer"
-              className="col-span-2 flex items-center justify-center gap-2 py-2.5 rounded-lg bg-blue-500 text-white text-sm font-medium"
+              className="group relative overflow-hidden flex flex-col items-center justify-center gap-2 py-5 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-700 text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.97] transition-all duration-200 border border-white/10"
             >
-              <FileText className="h-4 w-4" />
-              Mi plan Excel
+              <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="relative flex flex-col items-center gap-1.5">
+                <div className="h-10 w-10 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center ring-1 ring-white/20">
+                  <FileText className="h-5 w-5" />
+                </div>
+                <span className="text-sm font-bold tracking-tight">Mi plan Excel</span>
+                <span className="text-[10px] text-white/70 uppercase tracking-widest">Abrir hoja</span>
+              </div>
             </a>
+          ) : (
+            <div
+              aria-disabled="true"
+              className="flex flex-col items-center justify-center gap-2 py-5 rounded-xl bg-muted/40 border border-border opacity-50 cursor-not-allowed select-none"
+            >
+              <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                <Dumbbell className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <span className="text-sm font-bold text-muted-foreground">Sin plan</span>
+            </div>
           )}
+        </div>
+
+        {/* Separador grupo salud/datos */}
+        <div className="pt-10 mt-8 border-t-2 border-border/80 dark:border-white/[0.08]">
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground dark:text-zinc-500">Salud y seguimiento</p>
         </div>
 
         {/* Antropometrías */}
@@ -412,55 +449,73 @@ export default function PortalPage() {
           </div>
 
           {antros.length === 0 ? (
-            <div className="rounded-lg border px-4 py-6 flex items-center justify-center">
-              <span className="text-sm text-muted-foreground">Sin antropometrías cargadas</span>
+            <div
+              aria-disabled="true"
+              className="flex flex-col items-center justify-center gap-2 py-6 rounded-xl bg-muted/40 border border-border opacity-60 select-none"
+            >
+              <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                <FileText className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <span className="text-sm font-bold text-muted-foreground">Sin antropometrías cargadas</span>
             </div>
           ) : (
             <div className="flex flex-col gap-2">
               {antroGroups.map((group, gi) => (
                 <div key={gi} className="grid grid-cols-4 gap-2">
-                  {group.map((antro) => (
-                    <button
-                      key={antro.id}
-                      onClick={() => handleSelectAntro(antro)}
-                      disabled={parsingId === antro.id}
-                      className="flex flex-col items-center justify-center gap-1 rounded-xl border bg-[var(--primary-color)]/5 border-[var(--primary-color)]/20 p-3 hover:bg-[var(--primary-color)]/10 hover:border-[var(--primary-color)]/40 transition-colors active:scale-95 disabled:opacity-50"
-                    >
-                      {parsingId === antro.id ? (
-                        <Loader2 className="h-6 w-6 text-[var(--primary-color)] animate-spin" />
-                      ) : (
-                        <FileText className="h-6 w-6 text-[var(--primary-color)]" />
-                      )}
-                      <span className="text-[10px] text-muted-foreground text-center leading-tight">
-                        {(() => {
-                          const raw = antro.fecha || antro.created_at
-                          if (!raw) return "—"
-                          const dateStr = raw.split("T")[0].split(" ")[0]
-                          const [y, m, d] = dateStr.split("-").map(Number)
-                          if (!y || !m || !d) return "—"
-                          return format(new Date(y, m - 1, d), "d MMM yy", { locale: es })
-                        })()}
-                      </span>
-                    </button>
-                  ))}
+                  {group.map((antro, idx) => {
+                    const ordinal = antros.length - (gi * 4 + idx)
+                    return (
+                      <button
+                        key={antro.id}
+                        onClick={() => handleSelectAntro(antro)}
+                        disabled={parsingId === antro.id}
+                        className="group relative flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl bg-card border border-[var(--primary-color)]/40 hover:border-[var(--primary-color)] hover:bg-muted/40 shadow-sm hover:shadow active:scale-[0.96] transition-all duration-200 disabled:opacity-50"
+                      >
+                        <span className="absolute top-1.5 right-1.5 text-[9px] font-black px-1.5 py-0.5 rounded-md bg-[var(--primary-color)]/15 text-[var(--primary-color)] leading-none">
+                          #{ordinal}
+                        </span>
+                        <div className="h-8 w-8 rounded-full bg-[var(--primary-color)]/10 ring-1 ring-[var(--primary-color)]/30 flex items-center justify-center">
+                          {parsingId === antro.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin text-[var(--primary-color)]" />
+                          ) : (
+                            <FileText className="h-4 w-4 text-[var(--primary-color)]" />
+                          )}
+                        </div>
+                        <span className="text-[10px] text-muted-foreground font-semibold text-center leading-tight">
+                          {(() => {
+                            const raw = antro.fecha || antro.created_at
+                            if (!raw) return "—"
+                            const dateStr = raw.split("T")[0].split(" ")[0]
+                            const [y, m, d] = dateStr.split("-").map(Number)
+                            if (!y || !m || !d) return "—"
+                            return format(new Date(y, m - 1, d), "d MMM yy", { locale: es })
+                          })()}
+                        </span>
+                      </button>
+                    )
+                  })}
                 </div>
               ))}
               <div className="flex items-center gap-2 pt-1">
                 <button
                   onClick={() => setShowCompare(true)}
                   disabled={antros.length < 2}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-purple-600 text-white text-xs font-semibold shadow-md hover:brightness-110 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="group flex-1 flex items-center justify-center gap-2 px-3 py-3 rounded-xl bg-card border border-purple-500/40 hover:border-purple-500 hover:bg-muted/40 text-xs font-bold text-foreground shadow-sm hover:shadow active:scale-[0.97] transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  <GitCompareArrows className="h-3.5 w-3.5" />
-                  Comparar
+                  <div className="h-7 w-7 rounded-full bg-purple-500/10 ring-1 ring-purple-500/30 flex items-center justify-center">
+                    <GitCompareArrows className="h-3.5 w-3.5 text-purple-600" />
+                  </div>
+                  <span>Comparar</span>
                 </button>
                 {antros.length >= 2 && (
                   <button
                     onClick={() => setShowAnualChart(true)}
-                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-[var(--primary-color)] text-white text-xs font-semibold shadow-md hover:brightness-110 active:scale-95 transition-all"
+                    className="group flex-1 flex items-center justify-center gap-2 px-3 py-3 rounded-xl bg-card border border-[var(--primary-color)]/40 hover:border-[var(--primary-color)] hover:bg-muted/40 text-xs font-bold text-foreground shadow-sm hover:shadow active:scale-[0.97] transition-all duration-200"
                   >
-                    <TrendingUp className="h-3.5 w-3.5" />
-                    Ver evolución
+                    <div className="h-7 w-7 rounded-full bg-[var(--primary-color)]/10 ring-1 ring-[var(--primary-color)]/30 flex items-center justify-center">
+                      <TrendingUp className="h-3.5 w-3.5 text-[var(--primary-color)]" />
+                    </div>
+                    <span>Ver evolución</span>
                   </button>
                 )}
               </div>
@@ -475,8 +530,14 @@ export default function PortalPage() {
           </span>
 
           {nutricionPdfs.length === 0 ? (
-            <div className="rounded-lg border px-4 py-6 flex items-center justify-center">
-              <span className="text-sm text-muted-foreground">Sin PDFs de nutrición cargados</span>
+            <div
+              aria-disabled="true"
+              className="flex flex-col items-center justify-center gap-2 py-6 rounded-xl bg-muted/40 border border-border opacity-60 select-none"
+            >
+              <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                <FileText className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <span className="text-sm font-bold text-muted-foreground">Sin PDFs de nutrición cargados</span>
             </div>
           ) : (
             <div className="flex flex-col gap-2">
@@ -492,10 +553,12 @@ export default function PortalPage() {
                           const { data } = await supabase.storage.from("nutricion").createSignedUrl(pdf.pdf_path, 3600)
                           if (data?.signedUrl) window.open(data.signedUrl, "_blank")
                         }}
-                        className="flex flex-col items-center justify-center gap-1 rounded-xl border bg-[var(--primary-color)]/5 border-[var(--primary-color)]/20 p-3 hover:bg-[var(--primary-color)]/10 hover:border-[var(--primary-color)]/40 transition-colors active:scale-95"
+                        className="group flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl bg-card border border-[var(--primary-color)]/40 hover:border-[var(--primary-color)] hover:bg-muted/40 shadow-sm hover:shadow active:scale-[0.96] transition-all duration-200"
                       >
-                        <FileText className="h-6 w-6 text-[var(--primary-color)]" />
-                        <span className="text-[10px] text-muted-foreground text-center leading-tight">
+                        <div className="h-8 w-8 rounded-full bg-[var(--primary-color)]/10 ring-1 ring-[var(--primary-color)]/30 flex items-center justify-center">
+                          <FileText className="h-4 w-4 text-[var(--primary-color)]" />
+                        </div>
+                        <span className="text-[10px] text-muted-foreground font-semibold text-center leading-tight">
                           {format(new Date(pdf.created_at), "d MMM yy", { locale: es })}
                         </span>
                       </button>
@@ -508,20 +571,33 @@ export default function PortalPage() {
         </div>
 
         {/* Hábitos */}
-        {student.habitos_link && (
-          <div className="flex flex-col gap-2">
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Hábitos</span>
+        <div className="flex flex-col gap-2">
+          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Hábitos</span>
+          {student.habitos_link && /^https?:\/\//i.test(student.habitos_link.trim()) ? (
             <a
               href={student.habitos_link}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex flex-col items-center justify-center gap-1 rounded-xl border bg-emerald-500/5 border-emerald-500/20 p-4 hover:bg-emerald-500/10 hover:border-emerald-500/40 transition-colors active:scale-95 w-full"
+              className="group flex flex-col items-center justify-center gap-2 py-5 rounded-xl bg-card border border-emerald-500/40 hover:border-emerald-500 hover:bg-muted/40 shadow-sm hover:shadow active:scale-[0.97] transition-all duration-200 w-full"
             >
-              <Salad className="h-7 w-7 text-emerald-500" />
-              <span className="text-xs font-medium text-emerald-600">Ver mis hábitos</span>
+              <div className="h-10 w-10 rounded-full bg-emerald-500/10 ring-1 ring-emerald-500/30 flex items-center justify-center">
+                <Salad className="h-5 w-5 text-emerald-600" />
+              </div>
+              <span className="text-sm font-bold tracking-tight text-foreground">Ver mis hábitos</span>
+              <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Abrir</span>
             </a>
-          </div>
-        )}
+          ) : (
+            <div
+              aria-disabled="true"
+              className="flex flex-col items-center justify-center gap-2 py-5 rounded-xl bg-muted/40 border border-border opacity-60 cursor-not-allowed select-none w-full"
+            >
+              <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                <Salad className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <span className="text-sm font-bold text-muted-foreground">Sin hábitos cargados</span>
+            </div>
+          )}
+        </div>
 
       </main>
 

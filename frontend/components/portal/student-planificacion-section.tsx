@@ -178,7 +178,7 @@ export function StudentPlanificacionSection({
     if (isNaN(num)) return ""
     if (field === "peso_kg") return String(Math.min(500, Math.max(0, num)))
     if (field === "repeticiones") return String(Math.min(30, Math.max(1, num)))
-    if (field === "rpe") return String(Math.min(10, Math.max(1, num)))
+    if (field === "rpe") return String(Math.min(10, Math.max(6, num)))
     return value
   }
 
@@ -195,6 +195,30 @@ export function StudentPlanificacionSection({
   const posStorageKey = semanaSeleccionada != null && diaSeleccionadoId != null
     ? `planPos-${studentId}-${semanaSeleccionada}-${diaSeleccionadoId}`
     : null
+
+  const formStorageKey = semanaSeleccionada != null && diaSeleccionadoId != null
+    ? `planForm-${studentId}-${semanaSeleccionada}-${diaSeleccionadoId}`
+    : null
+  const formStorageKeyRef = useRef<string | null>(null)
+  formStorageKeyRef.current = formStorageKey
+
+  const persistFormLocal = (form: Record<number, FormRow>, saltados: Set<number>) => {
+    const key = formStorageKeyRef.current
+    if (!key) return
+    try {
+      localStorage.setItem(key, JSON.stringify({
+        form,
+        saltados: Array.from(saltados),
+        ts: Date.now(),
+      }))
+    } catch {}
+  }
+
+  const clearFormLocal = () => {
+    const key = formStorageKeyRef.current
+    if (!key) return
+    try { localStorage.removeItem(key) } catch {}
+  }
 
   const scrollToSerie = (ejId: number, idx: number) => {
     const el = serieScrollRefs.current.get(ejId)
@@ -403,11 +427,38 @@ export function StudentPlanificacionSection({
       }) as [SerieRow, SerieRow, SerieRow]
       next[ej.id] = { series, notas: existing?.notas ?? "" }
     }
-    isDirty.current = false
-    dirtyEjIds.current.clear()
+    // Overlay cualquier dato sin guardar persistido en localStorage
+    let localSaltados = saltados
+    if (formStorageKey) {
+      try {
+        const raw = localStorage.getItem(formStorageKey)
+        if (raw) {
+          const parsed = JSON.parse(raw) as { form?: Record<number, FormRow>; saltados?: number[] }
+          if (parsed.form) {
+            for (const [ejIdStr, row] of Object.entries(parsed.form)) {
+              const ejId = Number(ejIdStr)
+              const localRow = row as FormRow
+              const hasLocalData = (localRow.series ?? []).some((s) => s.peso_kg !== "" || s.repeticiones !== "" || s.rpe !== "") || (localRow.notas ?? "") !== ""
+              if (hasLocalData) {
+                next[ejId] = localRow
+                dirtyEjIds.current.add(ejId)
+                isDirty.current = true
+              }
+            }
+          }
+          if (Array.isArray(parsed.saltados)) {
+            localSaltados = new Set(parsed.saltados)
+          }
+        }
+      } catch {}
+    }
+    if (!isDirty.current) {
+      isDirty.current = false
+      dirtyEjIds.current.clear()
+    }
     registrosFormRef.current = next
     setRegistrosForm(next)
-    setSaltadoEjIds(saltados)
+    setSaltadoEjIds(localSaltados)
     durmioMalRef.current = !!sessionData?.estado_diario?.durmio_mal
     fatigaRef.current = !!sessionData?.estado_diario?.fatiga
     desmotivacionRef.current = !!sessionData?.estado_diario?.desmotivacion
@@ -533,7 +584,7 @@ export function StudentPlanificacionSection({
   refetchSesionesSemanaRef.current = _refetchSesionesSemana
   refetchResumenRef.current = _refetchResumen
 
-  // Save on page close / refresh
+  // Save on page close / refresh / tab hidden + autosave periódico
   useEffect(() => {
     function handleBeforeUnload(e: BeforeUnloadEvent) {
       if (isDirty.current) {
@@ -542,8 +593,26 @@ export function StudentPlanificacionSection({
         e.returnValue = ""
       }
     }
+    function handleVisibility() {
+      if (document.hidden && isDirty.current && !saveIsPendingRef.current) {
+        saveMutateRef.current()
+      }
+    }
+    function handlePageHide() {
+      if (isDirty.current && !saveIsPendingRef.current) saveMutateRef.current()
+    }
+    const autosaveInterval = setInterval(() => {
+      if (isDirty.current && !saveIsPendingRef.current) saveMutateRef.current()
+    }, 8000)
     window.addEventListener("beforeunload", handleBeforeUnload)
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload)
+    document.addEventListener("visibilitychange", handleVisibility)
+    window.addEventListener("pagehide", handlePageHide)
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload)
+      document.removeEventListener("visibilitychange", handleVisibility)
+      window.removeEventListener("pagehide", handlePageHide)
+      clearInterval(autosaveInterval)
+    }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // History API: push state on mount, handle back button
@@ -694,6 +763,7 @@ export function StudentPlanificacionSection({
       dirtyEjIds.current.clear()
       isDirty.current = false
       estadoDirty.current = false
+      clearFormLocal()
       setSavedSuccess(true)
       setSaveMessage("")
       if (!planificacion || !hojaActiva || !diaSeleccionado || !semanaSeleccionada) return
@@ -793,6 +863,7 @@ export function StudentPlanificacionSection({
     const updated = { ...registrosFormRef.current, [planEjId]: { ...old, series: newSeries } }
     registrosFormRef.current = updated
     setRegistrosForm(updated)
+    persistFormLocal(updated, saltadoEjIds)
 
     const thisSerie = newSeries[serieIdx]
     const serieFilled = !!thisSerie.peso_kg && !!thisSerie.repeticiones && !!thisSerie.rpe
@@ -873,18 +944,14 @@ export function StudentPlanificacionSection({
     isDirty.current = true
     setSaveMessage("")
     setSavedSuccess(false)
-    setSaltadoEjIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(planEjId)) {
-        next.delete(planEjId)
-      } else {
-        next.add(planEjId)
-      }
-      return next
-    })
+    const newSaltados = new Set(saltadoEjIds)
+    if (newSaltados.has(planEjId)) newSaltados.delete(planEjId)
+    else newSaltados.add(planEjId)
+    setSaltadoEjIds(newSaltados)
     const updatedSkip = { ...registrosFormRef.current, [planEjId]: EMPTY_FORM_ROW() }
     registrosFormRef.current = updatedSkip
     setRegistrosForm(updatedSkip)
+    persistFormLocal(updatedSkip, newSaltados)
     dirtyEjIds.current.add(planEjId)
     saveMutateRef.current()
   }
@@ -949,17 +1016,17 @@ export function StudentPlanificacionSection({
                     if (historyDepthRef) historyDepthRef.current++
                     setSemanaSeleccionada(semana)
                   }}
-                  className={`group relative aspect-square rounded-2xl border active:scale-95 transition-all duration-150 p-4 text-left overflow-hidden ${
+                  className={`group relative aspect-square rounded-2xl border active:scale-95 transition-all duration-150 p-4 text-left overflow-hidden shadow-sm dark:shadow-none ${
                     completada
-                      ? "border-green-500/40 bg-green-500/[0.07] hover:bg-green-500/[0.11]"
-                      : "border-border dark:border-white/[0.07] bg-muted/40 dark:bg-white/[0.03] hover:bg-muted/60 dark:bg-white/[0.06] hover:border-green-500/30 active:bg-green-500/20 active:border-green-500/60"
+                      ? "border-green-500 dark:border-green-500/40 bg-green-100 dark:bg-green-500/[0.07] hover:bg-green-200 dark:hover:bg-green-500/[0.11]"
+                      : "border-border bg-card dark:bg-white/[0.03] hover:bg-muted dark:hover:bg-white/[0.06] hover:border-green-500/60 dark:hover:border-green-500/30 active:bg-green-200 dark:active:bg-green-500/20 active:border-green-500"
                   }`}
                 >
                   <div className="absolute inset-0 bg-gradient-to-br from-green-500/0 group-hover:from-green-500/5 to-transparent transition-all duration-200" />
                   <span className={`absolute top-3 left-3 text-[10px] font-semibold uppercase tracking-widest transition-colors ${completada ? "text-green-500/70" : "text-muted-foreground dark:text-zinc-500 group-hover:text-green-500/70"}`}>Semana</span>
-                  <span className={`absolute inset-0 flex items-center justify-center text-4xl font-black transition-colors ${completada ? "text-green-400" : "text-foreground dark:text-white"}`}>{semana}</span>
+                  <span className={`absolute inset-0 flex items-center justify-center text-4xl font-black transition-colors ${completada ? "text-green-700 dark:text-green-400" : "text-foreground dark:text-white"}`}>{semana}</span>
                   {completada
-                    ? <CheckCircle2 className="absolute right-3 bottom-3 h-4 w-4 text-green-400" />
+                    ? <CheckCircle2 className="absolute right-3 bottom-3 h-4 w-4 text-green-600 dark:text-green-400" />
                     : <ChevronRight className="absolute right-3 bottom-3 h-4 w-4 text-muted-foreground/70 dark:text-zinc-600 group-hover:text-green-500/50 transition-colors" />
                   }
                 </button>
@@ -1010,10 +1077,10 @@ export function StudentPlanificacionSection({
                 >
                   <div className="absolute inset-0 bg-gradient-to-br from-green-500/0 group-hover:from-green-500/5 to-transparent transition-all duration-200" />
                   <span className={`absolute top-3 left-3 text-[10px] font-semibold uppercase tracking-widest transition-colors ${completado ? "text-green-500/70" : "text-muted-foreground dark:text-zinc-500 group-hover:text-green-500/70"}`}>Día</span>
-                  <span className={`absolute inset-0 flex items-center justify-center text-4xl font-black transition-colors ${completado ? "text-green-400" : "text-foreground dark:text-white"}`}>{dia.numero_dia}</span>
+                  <span className={`absolute inset-0 flex items-center justify-center text-4xl font-black transition-colors ${completado ? "text-green-700 dark:text-green-400" : "text-foreground dark:text-white"}`}>{dia.numero_dia}</span>
                   <span className="absolute bottom-3 left-3 right-8 text-[10px] text-muted-foreground dark:text-zinc-400 truncate">{dia.nombre}</span>
                   {completado
-                    ? <CheckCircle2 className="absolute right-3 bottom-3 h-4 w-4 text-green-400" />
+                    ? <CheckCircle2 className="absolute right-3 bottom-3 h-4 w-4 text-green-600 dark:text-green-400" />
                     : <ChevronRight className="absolute right-3 bottom-3 h-4 w-4 text-muted-foreground/70 dark:text-zinc-600 group-hover:text-green-500/50 transition-colors" />
                   }
                 </button>
@@ -1239,6 +1306,7 @@ export function StudentPlanificacionSection({
               : undefined
             const effectiveRpe = semanaPlan?.rpe ?? semanaPlanPrev?.rpe ?? null
             const effectiveDosis = semanaPlan?.dosis ?? semanaPlanPrev?.dosis ?? null
+            const effectiveNota = semanaPlan?.notas_profesor ?? semanaPlanPrev?.notas_profesor ?? null
             const row = registrosForm[ej.id] ?? EMPTY_FORM_ROW()
             const isFilled = row.series.every((s) => !!s.peso_kg && !!s.repeticiones && !!s.rpe)
             const regAnterior = registrosAnterioresMap.get(ej.id) ?? null
@@ -1311,18 +1379,27 @@ export function StudentPlanificacionSection({
                   ) : null}
                 </div>
 
+                {effectiveNota && (
+                  <div className="px-4 pt-2">
+                    <div className="rounded-xl border border-violet-400 dark:border-violet-500/20 bg-violet-100 dark:bg-violet-500/[0.08] px-3 py-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-violet-700 dark:text-violet-400 mb-0.5">Nota del profesor · Semana {semanaSeleccionada}</p>
+                      <p className="text-xs text-foreground dark:text-zinc-200 whitespace-pre-wrap">{effectiveNota}</p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Dosis / RPE prescrito — 50/50 */}
                 {(effectiveDosis || typeof effectiveRpe === "number") && (
                   <div className="px-4 pt-2 pb-1 grid grid-cols-2 gap-2">
                     {effectiveDosis ? (
-                      <span className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-500/10 border border-blue-500/20 px-3 py-2 text-xs font-bold text-blue-400">
-                        <CalendarDays className="h-3 w-3" />
+                      <span className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-100 dark:bg-blue-500/15 border border-blue-400 dark:border-blue-500/30 px-4 py-3 text-base font-extrabold text-blue-700 dark:text-blue-300">
+                        <CalendarDays className="h-5 w-5" />
                         {effectiveDosis}
                       </span>
                     ) : <div />}
                     {typeof effectiveRpe === "number" ? (
-                      <span className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-orange-500/10 border border-orange-500/20 px-3 py-2 text-xs font-bold text-orange-400">
-                        <Flame className="h-3 w-3" />
+                      <span className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-100 dark:bg-orange-500/15 border border-orange-400 dark:border-orange-500/30 px-4 py-3 text-base font-extrabold text-orange-700 dark:text-orange-300">
+                        <Flame className="h-5 w-5" />
                         RPE {effectiveRpe}
                       </span>
                     ) : <div />}
@@ -1395,7 +1472,7 @@ export function StudentPlanificacionSection({
                                 value={serie.peso_kg}
                                 onChange={(e) => handleSerieChange(ej.id, serieIdx, "peso_kg", e.target.value)}
                                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNextInput(ej.id, serieIdx, "peso_kg") } }}
-                                className="bg-card/80 dark:bg-card dark:bg-zinc-900/80 border-border dark:border-white/[0.08] focus:border-green-500/50 focus:ring-green-500/20 text-foreground dark:text-white placeholder:text-muted-foreground/70 dark:text-zinc-600 h-12 text-base font-bold text-center rounded-xl"
+                                className="bg-card/80 dark:bg-zinc-900/80 border-border dark:border-white/[0.08] focus:border-green-500/50 focus:ring-green-500/20 text-foreground dark:text-white placeholder:text-foreground/60 dark:placeholder:text-zinc-300 h-12 text-base font-bold text-center rounded-xl"
                               />
                             </div>
                             <div className="space-y-1.5">
@@ -1412,7 +1489,7 @@ export function StudentPlanificacionSection({
                                 value={serie.repeticiones}
                                 onChange={(e) => handleSerieChange(ej.id, serieIdx, "repeticiones", e.target.value)}
                                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNextInput(ej.id, serieIdx, "repeticiones") } }}
-                                className="bg-card/80 dark:bg-card dark:bg-zinc-900/80 border-border dark:border-white/[0.08] focus:border-green-500/50 focus:ring-green-500/20 text-foreground dark:text-white placeholder:text-muted-foreground/70 dark:text-zinc-600 h-12 text-base font-bold text-center rounded-xl"
+                                className="bg-card/80 dark:bg-zinc-900/80 border-border dark:border-white/[0.08] focus:border-green-500/50 focus:ring-green-500/20 text-foreground dark:text-white placeholder:text-foreground/60 dark:placeholder:text-zinc-300 h-12 text-base font-bold text-center rounded-xl"
                               />
                             </div>
                             <div className="space-y-1.5">
@@ -1424,12 +1501,12 @@ export function StudentPlanificacionSection({
                                 ref={(el) => { if (el) inputRefs.current.set(`${ej.id}-${serieIdx}-rpe`, el) }}
                                 type="number"
                                 placeholder="0"
-                                min={1}
+                                min={6}
                                 max={10}
                                 value={serie.rpe}
                                 onChange={(e) => handleSerieChange(ej.id, serieIdx, "rpe", e.target.value)}
                                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNextInput(ej.id, serieIdx, "rpe") } }}
-                                className="bg-card/80 dark:bg-card dark:bg-zinc-900/80 border-border dark:border-white/[0.08] focus:border-green-500/50 focus:ring-green-500/20 text-foreground dark:text-white placeholder:text-muted-foreground/70 dark:text-zinc-600 h-12 text-base font-bold text-center rounded-xl"
+                                className="bg-card/80 dark:bg-zinc-900/80 border-border dark:border-white/[0.08] focus:border-green-500/50 focus:ring-green-500/20 text-foreground dark:text-white placeholder:text-foreground/60 dark:placeholder:text-zinc-300 h-12 text-base font-bold text-center rounded-xl"
                               />
                             </div>
                           </div>
@@ -1478,19 +1555,6 @@ export function StudentPlanificacionSection({
                       )
                     })}
                   </div>
-
-                  {/* Notas del profesor */}
-                  {ej.notas_profesor && (
-                    <div className="px-4 pt-3 space-y-1.5">
-                      <label className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
-                        <StickyNote className="h-2.5 w-2.5" />
-                        Notas del profesor
-                      </label>
-                      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.06] px-3 py-2 text-sm text-emerald-100 whitespace-pre-wrap">
-                        {ej.notas_profesor}
-                      </div>
-                    </div>
-                  )}
 
                   {/* Notas */}
                   <div className="px-4 pt-3 space-y-1.5">

@@ -68,7 +68,7 @@ async function buildDataFromHoja(hojaId) {
             notas_profesor: e.notas_profesor ?? null,
             semanas: semanas
               .filter((s) => s.planificacion_ejercicio_id === e.id)
-              .map((s) => ({ semana: s.semana, dosis: s.dosis, rpe: s.rpe })),
+              .map((s) => ({ semana: s.semana, dosis: s.dosis, rpe: s.rpe, notas_profesor: s.notas_profesor ?? null })),
           })),
       })),
     }],
@@ -145,7 +145,7 @@ async function buildDataFromPlan(planId) {
               notas_profesor: e.notas_profesor ?? null,
               semanas: semanas
                 .filter((s) => s.planificacion_ejercicio_id === e.id)
-                .map((s) => ({ semana: s.semana, dosis: s.dosis, rpe: s.rpe })),
+                .map((s) => ({ semana: s.semana, dosis: s.dosis, rpe: s.rpe, notas_profesor: s.notas_profesor ?? null })),
             })),
         })),
     })),
@@ -501,6 +501,7 @@ async function insertHojaTree(planificacionId, hojaNode, semanasTotal, numero, n
         semana: s,
         dosis: found?.dosis ?? null,
         rpe: found?.rpe ?? null,
+        notas_profesor: found?.notas_profesor ?? null,
       })
     }
   })

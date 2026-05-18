@@ -5,6 +5,7 @@ import axios from "axios"
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Loader2 } from "lucide-react"
 import type { PlanEjercicio } from "@/types/planificaciones"
@@ -18,6 +19,7 @@ interface WeekDosisModalProps {
 
 export function WeekDosisModal({ open, onOpenChange, planEjercicio, onSaved }: WeekDosisModalProps) {
   const [dosis, setDosis] = useState<string[]>(() => Array.from({ length: 6 }, () => ""))
+  const [notas, setNotas] = useState<string[]>(() => Array.from({ length: 6 }, () => ""))
   const [saving, setSaving] = useState(false)
 
   const handleDosisChange = (index: number, value: string) => {
@@ -30,13 +32,24 @@ export function WeekDosisModal({ open, onOpenChange, planEjercicio, onSaved }: W
     })
   }
 
+  const handleNotaChange = (index: number, value: string) => {
+    setNotas(prev => {
+      const next = [...prev]
+      next[index] = value
+      return next
+    })
+  }
+
   useEffect(() => {
     if (!open) return
-    const initial = Array(6).fill("")
+    const initialDosis = Array(6).fill("")
+    const initialNotas = Array(6).fill("")
     planEjercicio.semanas.forEach((s) => {
-      initial[s.semana - 1] = s.dosis ?? ""
+      initialDosis[s.semana - 1] = s.dosis ?? ""
+      initialNotas[s.semana - 1] = s.notas_profesor ?? ""
     })
-    setDosis(initial)
+    setDosis(initialDosis)
+    setNotas(initialNotas)
   }, [open, planEjercicio])
 
   const handleSave = async () => {
@@ -45,7 +58,11 @@ export function WeekDosisModal({ open, onOpenChange, planEjercicio, onSaved }: W
       await axios.put(
         `${process.env.NEXT_PUBLIC_URL_BACKEND}/planificaciones/ejercicios/${planEjercicio.id}/semanas`,
         {
-          semanas: dosis.map((d, i) => ({ semana: i + 1, dosis: d || null })),
+          semanas: dosis.map((d, i) => ({
+            semana: i + 1,
+            dosis: d || null,
+            notas_profesor: notas[i] || null,
+          })),
         }
       )
       onSaved()
@@ -59,20 +76,27 @@ export function WeekDosisModal({ open, onOpenChange, planEjercicio, onSaved }: W
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
         <div className="space-y-1 mb-2">
           <h2 className="text-base font-semibold">{planEjercicio.ejercicios.nombre}</h2>
-          <p className="text-xs text-muted-foreground">Configurá la dosis para cada semana</p>
+          <p className="text-xs text-muted-foreground">Configurá dosis y notas para cada semana</p>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid gap-4">
           {Array.from({ length: 6 }, (_, i) => (
-            <div key={i} className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Semana {i + 1}</Label>
+            <div key={i} className="space-y-2 rounded-lg border p-3">
+              <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Semana {i + 1}</Label>
               <Input
-                placeholder="ej: 3 x 6-8 rpe 7"
+                placeholder="Dosis: ej. 3 x 6-8 rpe 7"
                 value={dosis[i]}
                 onChange={(e) => handleDosisChange(i, e.target.value)}
+              />
+              <Textarea
+                placeholder="Nota del profesor para esta semana (opcional)"
+                value={notas[i]}
+                onChange={(e) => handleNotaChange(i, e.target.value)}
+                rows={2}
+                className="text-sm"
               />
             </div>
           ))}

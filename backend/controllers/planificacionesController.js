@@ -501,6 +501,7 @@ export async function guardarPlanCompleto(req, res) {
             semana: s.semana,
             dosis: s.dosis || null,
             rpe: s.rpe ?? null,
+            notas_profesor: s.notas_profesor ?? null,
           },
           { onConflict: "planificacion_ejercicio_id,semana" }
         )
@@ -565,6 +566,7 @@ export async function addEjerciciosADiaBulk(req, res) {
         semana: s,
         dosis: found?.dosis ?? null,
         rpe: found?.rpe ?? null,
+        notas_profesor: found?.notas_profesor ?? null,
       });
     }
   });
@@ -673,6 +675,7 @@ export async function saveAll(req, res) {
             semana: s,
             dosis: found?.dosis ?? null,
             rpe: found?.rpe ?? null,
+            notas_profesor: found?.notas_profesor ?? null,
           })
         }
       })
@@ -689,7 +692,7 @@ export async function saveAll(req, res) {
       for (const s of semanas) {
         innerOps.push(
           supabase.from("planificacion_semanas").upsert(
-            { planificacion_ejercicio_id: s.planificacion_ejercicio_id, semana: s.semana, dosis: s.dosis || null, rpe: s.rpe ?? null },
+            { planificacion_ejercicio_id: s.planificacion_ejercicio_id, semana: s.semana, dosis: s.dosis || null, rpe: s.rpe ?? null, notas_profesor: s.notas_profesor ?? null },
             { onConflict: "planificacion_ejercicio_id,semana" }
           )
         )
@@ -791,11 +794,14 @@ export async function bulkUpdateOrden(req, res) {
 
 export async function updateDosis(req, res) {
   const { planEjId, semana } = req.params;
-  const { dosis, rpe } = req.body;
+  const { dosis, rpe, notas_profesor } = req.body;
+
+  const updatePayload = { dosis, rpe: rpe ?? null };
+  if (notas_profesor !== undefined) updatePayload.notas_profesor = notas_profesor;
 
   const { data, error } = await supabase
     .from("planificacion_semanas")
-    .update({ dosis, rpe: rpe ?? null })
+    .update(updatePayload)
     .eq("planificacion_ejercicio_id", planEjId)
     .eq("semana", semana)
     .select()
@@ -805,6 +811,7 @@ export async function updateDosis(req, res) {
     console.error("❌ updateDosis error:", error.message);
     return res.status(500).json({ error: error.message });
   }
+  invalidatePlanes()
   res.json(data);
 }
 
@@ -877,11 +884,12 @@ export async function updateDosisBulk(req, res) {
     return res.status(400).json({ error: "semanas debe ser un array" });
   }
 
-  const rows = semanas.map(({ semana, dosis, rpe }) => ({
+  const rows = semanas.map(({ semana, dosis, rpe, notas_profesor }) => ({
     planificacion_ejercicio_id: Number(planEjId),
     semana,
     dosis: dosis ?? null,
     rpe: rpe ?? null,
+    notas_profesor: notas_profesor ?? null,
   }))
 
   const { error } = await supabase
@@ -889,6 +897,7 @@ export async function updateDosisBulk(req, res) {
     .upsert(rows, { onConflict: "planificacion_ejercicio_id,semana" })
 
   if (error) return res.status(500).json({ error: error.message });
+  invalidatePlanes()
 
   res.json({ ok: true });
 }
