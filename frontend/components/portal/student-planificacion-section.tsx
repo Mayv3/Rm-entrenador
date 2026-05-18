@@ -1196,15 +1196,21 @@ export function StudentPlanificacionSection({
       ) : (
         <>
           {/* Estado de salud */}
+          {!excelente && (
           <div className="space-y-2">
-            <div className="grid grid-cols-5 gap-1.5">
+            <div className={`grid gap-1.5 ${(durmioMal || fatiga || desmotivacion || dolor) ? "grid-cols-4" : "grid-cols-5"}`}>
               {([
                 { field: "excelente" as const, label: "Excelente", Icon: CheckCircle2, active: excelente, on: "bg-green-500/20 border-green-500/40 text-green-300" },
                 { field: "durmioMal" as const, label: "Sueño", Icon: Moon, active: durmioMal, on: "bg-indigo-500/20 border-indigo-500/40 text-indigo-300" },
                 { field: "fatiga" as const, label: "Fatiga", Icon: BatteryWarning, active: fatiga, on: "bg-amber-500/20 border-amber-500/40 text-amber-300" },
                 { field: "desmotivacion" as const, label: "Ánimo", Icon: Frown, active: desmotivacion, on: "bg-cyan-500/20 border-cyan-500/40 text-cyan-300" },
                 { field: "dolor" as const, label: "Dolor", Icon: Activity, active: dolor, on: "bg-rose-500/20 border-rose-500/40 text-rose-300" },
-              ]).map(({ field, label, Icon, active, on }) => (
+              ])
+                .filter(({ field }) => {
+                  if (durmioMal || fatiga || desmotivacion || dolor) return field !== "excelente"
+                  return true
+                })
+                .map(({ field, label, Icon, active, on }) => (
                 <button
                   key={field}
                   onClick={() => handleToggleEstado(field)}
@@ -1237,6 +1243,7 @@ export function StudentPlanificacionSection({
               </div>
             )}
           </div>
+          )}
 
           {/* Movilidad */}
           {(hojaActiva?.movilidad ?? []).length > 0 && (() => {
