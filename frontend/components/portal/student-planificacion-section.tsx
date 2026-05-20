@@ -14,6 +14,7 @@ import {
   ChevronRight,
   Dumbbell,
   CalendarDays,
+  Repeat,
   CheckCircle2,
   Flame,
   Weight,
@@ -1538,7 +1539,7 @@ export function StudentPlanificacionSection({
                   <div className="px-4 pt-2 pb-1 grid grid-cols-2 gap-2">
                     {effectiveDosis ? (
                       <span className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-100 dark:bg-blue-500/15 border border-blue-400 dark:border-blue-500/30 px-4 py-3 text-base font-extrabold text-blue-700 dark:text-blue-300">
-                        <CalendarDays className="h-5 w-5" />
+                        <Repeat className="h-5 w-5" />
                         {effectiveDosis}
                       </span>
                     ) : <div />}
