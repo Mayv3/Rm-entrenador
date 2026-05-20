@@ -149,6 +149,8 @@ export function StudentPlanificacionSection({
   const saveStatusResetRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pendingResaveRef = useRef(false)
   const savingEjIdsRef = useRef<number[]>([])
+  const silentSaveRef = useRef(false)
+  const currentSaveIsSilentRef = useRef(false)
   const onRequestCloseRef = useRef(onRequestClose)
   onRequestCloseRef.current = onRequestClose
   const refetchResumenRef = useRef<(() => void) | null>(null)
@@ -675,6 +677,7 @@ export function StudentPlanificacionSection({
   useEffect(() => {
     function handleBeforeUnload(e: BeforeUnloadEvent) {
       if (isDirty.current) {
+        silentSaveRef.current = true
         saveMutateRef.current()
         e.preventDefault()
         e.returnValue = ""
@@ -682,14 +685,21 @@ export function StudentPlanificacionSection({
     }
     function handleVisibility() {
       if (document.hidden && isDirty.current && !saveIsPendingRef.current) {
+        silentSaveRef.current = true
         saveMutateRef.current()
       }
     }
     function handlePageHide() {
-      if (isDirty.current && !saveIsPendingRef.current) saveMutateRef.current()
+      if (isDirty.current && !saveIsPendingRef.current) {
+        silentSaveRef.current = true
+        saveMutateRef.current()
+      }
     }
     const autosaveInterval = setInterval(() => {
-      if (isDirty.current && !saveIsPendingRef.current) saveMutateRef.current()
+      if (isDirty.current && !saveIsPendingRef.current) {
+        silentSaveRef.current = true
+        saveMutateRef.current()
+      }
     }, 8000)
     window.addEventListener("beforeunload", handleBeforeUnload)
     document.addEventListener("visibilitychange", handleVisibility)
@@ -711,6 +721,7 @@ export function StudentPlanificacionSection({
 
     function handlePopState(e: PopStateEvent) {
       if (isDirty.current) {
+        silentSaveRef.current = true
         saveMutateRef.current()
       }
       if (historyDepthRef) historyDepthRef.current = Math.max(0, historyDepthRef.current - 1)
@@ -768,6 +779,9 @@ export function StudentPlanificacionSection({
   const saveMutation = useMutation({
     onMutate: () => {
       savingEjIdsRef.current = [...dirtyEjIds.current]
+      currentSaveIsSilentRef.current = silentSaveRef.current
+      silentSaveRef.current = false
+      if (currentSaveIsSilentRef.current) return
       setSaveStatus("saving", savingEjIdsRef.current)
     },
     mutationFn: async () => {
@@ -863,9 +877,11 @@ export function StudentPlanificacionSection({
       clearFormLocal()
       setSavedSuccess(true)
       setSaveMessage("")
-      setSaveStatus("saved", savingEjIdsRef.current)
-      if (saveStatusResetRef.current) clearTimeout(saveStatusResetRef.current)
-      saveStatusResetRef.current = setTimeout(() => setSaveStatus("idle"), 2000)
+      if (!currentSaveIsSilentRef.current) {
+        setSaveStatus("saved", savingEjIdsRef.current)
+        if (saveStatusResetRef.current) clearTimeout(saveStatusResetRef.current)
+        saveStatusResetRef.current = setTimeout(() => setSaveStatus("idle"), 2000)
+      }
       if (!planificacion || !hojaActiva || !diaSeleccionado || !semanaSeleccionada) return
       justSavedRef.current = true
 
@@ -945,9 +961,11 @@ export function StudentPlanificacionSection({
     },
     onError: () => {
       setSaveMessage("No se pudo guardar")
-      setSaveStatus("error", savingEjIdsRef.current)
-      if (saveStatusResetRef.current) clearTimeout(saveStatusResetRef.current)
-      saveStatusResetRef.current = setTimeout(() => setSaveStatus("idle"), 3000)
+      if (!currentSaveIsSilentRef.current) {
+        setSaveStatus("error", savingEjIdsRef.current)
+        if (saveStatusResetRef.current) clearTimeout(saveStatusResetRef.current)
+        saveStatusResetRef.current = setTimeout(() => setSaveStatus("idle"), 3000)
+      }
     },
   })
 
@@ -973,8 +991,12 @@ export function StudentPlanificacionSection({
     setRegistrosForm(updated)
     persistFormLocal(updated, saltadoEjIds)
 
+    const oldSerie = old.series[serieIdx]
     const thisSerie = newSeries[serieIdx]
     const serieFilled = !!thisSerie.peso_kg && !!thisSerie.repeticiones && !!thisSerie.rpe
+    const serieEmpty = !thisSerie.peso_kg && !thisSerie.repeticiones && !thisSerie.rpe
+    const wasNotEmpty = !!oldSerie.peso_kg || !!oldSerie.repeticiones || !!oldSerie.rpe
+    const shouldSave = serieFilled || (serieEmpty && wasNotEmpty)
 
     const advanceKey = `${planEjId}-${serieIdx}`
     const pending = serieAdvanceDebounceRef.current.get(advanceKey)
@@ -994,7 +1016,9 @@ export function StudentPlanificacionSection({
         }
       }, 700)
       serieAdvanceDebounceRef.current.set(advanceKey, t)
+    }
 
+    if (shouldSave) {
       if (!saveIsPendingRef.current) saveMutateRef.current()
       else pendingResaveRef.current = true
     }
@@ -1025,6 +1049,7 @@ export function StudentPlanificacionSection({
     setEstadoLocalDirty(false)
     isDirty.current = true
     estadoDirty.current = true
+    silentSaveRef.current = true
     saveMutateRef.current()
   }
 
@@ -1035,6 +1060,7 @@ export function StudentPlanificacionSection({
     setEstadoLocalDirty(false)
     isDirty.current = true
     estadoDirty.current = true
+    silentSaveRef.current = true
     saveMutateRef.current()
   }
 
@@ -1062,6 +1088,7 @@ export function StudentPlanificacionSection({
     setRegistrosForm(updatedSkip)
     persistFormLocal(updatedSkip, newSaltados)
     dirtyEjIds.current.add(planEjId)
+    silentSaveRef.current = true
     saveMutateRef.current()
   }
 
