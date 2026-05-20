@@ -5,7 +5,8 @@
       "Bash(xargs grep *)",
       "Bash(grep -E \"\\\\.\\(js|ts\\)$\")",
       "Bash(python3 *)",
-      "Bash(node *)"
+      "Bash(node *)",
+      "Bash(npx playwright *)"
     ]
   },
   "enableAllProjectMcpServers": true,

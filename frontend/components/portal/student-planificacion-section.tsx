@@ -251,6 +251,35 @@ export function StudentPlanificacionSection({
     })
   }
 
+  // Persist window scrollY on day view: covers phone lock / app switch / minimize.
+  // Pairs with restore branch inside the registrosForm-building effect below.
+  useEffect(() => {
+    if (!posStorageKey) return
+    if (typeof window === "undefined") return
+    if ("scrollRestoration" in history) history.scrollRestoration = "manual"
+
+    const scrollYKey = `${posStorageKey}-scrollY`
+    let raf = 0
+    const save = () => {
+      try { sessionStorage.setItem(scrollYKey, String(window.scrollY)) } catch {}
+    }
+    const onScroll = () => {
+      if (raf) return
+      raf = requestAnimationFrame(() => { save(); raf = 0 })
+    }
+    const onHide = () => save()
+
+    window.addEventListener("scroll", onScroll, { passive: true })
+    document.addEventListener("visibilitychange", onHide)
+    window.addEventListener("pagehide", onHide)
+    return () => {
+      window.removeEventListener("scroll", onScroll)
+      document.removeEventListener("visibilitychange", onHide)
+      window.removeEventListener("pagehide", onHide)
+      if (raf) cancelAnimationFrame(raf)
+      if ("scrollRestoration" in history) history.scrollRestoration = "auto"
+    }
+  }, [posStorageKey])
 
   const { data: planData, isLoading: loadingPlan, isError: errorPlan } = useQuery<{ planificacion: PlanificacionPortal | null }>({
     queryKey: queryKeyPlan(studentId),
@@ -259,10 +288,10 @@ export function StudentPlanificacionSection({
       return res.data
     },
     enabled: !!studentId,
-    staleTime: 0,
-    gcTime: 0,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
     refetchOnMount: "always",
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   })
 
   const planificacion = planData?.planificacion ?? null
@@ -326,10 +355,10 @@ export function StudentPlanificacionSection({
       return res.data
     },
     enabled: !!planificacion && !!hojaActiva && !!diaSeleccionado && !!semanaSeleccionada,
-    staleTime: 0,
-    gcTime: 0,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
     refetchOnMount: "always",
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   })
 
   useEffect(() => {
@@ -369,10 +398,10 @@ export function StudentPlanificacionSection({
       return res.data
     },
     enabled: !!planificacion && !!hojaActiva && !!diaSeleccionado && !!semanaAnterior,
-    staleTime: 0,
-    gcTime: 0,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
     refetchOnMount: "always",
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   })
 
   const registrosAnterioresMap = useMemo(
@@ -479,65 +508,111 @@ export function StudentPlanificacionSection({
     setCheckinMostrado(sessionData?.estado_diario != null)
     setEstadoLocalDirty(false)
 
-    // Restore scroll position after phone lock / page reload
+    // Restore scroll position after phone lock / app switch / page reload.
+    // Precedence: exact window.scrollY > saved lastEjId/activeSerieMap > first-incomplete fallback.
     const storageKey = `planPos-${studentId}-${semanaSeleccionada}-${diaSeleccionado?.id}`
     const saved = storageKey ? sessionStorage.getItem(storageKey) : null
+    const savedScrollYRaw = storageKey ? sessionStorage.getItem(`${storageKey}-scrollY`) : null
+    const savedY = savedScrollYRaw !== null ? Number(savedScrollYRaw) : NaN
+    const hasUsefulScrollY = !Number.isNaN(savedY) && savedY > 0
+
+    let savedMap: Record<number, number> | null = null
+    let savedLastEjId: number | null = null
     if (saved) {
       try {
-        const { activeSerieMap: savedMap, lastEjId } = JSON.parse(saved) as {
-          activeSerieMap: Record<number, number>
-          lastEjId: number
+        const parsed = JSON.parse(saved) as { activeSerieMap: Record<number, number>; lastEjId: number }
+        savedMap = parsed.activeSerieMap ?? null
+        savedLastEjId = parsed.lastEjId ?? null
+      } catch {
+        // malformed — ignore
+      }
+    }
+
+    // Compute first-incomplete fallback target (used when no useful saved position)
+    let fallbackEjId: number | null = null
+    let fallbackSerieIdx = 0
+    const hasAnyData = ejerciciosDelDia.some((ej) => {
+      if (saltados.has(ej.id)) return false
+      const row = next[ej.id]
+      return (row?.series ?? []).some((s) => !!s.peso_kg || !!s.repeticiones || !!s.rpe)
+    })
+    if (hasAnyData) {
+      for (const ej of ejerciciosDelDia) {
+        if (saltados.has(ej.id)) continue
+        const series = next[ej.id]?.series ?? []
+        const incompleteIdx = series.findIndex((s) => !s.peso_kg || !s.repeticiones || !s.rpe)
+        if (incompleteIdx !== -1) {
+          fallbackEjId = ej.id
+          fallbackSerieIdx = incompleteIdx
+          break
         }
+      }
+    }
+
+    // Decide what to apply
+    if (hasUsefulScrollY || savedMap) {
+      // Restore prior session UI position
+      if (savedMap) {
         setActiveSerieMap(savedMap)
-        // Store pending serie restores — applied in the scroll ref callback when each element mounts
         const pending: Record<number, number> = {}
         for (const [ejIdStr, serieIdx] of Object.entries(savedMap)) {
           pending[Number(ejIdStr)] = serieIdx
         }
         pendingSerieRestoreRef.current = pending
-        // For the exercise card, try now (may already be in DOM) and again after paint
-        const applyExerciseScroll = () => {
-          if (lastEjId != null) {
-            exerciseCardRefs.current.get(lastEjId)?.scrollIntoView({ behavior: "instant", block: "start" })
+      }
+      const applyScroll = () => {
+        if (hasUsefulScrollY) {
+          window.scrollTo({ top: savedY, behavior: "instant" as ScrollBehavior })
+        } else if (savedLastEjId != null) {
+          exerciseCardRefs.current.get(savedLastEjId)?.scrollIntoView({ behavior: "instant", block: "start" })
+        }
+      }
+      applyScroll()
+      requestAnimationFrame(() => {
+        applyScroll()
+        requestAnimationFrame(applyScroll)
+      })
+    } else if (fallbackEjId !== null) {
+      // Fresh session with backend data → jump to first incomplete
+      const newMap = { [fallbackEjId]: fallbackSerieIdx }
+      setActiveSerieMap(newMap)
+      pendingSerieRestoreRef.current = { [fallbackEjId]: fallbackSerieIdx }
+      const applyScroll = () => {
+        exerciseCardRefs.current.get(fallbackEjId!)?.scrollIntoView({ behavior: "instant", block: "start" })
+        const serieEl = serieScrollRefs.current.get(fallbackEjId!)
+        if (serieEl && serieEl.clientWidth > 0) {
+          serieEl.scrollLeft = fallbackSerieIdx * serieEl.clientWidth
+        }
+      }
+      applyScroll()
+      requestAnimationFrame(() => {
+        applyScroll()
+        requestAnimationFrame(applyScroll)
+      })
+    } else if (hasAnyData) {
+      // Todos completos → último ej no salteado, serie 3 (la última cargada)
+      const lastEj = [...ejerciciosDelDia].reverse().find((ej) => !saltados.has(ej.id))
+      if (lastEj) {
+        const lastSerieIdx = 2
+        setActiveSerieMap({ [lastEj.id]: lastSerieIdx })
+        pendingSerieRestoreRef.current = { [lastEj.id]: lastSerieIdx }
+        const applyScroll = () => {
+          exerciseCardRefs.current.get(lastEj.id)?.scrollIntoView({ behavior: "instant", block: "start" })
+          const serieEl = serieScrollRefs.current.get(lastEj.id)
+          if (serieEl && serieEl.clientWidth > 0) {
+            serieEl.scrollLeft = lastSerieIdx * serieEl.clientWidth
           }
         }
-        applyExerciseScroll()
-        requestAnimationFrame(applyExerciseScroll)
-      } catch {
-        // ignore malformed storage
+        applyScroll()
+        requestAnimationFrame(() => {
+          applyScroll()
+          requestAnimationFrame(applyScroll)
+        })
+      } else {
+        setActiveSerieMap({})
       }
     } else {
       setActiveSerieMap({})
-      // Day already started: navigate to first incomplete series
-      const hasAnyData = ejerciciosDelDia.some((ej) => {
-        if (saltados.has(ej.id)) return false
-        const row = next[ej.id]
-        return (row?.series ?? []).some((s) => !!s.peso_kg || !!s.repeticiones || !!s.rpe)
-      })
-      if (hasAnyData) {
-        let targetEjId: number | null = null
-        let targetSerieIdx = 0
-        for (const ej of ejerciciosDelDia) {
-          if (saltados.has(ej.id)) continue
-          const series = next[ej.id]?.series ?? []
-          const incompleteIdx = series.findIndex((s) => !s.peso_kg || !s.repeticiones || !s.rpe)
-          if (incompleteIdx !== -1) {
-            targetEjId = ej.id
-            targetSerieIdx = incompleteIdx
-            break
-          }
-        }
-        if (targetEjId !== null) {
-          const newMap = { [targetEjId]: targetSerieIdx }
-          setActiveSerieMap(newMap)
-          pendingSerieRestoreRef.current = { [targetEjId]: targetSerieIdx }
-          const applyScroll = () => {
-            exerciseCardRefs.current.get(targetEjId!)?.scrollIntoView({ behavior: "instant", block: "start" })
-          }
-          applyScroll()
-          requestAnimationFrame(applyScroll)
-        }
-      }
     }
   }, [diaSeleccionado, ejerciciosDelDia, sessionData, semanaSeleccionada])
 
@@ -1341,6 +1416,7 @@ export function StudentPlanificacionSection({
             return (
               <div
                 key={ej.id}
+                data-ej-id={ej.id}
                 ref={(el) => { if (el) exerciseCardRefs.current.set(ej.id, el) }}
                 className={`rounded-2xl border transition-all duration-200 ${
                   esSaltado
