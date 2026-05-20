@@ -6,6 +6,7 @@ import axios from "axios"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { CATEGORIA_ROW_STYLE } from "@/types/planificaciones"
+import { setSaveStatus } from "@/lib/save-status"
 import {
   Loader2,
   ChevronLeft,
@@ -144,6 +145,8 @@ export function StudentPlanificacionSection({
   const isDirty = useRef(false)
   const estadoDirty = useRef(false)
   const dirtyEjIds = useRef(new Set<number>())
+  const saveStatusResetRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pendingResaveRef = useRef(false)
   const onRequestCloseRef = useRef(onRequestClose)
   onRequestCloseRef.current = onRequestClose
   const refetchResumenRef = useRef<(() => void) | null>(null)
@@ -694,6 +697,8 @@ export function StudentPlanificacionSection({
       document.removeEventListener("visibilitychange", handleVisibility)
       window.removeEventListener("pagehide", handlePageHide)
       clearInterval(autosaveInterval)
+      if (saveStatusResetRef.current) clearTimeout(saveStatusResetRef.current)
+      setSaveStatus("idle")
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -759,6 +764,9 @@ export function StudentPlanificacionSection({
   }, [sesionesResumen, hojaActiva])
 
   const saveMutation = useMutation({
+    onMutate: () => {
+      setSaveStatus("saving")
+    },
     mutationFn: async () => {
       if (!planificacion || !hojaActiva || !diaSeleccionado || !semanaSeleccionada) return
 
@@ -848,6 +856,9 @@ export function StudentPlanificacionSection({
       clearFormLocal()
       setSavedSuccess(true)
       setSaveMessage("")
+      setSaveStatus("saved")
+      if (saveStatusResetRef.current) clearTimeout(saveStatusResetRef.current)
+      saveStatusResetRef.current = setTimeout(() => setSaveStatus("idle"), 2000)
       if (!planificacion || !hojaActiva || !diaSeleccionado || !semanaSeleccionada) return
       justSavedRef.current = true
 
@@ -919,9 +930,17 @@ export function StudentPlanificacionSection({
 
       queryClient.invalidateQueries({ queryKey: semanaKey })
       queryClient.invalidateQueries({ queryKey: resumenKey })
+
+      if (pendingResaveRef.current && isDirty.current) {
+        pendingResaveRef.current = false
+        saveMutateRef.current()
+      }
     },
     onError: () => {
       setSaveMessage("No se pudo guardar")
+      setSaveStatus("error")
+      if (saveStatusResetRef.current) clearTimeout(saveStatusResetRef.current)
+      saveStatusResetRef.current = setTimeout(() => setSaveStatus("idle"), 3000)
     },
   })
 
@@ -970,6 +989,7 @@ export function StudentPlanificacionSection({
       serieAdvanceDebounceRef.current.set(advanceKey, t)
 
       if (!saveIsPendingRef.current) saveMutateRef.current()
+      else pendingResaveRef.current = true
     }
   }
 

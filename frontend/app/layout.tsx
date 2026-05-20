@@ -10,8 +10,8 @@ export const metadata: Metadata = {
   title: "RM ENTRENADOR",
   description: "Plataforma de entrenamiento y seguimiento de alumnos.",
   icons: {
-    icon: "/favicon.png",
-    apple: "/favicon.png",
+    icon: "/icon-192.png",
+    apple: "/icon-512.png",
   },
   manifest: "/manifest.json",
   appleWebApp: {

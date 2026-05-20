@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button"
 import { FileText, LogOut, MessageSquare, ArrowLeft, Loader2, Download, Eye, TrendingUp, GitCompareArrows, Salad, Dumbbell, ArrowRight, X } from "lucide-react"
 import { ModeToggle } from "@/components/mode-toggle"
 import { StudentPlanificacionSection } from "@/components/portal/student-planificacion-section"
+import { SaveStatusIndicator } from "@/components/portal/save-status-indicator"
 import { supabase } from "@/lib/supabase-client"
 import { determineSubscriptionStatus, formatDate, getStatusColor } from "@/lib/payment-utils"
 import { usePlanes, Plan } from "@/hooks/use-planes"
@@ -611,6 +612,7 @@ export default function PortalPage() {
           <div className="w-full max-w-md bg-background dark:bg-[#0a0a0a] h-full flex flex-col animate-slide-in-right shadow-2xl border-l border-border dark:border-white/[0.06]">
             {/* Header */}
             <div className="border-b border-border dark:border-white/[0.06] bg-background/80 dark:bg-background dark:bg-[#0a0a0a]/80 backdrop-blur-xl px-4 py-3.5 flex items-center justify-end gap-2 flex-shrink-0">
+              <SaveStatusIndicator />
               <ModeToggle />
               <button
                 onClick={() => closeMiPlan()}
