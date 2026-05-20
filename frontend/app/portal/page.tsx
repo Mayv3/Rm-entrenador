@@ -611,15 +611,17 @@ export default function PortalPage() {
           />
           <div className="w-full max-w-md bg-background dark:bg-[#0a0a0a] h-full flex flex-col animate-slide-in-right shadow-2xl border-l border-border dark:border-white/[0.06]">
             {/* Header */}
-            <div className="border-b border-border dark:border-white/[0.06] bg-background/80 dark:bg-background dark:bg-[#0a0a0a]/80 backdrop-blur-xl px-4 py-3.5 flex items-center justify-end gap-2 flex-shrink-0">
+            <div className="border-b border-border dark:border-white/[0.06] bg-background/80 dark:bg-background dark:bg-[#0a0a0a]/80 backdrop-blur-xl px-4 py-3.5 flex items-center justify-between gap-2 flex-shrink-0">
               <SaveStatusIndicator />
-              <ModeToggle />
+              <div className="flex items-center gap-2 ml-auto">
+                <ModeToggle />
               <button
                 onClick={() => closeMiPlan()}
                 className="h-8 w-8 rounded-xl bg-muted dark:bg-white/[0.05] hover:bg-muted dark:bg-white/[0.08] flex items-center justify-center transition-colors"
               >
                 <X className="h-4 w-4 text-muted-foreground dark:text-zinc-400" />
               </button>
+              </div>
             </div>
             {/* Content */}
             <div className="flex-1 overflow-y-auto px-4 py-6">

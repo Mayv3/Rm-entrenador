@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { CATEGORIA_ROW_STYLE } from "@/types/planificaciones"
 import { setSaveStatus } from "@/lib/save-status"
+import { CardSaveBadge } from "@/components/portal/card-save-badge"
 import {
   Loader2,
   ChevronLeft,
@@ -147,6 +148,7 @@ export function StudentPlanificacionSection({
   const dirtyEjIds = useRef(new Set<number>())
   const saveStatusResetRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pendingResaveRef = useRef(false)
+  const savingEjIdsRef = useRef<number[]>([])
   const onRequestCloseRef = useRef(onRequestClose)
   onRequestCloseRef.current = onRequestClose
   const refetchResumenRef = useRef<(() => void) | null>(null)
@@ -765,7 +767,8 @@ export function StudentPlanificacionSection({
 
   const saveMutation = useMutation({
     onMutate: () => {
-      setSaveStatus("saving")
+      savingEjIdsRef.current = [...dirtyEjIds.current]
+      setSaveStatus("saving", savingEjIdsRef.current)
     },
     mutationFn: async () => {
       if (!planificacion || !hojaActiva || !diaSeleccionado || !semanaSeleccionada) return
@@ -799,17 +802,21 @@ export function StudentPlanificacionSection({
         const hasAnyData = row.notas !== "" || serieCompleta
 
         if (hasAnyData) {
+          // Nunca persistir valores individuales: solo series con los 3 valores (peso+reps+rpe).
+          // Series parciales se mandan como null/null/null.
+          const cleanSeries = row.series.map((s) => {
+            const complete = !!s.peso_kg && !!s.repeticiones && !!s.rpe
+            return complete
+              ? { peso_kg: Number(s.peso_kg), repeticiones: Number(s.repeticiones), rpe: Number(s.rpe) }
+              : { peso_kg: null, repeticiones: null, rpe: null }
+          })
           registros.push({
             planificacion_ejercicio_id: ej.id,
-            peso_kg: row.series[0].peso_kg,
-            repeticiones: row.series[0].repeticiones,
-            rpe: row.series[0].rpe,
+            peso_kg: cleanSeries[0].peso_kg,
+            repeticiones: cleanSeries[0].repeticiones,
+            rpe: cleanSeries[0].rpe,
             notas: row.notas,
-            series: row.series.map((s) => ({
-              peso_kg: s.peso_kg === "" ? null : Number(s.peso_kg),
-              repeticiones: s.repeticiones === "" ? null : Number(s.repeticiones),
-              rpe: s.rpe === "" ? null : Number(s.rpe),
-            })),
+            series: cleanSeries,
           })
         } else {
           const sesionKey = queryKeySesion(planificacion.id, studentId, hojaActiva.id, diaSeleccionado.id, semanaSeleccionada)
@@ -856,7 +863,7 @@ export function StudentPlanificacionSection({
       clearFormLocal()
       setSavedSuccess(true)
       setSaveMessage("")
-      setSaveStatus("saved")
+      setSaveStatus("saved", savingEjIdsRef.current)
       if (saveStatusResetRef.current) clearTimeout(saveStatusResetRef.current)
       saveStatusResetRef.current = setTimeout(() => setSaveStatus("idle"), 2000)
       if (!planificacion || !hojaActiva || !diaSeleccionado || !semanaSeleccionada) return
@@ -938,7 +945,7 @@ export function StudentPlanificacionSection({
     },
     onError: () => {
       setSaveMessage("No se pudo guardar")
-      setSaveStatus("error")
+      setSaveStatus("error", savingEjIdsRef.current)
       if (saveStatusResetRef.current) clearTimeout(saveStatusResetRef.current)
       saveStatusResetRef.current = setTimeout(() => setSaveStatus("idle"), 3000)
     },
@@ -1468,6 +1475,7 @@ export function StudentPlanificacionSection({
                       <Play className="h-3 w-3" fill="currentColor" />
                     </button>
                   )}
+                  <CardSaveBadge ejId={ej.id} />
                   {isFilled && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-green-500/10 border border-green-500/20 px-2 py-0.5 text-[10px] font-semibold text-green-400 flex-shrink-0">
                       <CheckCircle2 className="h-2.5 w-2.5" />
@@ -1687,37 +1695,6 @@ export function StudentPlanificacionSection({
       )}
         </>
       )}
-
-      {/* Floating save status */}
-      <div className="fixed bottom-6 right-6 z-50 pointer-events-none">
-        <div className={`rounded-full flex items-center justify-center transition-all duration-300 shadow-lg ${
-          saveMutation.isPending
-            ? "h-14 w-14 bg-muted dark:bg-zinc-800 border border-border dark:border-white/[0.1]"
-            : savedSuccess
-            ? "h-14 w-14 bg-green-500/20 border border-green-500/30"
-            : saveMessage
-            ? "h-14 w-14 bg-red-500/20 border border-red-500/30"
-            : isDirty.current
-            ? "h-11 w-11 bg-muted/80 dark:bg-muted dark:bg-zinc-800/80 border border-border dark:border-white/[0.08] opacity-70"
-            : allCompleted
-            ? "h-11 w-11 bg-green-500/10 border border-green-500/20 opacity-60"
-            : "h-0 w-0 opacity-0"
-        }`}>
-          {saveMutation.isPending ? (
-            <Loader2 className="h-5 w-5 animate-spin text-foreground/80 dark:text-foreground dark:text-white/80" />
-          ) : savedSuccess && allCompleted ? (
-            <CheckCircle2 className="h-5 w-5 text-green-400" />
-          ) : savedSuccess ? (
-            <CheckCircle2 className="h-5 w-5 text-green-400 animate-in zoom-in" />
-          ) : saveMessage ? (
-            <X className="h-5 w-5 text-red-400" />
-          ) : isDirty.current ? (
-            <Loader2 className="h-4 w-4 animate-spin text-foreground/30 dark:text-foreground dark:text-white/30" />
-          ) : allCompleted ? (
-            <CheckCircle2 className="h-4 w-4 text-green-400/60" />
-          ) : null}
-        </div>
-      </div>
 
       {/* Video modal */}
       {videoModal && (

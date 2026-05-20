@@ -4,7 +4,7 @@ import { useSaveStatus } from "@/lib/save-status"
 import { CheckCircle2, Loader2, AlertCircle } from "lucide-react"
 
 export function SaveStatusIndicator() {
-  const status = useSaveStatus()
+  const { status } = useSaveStatus()
   if (status === "idle") return null
 
   const cfg = {
