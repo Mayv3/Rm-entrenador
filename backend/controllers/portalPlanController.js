@@ -306,7 +306,7 @@ export async function upsertPortalSesion(req, res) {
           planificacion_id: planId,
           sesion_id: sesion.id,
         },
-        { onConflict: "alumno_id,fecha", ignoreDuplicates: true }
+        { onConflict: "alumno_id,sesion_id" }
       );
 
     if (asistenciaError) console.error("[DB] Error asistencia:", asistenciaError.message);

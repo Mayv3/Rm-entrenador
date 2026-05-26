@@ -85,7 +85,12 @@ export function PlanCalendarioDialog({ open, onOpenChange, planId, alumnoNombre,
   }, [data])
 
   const diasAsistidos = useMemo(
-    () => (data ?? []).map((a) => parseLocalDate(a.fecha)),
+    () => (data ?? []).filter((a) => a.registros.length > 0).map((a) => parseLocalDate(a.fecha)),
+    [data]
+  )
+
+  const diasSoloSalud = useMemo(
+    () => (data ?? []).filter((a) => a.registros.length === 0).map((a) => parseLocalDate(a.fecha)),
     [data]
   )
 
@@ -133,9 +138,10 @@ export function PlanCalendarioDialog({ open, onOpenChange, planId, alumnoNombre,
                   locale={es}
                   selected={selected}
                   onSelect={setSelected}
-                  modifiers={{ asistio: diasAsistidos }}
+                  modifiers={{ asistio: diasAsistidos, soloSalud: diasSoloSalud }}
                   modifiersClassNames={{
-                    asistio: "bg-[var(--primary-color)]/20 text-[var(--primary-color)] font-bold rounded-md",
+                    asistio: "bg-green-500/30 text-green-700 dark:bg-green-500/40 dark:text-green-300 font-bold rounded-md",
+                    soloSalud: "bg-amber-400/40 text-amber-700 dark:bg-amber-400/60 dark:text-amber-200 font-bold rounded-md",
                   }}
                   classNames={{
                     months: "flex flex-col",

@@ -6,7 +6,9 @@
       "Bash(grep -E \"\\\\.\\(js|ts\\)$\")",
       "Bash(python3 *)",
       "Bash(node *)",
-      "Bash(npx playwright *)"
+      "Bash(npx playwright *)",
+      "mcp__claude_ai_Supabase__list_projects",
+      "mcp__claude_ai_Supabase__list_tables"
     ]
   },
   "enableAllProjectMcpServers": true,
