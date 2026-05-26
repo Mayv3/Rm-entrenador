@@ -50,6 +50,7 @@ interface Props {
   planId: number
   alumnoNombre?: string | null
   alumnoId: number | null
+  calendarOnly?: boolean
 }
 
 function parseLocalDate(yyyyMmDd: string) {
@@ -63,7 +64,7 @@ function fmtFecha(yyyyMmDd: string) {
   })
 }
 
-export function PlanCalendarioDialog({ open, onOpenChange, planId, alumnoNombre, alumnoId }: Props) {
+export function PlanCalendarioDialog({ open, onOpenChange, planId, alumnoNombre, alumnoId, calendarOnly = false }: Props) {
   const [data, setData] = useState<Asistencia[] | null>(null)
   const [loading, setLoading] = useState(false)
   const [selected, setSelected] = useState<Date | undefined>(undefined)
@@ -114,7 +115,7 @@ export function PlanCalendarioDialog({ open, onOpenChange, planId, alumnoNombre,
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl w-[95vw] flex flex-col p-0 max-h-none h-auto overflow-visible">
+      <DialogContent className={`${calendarOnly ? "max-w-md w-[95vw]" : "max-w-6xl w-[95vw]"} flex flex-col p-0 max-h-none h-auto overflow-visible`}>
         <DialogHeader className="px-6 pt-5 pb-4 border-b shrink-0">
           <DialogTitle className="text-base flex items-center gap-2">
             <CalendarIcon className="h-4 w-4 text-[var(--primary-color)]" />
@@ -131,7 +132,7 @@ export function PlanCalendarioDialog({ open, onOpenChange, planId, alumnoNombre,
           {loading ? (
             <div className="flex items-center justify-center py-20"><Loader /></div>
           ) : (
-            <div className="grid md:grid-cols-[360px,1fr] gap-8 items-center">
+            <div className={calendarOnly ? "flex justify-center" : "grid md:grid-cols-[360px,1fr] gap-8 items-center"}>
               <div className="flex justify-center items-center h-full">
                 <Calendar
                   mode="single"
@@ -159,6 +160,7 @@ export function PlanCalendarioDialog({ open, onOpenChange, planId, alumnoNombre,
                 />
               </div>
 
+              {!calendarOnly && (
               <div className="min-w-0">
                 {!selected ? (
                   <p className="text-sm text-muted-foreground text-center py-10">
@@ -172,6 +174,7 @@ export function PlanCalendarioDialog({ open, onOpenChange, planId, alumnoNombre,
                   <DetalleAsistencia a={selectedAsistencia} />
                 )}
               </div>
+              )}
             </div>
           )}
         </div>

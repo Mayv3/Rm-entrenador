@@ -130,6 +130,7 @@ export default function MiPlanAppPage() {
           planId={planId}
           alumnoNombre={student.nombre}
           alumnoId={student.id}
+          calendarOnly
         />
       )}
     </div>

@@ -653,6 +653,7 @@ export default function PortalPage() {
                 planId={appPlanResp.planificacion.id}
                 alumnoNombre={student.nombre}
                 alumnoId={student.id}
+                calendarOnly
               />
             )}
           </div>
