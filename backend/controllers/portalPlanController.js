@@ -73,9 +73,23 @@ async function getPlanificacionCompleta(planId) {
 
   const movilidad = movilidadData ?? [];
 
+  let videoByNombre = new Map();
+  if (movilidad.length > 0) {
+    const nombres = [...new Set(movilidad.map((m) => m.nombre).filter(Boolean))];
+    if (nombres.length > 0) {
+      const { data: movEj } = await supabase
+        .from("ejercicios_movilidad")
+        .select("nombre, video_url")
+        .in("nombre", nombres);
+      videoByNombre = new Map((movEj ?? []).map((e) => [e.nombre, e.video_url]));
+    }
+  }
+
   const hojasCompletas = hojas.map((hoja) => ({
     ...hoja,
-    movilidad: movilidad.filter((m) => m.hoja_id === hoja.id),
+    movilidad: movilidad
+      .filter((m) => m.hoja_id === hoja.id)
+      .map((m) => ({ ...m, video_url: videoByNombre.get(m.nombre) ?? null })),
     dias: dias
       .filter((d) => d.hoja_id === hoja.id)
       .map((dia) => ({

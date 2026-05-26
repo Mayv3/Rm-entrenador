@@ -64,6 +64,7 @@ interface MovilidadItem {
   id: number
   nombre: string
   imagen_url: string | null
+  video_url: string | null
   orden: number
 }
 
@@ -1402,17 +1403,30 @@ export function StudentPlanificacionSection({
                 >
                   {movilidad.map((item, i) => (
                     <div key={item.id} className="snap-start flex-shrink-0 w-full px-4">
-                      {item.imagen_url ? (
-                        <img
-                          src={item.imagen_url}
-                          alt={item.nombre}
-                          className="w-full aspect-video rounded-xl object-cover bg-muted dark:bg-zinc-800"
-                        />
-                      ) : (
-                        <div className="w-full aspect-video rounded-xl bg-amber-500/10 flex items-center justify-center">
-                          <span className="text-5xl font-black text-amber-400">{i + 1}</span>
-                        </div>
-                      )}
+                      <div className="relative w-full">
+                        {item.imagen_url ? (
+                          <img
+                            src={item.imagen_url}
+                            alt={item.nombre}
+                            className="w-full aspect-video rounded-xl object-cover bg-muted dark:bg-zinc-800"
+                          />
+                        ) : (
+                          <div className="w-full aspect-video rounded-xl bg-amber-500/10 flex items-center justify-center">
+                            <span className="text-5xl font-black text-amber-400">{i + 1}</span>
+                          </div>
+                        )}
+                        {item.video_url && (
+                          <button
+                            onClick={() => setVideoModal({ nombre: item.nombre, url: item.video_url! })}
+                            className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/30 hover:bg-black/50 transition-colors group"
+                            aria-label={`Ver video de ${item.nombre}`}
+                          >
+                            <span className="h-12 w-12 rounded-full bg-amber-400 text-black flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                              <Play className="h-5 w-5" fill="currentColor" />
+                            </span>
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
