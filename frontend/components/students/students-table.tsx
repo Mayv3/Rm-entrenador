@@ -2,12 +2,13 @@
 
 import React, { useEffect, useMemo, useState } from "react"
 import { useMediaQuery } from "@mui/material"
-import { AlertTriangle, Calendar, ClipboardList, Edit, FileText, MessageSquare, MoreHorizontal, MoreVertical, Plus, Search, StickyNote, Trash2, TrendingUp } from "lucide-react"
+import { AlertTriangle, Calendar, ClipboardList, Edit, FileText, Loader2, MessageSquare, MoreHorizontal, MoreVertical, Plus, Search, StickyNote, Trash2, TrendingUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AddStudentDialog } from "./add-student-dialog"
 import { EditStudentDialog } from "./edit-student-dialog"
 import { DeleteStudentDialog } from "./delete-student-dialog"
@@ -18,7 +19,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { GridColDef } from "@mui/x-data-grid"
 import axios from "axios"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { queryKeys } from "@/lib/query-keys"
 import { usePlanes, getPlanColor } from "@/hooks/use-planes"
 import type { Planificacion } from "@/types/planificaciones"
@@ -115,24 +116,74 @@ function StudentProgresoDialog({
   open: boolean
   onOpenChange: (v: boolean) => void
 }) {
+  const queryClient = useQueryClient()
   const [plan, setPlan] = useState<Planificacion | null>(null)
+  const [planId, setPlanId] = useState<number | null>(null)
   const [progresoData, setProgresoData] = useState<{ sesiones: any[]; registros: any[] } | null>(null)
   const [loading, setLoading] = useState(false)
   const [estadoPopover, setEstadoPopover] = useState<string | null>(null)
   const [comentarioModal, setComentarioModal] = useState<{ ejercicio: string; comentario: string } | null>(null)
+  const [prescripcionEdits, setPrescripcionEdits] = useState<Record<string, { dosis: string; rpe: string; notas: string }>>({})
+  const [savingKey, setSavingKey] = useState<string | null>(null)
+
+  const prescripcionKey = (ejId: number, semana: number) => `${ejId}-${semana}`
+
+  const getPrescripcion = (ej: any, semana: number) => {
+    const key = prescripcionKey(ej.id, semana)
+    if (prescripcionEdits[key]) return prescripcionEdits[key]
+    const sem = ej.semanas?.find((sw: any) => sw.semana === semana)
+    return { dosis: sem?.dosis ?? "", rpe: sem?.rpe != null ? String(sem.rpe) : "", notas: sem?.notas_profesor ?? "" }
+  }
+
+  const setPrescripcionField = (ejId: number, semana: number, field: "dosis" | "rpe" | "notas", value: string, current: { dosis: string; rpe: string; notas: string }) => {
+    const key = prescripcionKey(ejId, semana)
+    setPrescripcionEdits((prev) => {
+      const base = prev[key] ?? current
+      return { ...prev, [key]: { ...base, [field]: value } }
+    })
+  }
+
+  const savePrescripcion = async (ejId: number, semana: number) => {
+    const key = prescripcionKey(ejId, semana)
+    const edit = prescripcionEdits[key]
+    if (!edit || !planId) return
+    setSavingKey(key)
+    try {
+      await axios.put(
+        `${process.env.NEXT_PUBLIC_URL_BACKEND}/planificaciones/ejercicios/${ejId}/semanas/${semana}`,
+        { dosis: edit.dosis || null, rpe: edit.rpe ? Number(edit.rpe) : null, notas_profesor: edit.notas || null }
+      )
+      const planRes = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/planificaciones/${planId}`)
+      setPlan(planRes.data)
+      queryClient.invalidateQueries({ queryKey: queryKeys.planificacionById(planId) })
+      setPrescripcionEdits((prev) => {
+        const next = { ...prev }
+        delete next[key]
+        return next
+      })
+    } catch (err) {
+      console.error("Error guardando prescripción:", err)
+    } finally {
+      setSavingKey(null)
+    }
+  }
 
   useEffect(() => {
     if (!open || !student) return
     setPlan(null)
+    setPlanId(null)
     setProgresoData(null)
+    setPrescripcionEdits({})
     setLoading(true)
     axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/planificaciones/alumno/${student.id}`)
       .then(async (res) => {
         const plans = res.data
         if (!plans.length) { setLoading(false); return }
+        const pid = plans[0].id
+        setPlanId(pid)
         const [planRes, progresoRes] = await Promise.all([
-          axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/planificaciones/${plans[0].id}`),
-          axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/planificaciones/${plans[0].id}/progreso`),
+          axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/planificaciones/${pid}`),
+          axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/planificaciones/${pid}/progreso`),
         ])
         setPlan(planRes.data)
         setProgresoData(progresoRes.data)
@@ -162,7 +213,7 @@ function StudentProgresoDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl w-full flex flex-col p-0 max-h-[88vh]">
+      <DialogContent className="max-w-[98vw] md:max-w-[1500px] w-full flex flex-col p-0 max-h-[92vh]">
         <DialogHeader className="px-6 pt-5 pb-4 border-b shrink-0">
           <DialogTitle className="text-base flex items-center gap-2">
             <TrendingUp className="h-4 w-4 text-emerald-500" />
@@ -171,7 +222,7 @@ function StudentProgresoDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="overflow-y-auto flex-1 px-6 py-5 space-y-8">
+        <div className="overflow-y-auto flex-1 px-2 sm:px-6 py-5 space-y-8">
           {loading ? (
             <div className="flex items-center justify-center py-20"><Loader /></div>
           ) : !plan ? (
@@ -191,7 +242,7 @@ function StudentProgresoDialog({
                     </span>
                   </h3>
                   <div className="overflow-x-auto rounded-xl border bg-card">
-                    <table className="w-full text-sm">
+                    <table className="w-full min-w-[1100px] text-sm">
                       <thead>
                         <tr className="border-b bg-muted/40">
                           <th className="px-4 py-2.5 text-left font-medium text-muted-foreground w-14">#</th>
@@ -199,16 +250,16 @@ function StudentProgresoDialog({
                           <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Cat.</th>
                           {SEMANAS_PREVIEW.map((s) => {
                             const sesion = sesionMap.get(`${dia.id}-${s}`)
-                            const flags = [
+                            const flags: { key: string; label: string; color: string; bg: string }[] = [
                               { key: "durmio_mal", label: "Dormí mal", color: "text-indigo-400", bg: "bg-indigo-500/15" },
                               { key: "fatiga", label: "Fatiga", color: "text-amber-400", bg: "bg-amber-500/15" },
                               { key: "desmotivacion", label: "Motivación", color: "text-cyan-400", bg: "bg-cyan-500/15" },
                               { key: "dolor", label: "Dolor", color: "text-rose-400", bg: "bg-rose-500/15" },
                             ]
-                            const active = sesion ? flags.filter((f) => !!sesion[f.key as keyof typeof sesion]) : []
+                            const active = sesion ? flags.filter((f) => !!sesion[f.key]) : []
                             const popoverKey = `${dia.id}-${s}`
                             return (
-                              <th key={s} className={`px-0 py-2.5 text-center font-semibold w-[144px] relative ${s > 1 ? "border-l-2 border-border" : ""}`}>
+                              <th key={s} className={`px-0 py-2.5 text-center font-semibold w-[200px] relative ${s > 1 ? "border-l-2 border-border" : ""}`}>
                                 <div className="flex items-center justify-center gap-1 mb-1">
                                   <span>S{s}</span>
                                   {sesion && (
@@ -250,7 +301,7 @@ function StudentProgresoDialog({
                           return (
                             <tr key={ej.id} style={CATEGORIA_ROW_STYLE[categoria]} className="hover:brightness-95 transition-colors">
                               <td className="px-4 py-3 text-muted-foreground text-xs">{idx + 1}</td>
-                              <td className="px-4 py-3 font-medium">{ej.ejercicios.nombre}</td>
+                              <td className="px-4 py-3 font-medium text-xs">{ej.ejercicios.nombre}</td>
                               <td className="px-4 py-3">
                                 <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${CATEGORIA_COLORS[categoria] ?? ""}`}>
                                   {categoria}
@@ -260,37 +311,104 @@ function StudentProgresoDialog({
                                 const sesion = sesionMap.get(`${dia.id}-${semana}`)
                                 const registro = sesion ? registroMap.get(`${sesion.id}-${ej.id}`) : null
                                 const borderSemana = semana > 1 ? "border-l-2 border-border" : ""
+                                const presc = getPrescripcion(ej, semana)
+                                const presKey = prescripcionKey(ej.id, semana)
+                                const isDirty = !!prescripcionEdits[presKey]
+                                const isSaving = savingKey === presKey
+
+                                const prescripcionStrip = (
+                                  <div className="px-1 pt-1 pb-1 border-b border-border/40 bg-muted/30 flex flex-col gap-1">
+                                    <div className="flex gap-1">
+                                      <Input
+                                        value={presc.dosis}
+                                        onChange={(e) => setPrescripcionField(ej.id, semana, "dosis", e.target.value, presc)}
+                                        placeholder="Dosis"
+                                        className="h-7 text-[11px] text-center px-1 flex-1 min-w-0"
+                                      />
+                                      <Select
+                                        value={presc.rpe || "none"}
+                                        onValueChange={(v) => {
+                                          const newVal = v === "none" ? "" : v
+                                          setPrescripcionField(ej.id, semana, "rpe", newVal, presc)
+                                        }}
+                                      >
+                                        <SelectTrigger className="h-7 w-12 text-[11px] px-1 shrink-0">
+                                          <SelectValue placeholder="-" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="none"><span className="text-muted-foreground">—</span></SelectItem>
+                                          {[6, 7, 8, 9, 10].map((n) => (
+                                            <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                    <Input
+                                      value={presc.notas}
+                                      onChange={(e) => setPrescripcionField(ej.id, semana, "notas", e.target.value, presc)}
+                                      placeholder={`Nota S${semana}`}
+                                      className="h-7 text-[11px] px-1 placeholder:text-muted-foreground/40 bg-background/60 border-dashed"
+                                    />
+                                    {isDirty && (
+                                      <Button
+                                        size="sm"
+                                        onClick={() => savePrescripcion(ej.id, semana)}
+                                        disabled={isSaving}
+                                        className="h-7 text-[11px] px-2 bg-[var(--primary-color)] hover:bg-[var(--primary-color)]/90 text-white"
+                                      >
+                                        {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : "Guardar"}
+                                      </Button>
+                                    )}
+                                  </div>
+                                )
+
                                 if (!registro) {
                                   return (
-                                    <td key={semana} className={`px-3 py-3 text-center ${borderSemana}`}>
-                                      <span className="text-muted-foreground/25 text-xs">—</span>
+                                    <td key={semana} className={`p-0 align-top ${borderSemana}`}>
+                                      {prescripcionStrip}
+                                      <div className="px-3 py-3 text-center">
+                                        <span className="text-muted-foreground/25 text-xs">—</span>
+                                      </div>
                                     </td>
                                   )
                                 }
+
                                 const series: any[] = registro.series ?? []
                                 const esSaltado = series.length > 0
                                   ? series.every((s: any) => (s.peso_kg ?? 0) === 0)
                                   : (registro.peso_kg ?? 0) === 0
+
                                 if (esSaltado) {
                                   return (
-                                    <td key={semana} className={`px-3 py-2 text-center align-middle ${borderSemana}`}>
-                                      <span className="text-[10px] text-amber-400/70 font-medium italic">Saltado</span>
+                                    <td key={semana} className={`p-0 align-top ${borderSemana}`}>
+                                      {prescripcionStrip}
+                                      <div className="px-3 py-2 text-center">
+                                        <span className="text-[10px] text-amber-400/70 font-medium italic">Saltado</span>
+                                      </div>
                                     </td>
                                   )
                                 }
+
                                 if (series.length === 0) {
                                   const nota = registro.notas as string | null
                                   return (
-                                    <td key={semana} className={`p-0 text-center align-middle ${borderSemana}`}>
+                                    <td key={semana} className={`p-0 text-center align-top ${borderSemana}`}>
+                                      {prescripcionStrip}
                                       <div className="grid grid-cols-3 divide-x h-full min-h-[40px]">
-                                        <div className="flex items-center justify-center px-2 font-bold text-sm tabular-nums">{registro.peso_kg ?? "—"}</div>
-                                        <div className="flex items-center justify-center px-2 text-xs text-muted-foreground tabular-nums">{registro.repeticiones ?? "—"}</div>
-                                        <div className="flex items-center justify-center px-2 text-xs text-muted-foreground/70 tabular-nums">{registro.rpe ?? "—"}</div>
+                                        <div className="flex items-center justify-center px-2 font-bold text-sm tabular-nums">
+                                          {registro.peso_kg ?? "—"}
+                                        </div>
+                                        <div className="flex items-center justify-center px-2 text-xs text-muted-foreground tabular-nums">
+                                          {registro.repeticiones ?? "—"}
+                                        </div>
+                                        <div className="flex items-center justify-center px-2 text-xs text-muted-foreground/70 tabular-nums">
+                                          {registro.rpe ?? "—"}
+                                        </div>
                                       </div>
                                       {nota && (
                                         <button
                                           onClick={(e) => { e.stopPropagation(); setComentarioModal({ ejercicio: ej.ejercicios.nombre, comentario: nota }) }}
-                                          className="px-1 pb-1 text-[9px] text-blue-400 hover:text-blue-300 italic flex items-center justify-center gap-0.5 w-full"
+                                          className="px-1 pb-1 text-[11px] text-blue-400 hover:text-blue-300 italic flex items-center justify-center gap-0.5 w-full"
                                         >
                                           <StickyNote className="h-2.5 w-2.5" />
                                           Comentario
@@ -299,17 +417,27 @@ function StudentProgresoDialog({
                                     </td>
                                   )
                                 }
+
                                 const nota = registro.notas as string | null
                                 return (
                                   <td key={semana} className={`p-0 text-center align-top ${borderSemana}`}>
+                                    {prescripcionStrip}
                                     <div className="divide-y">
                                       {series.map((s: any, si: number) => (
                                         <div key={si} className="flex">
-                                          <div className="flex items-center justify-center w-6 text-[10px] text-muted-foreground/50 font-medium border-r">S{si + 1}</div>
+                                          <div className="flex items-center justify-center w-6 text-[11px] text-muted-foreground/50 font-medium border-r">
+                                            S{si + 1}
+                                          </div>
                                           <div className="grid grid-cols-3 divide-x flex-1">
-                                            <div className="flex items-center justify-center px-2 py-1.5 font-bold text-xs tabular-nums">{s.peso_kg ?? "—"}</div>
-                                            <div className="flex items-center justify-center px-2 py-1.5 text-[11px] text-muted-foreground tabular-nums">{s.repeticiones ?? "—"}</div>
-                                            <div className="flex items-center justify-center px-2 py-1.5 text-[11px] text-muted-foreground/70 tabular-nums">{s.rpe ?? "—"}</div>
+                                            <div className="flex items-center justify-center px-2 py-1.5 font-bold text-sm tabular-nums">
+                                              {s.peso_kg ?? "—"}
+                                            </div>
+                                            <div className="flex items-center justify-center px-2 py-1.5 text-xs text-muted-foreground tabular-nums">
+                                              {s.repeticiones ?? "—"}
+                                            </div>
+                                            <div className="flex items-center justify-center px-2 py-1.5 text-xs text-muted-foreground/70 tabular-nums">
+                                              {s.rpe ?? "—"}
+                                            </div>
                                           </div>
                                         </div>
                                       ))}
@@ -317,9 +445,9 @@ function StudentProgresoDialog({
                                     {nota && (
                                       <button
                                         onClick={(e) => { e.stopPropagation(); setComentarioModal({ ejercicio: ej.ejercicios.nombre, comentario: nota }) }}
-                                        className="px-1 py-0.5 text-[9px] text-blue-400 hover:text-blue-300 italic flex items-center justify-center gap-0.5 w-full border-t border-border/30"
+                                        className="px-1 py-0.5 text-[11px] text-blue-400 hover:text-blue-300 italic flex items-center justify-center gap-0.5 w-full border-t border-border/30"
                                       >
-                                        <StickyNote className="h-2.5 w-2.5" />
+                                        <StickyNote className="h-3 w-3" />
                                         Comentario
                                       </button>
                                     )}
