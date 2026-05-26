@@ -102,7 +102,7 @@ export default function MiPlanAppPage() {
               type="button"
               onClick={() => setCalendarOpen(true)}
               disabled={!planId}
-              className="inline-flex items-center justify-center h-8 w-8 rounded-md text-muted-foreground dark:text-zinc-400 hover:text-foreground dark:hover:text-zinc-200 hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-border dark:border-white/10 bg-background dark:bg-white/[0.04] text-foreground dark:text-zinc-200 hover:bg-accent dark:hover:bg-white/[0.08] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               aria-label="Calendario de asistencias"
               title="Calendario de asistencias"
             >

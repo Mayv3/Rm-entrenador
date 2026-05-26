@@ -13,7 +13,7 @@ import { Loader } from "@/components/ui/loader"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { FileText, LogOut, MessageSquare, ArrowLeft, Loader2, Download, Eye, TrendingUp, GitCompareArrows, Salad, Dumbbell, ArrowRight, X } from "lucide-react"
+import { FileText, LogOut, MessageSquare, ArrowLeft, Loader2, Download, Eye, TrendingUp, GitCompareArrows, Salad, Dumbbell, ArrowRight, X, CalendarDays } from "lucide-react"
 import { ModeToggle } from "@/components/mode-toggle"
 import { StudentPlanificacionSection } from "@/components/portal/student-planificacion-section"
 import { SaveStatusIndicator } from "@/components/portal/save-status-indicator"
@@ -25,6 +25,7 @@ import { es } from "date-fns/locale"
 import { AntroView, ParsedAntro } from "@/components/antropometrias/antro-view"
 import { AntroAnualChart } from "@/components/antropometrias/antro-anual-chart"
 import { AntroCompareDialog } from "@/components/antropometrias/antro-compare-dialog"
+import { PlanCalendarioDialog } from "@/components/training-plans/plan-calendario-dialog"
 
 interface Student {
   id: number
@@ -167,6 +168,7 @@ export default function PortalPage() {
   const [showPlanes, setShowPlanes] = useState(false)
   const [expandedPlan, setExpandedPlan] = useState<number | null>(null)
   const [showMiPlan, setShowMiPlan] = useState(false)
+  const [calendarOpen, setCalendarOpen] = useState(false)
   const miPlanHistoryDepth = useRef(0)
 
   function closeMiPlan() {
@@ -612,7 +614,18 @@ export default function PortalPage() {
           <div className="w-full max-w-md bg-background dark:bg-[#0a0a0a] h-full flex flex-col animate-slide-in-right shadow-2xl border-l border-border dark:border-white/[0.06]">
             {/* Header */}
             <div className="border-b border-border dark:border-white/[0.06] bg-background/80 dark:bg-background dark:bg-[#0a0a0a]/80 backdrop-blur-xl px-4 py-3.5 flex items-center justify-between gap-2 flex-shrink-0">
-              <SaveStatusIndicator />
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCalendarOpen(true)}
+                  disabled={!appPlanResp?.planificacion?.id}
+                  className="h-8 w-8 rounded-xl bg-muted dark:bg-white/[0.05] hover:bg-accent dark:hover:bg-white/[0.08] flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  aria-label="Calendario de asistencias"
+                  title="Calendario de asistencias"
+                >
+                  <CalendarDays className="h-4 w-4 text-muted-foreground dark:text-zinc-300" />
+                </button>
+                <SaveStatusIndicator />
+              </div>
               <div className="flex items-center gap-2 ml-auto">
                 <ModeToggle />
               <button
@@ -633,6 +646,15 @@ export default function PortalPage() {
                 />
               )}
             </div>
+            {student && appPlanResp?.planificacion?.id && (
+              <PlanCalendarioDialog
+                open={calendarOpen}
+                onOpenChange={setCalendarOpen}
+                planId={appPlanResp.planificacion.id}
+                alumnoNombre={student.nombre}
+                alumnoId={student.id}
+              />
+            )}
           </div>
         </div>
       )}
