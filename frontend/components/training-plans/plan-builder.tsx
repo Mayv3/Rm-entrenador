@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import axios from "axios"
 import { Button } from "@/components/ui/button"
@@ -582,6 +582,46 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
     }
   }
 
+  const volumenPorGrupo = useMemo(() => {
+    const hoja = plan?.hojas?.find((h) => h.id === activeHojaId)
+    if (!hoja) return [] as { grupo: string; series: number }[]
+    const map = new Map<string, number>()
+    const parseSeries = (dosis: string): number => {
+      const m = (dosis ?? "").match(/(\d+)/)
+      return m ? parseInt(m[1], 10) : 0
+    }
+    for (const dia of hoja.dias) {
+      for (const ej of dia.ejercicios) {
+        const grupo = ej.ejercicios?.grupo_muscular ?? "Sin grupo"
+        const localSems = localData[ej.id]?.semanas ?? {}
+        let series = 0
+        for (const semKey of Object.keys(localSems)) {
+          const s = parseSeries(localSems[Number(semKey)]?.dosis ?? "")
+          if (s > 0) { series = s; break }
+        }
+        if (series === 0) {
+          for (const s of ej.semanas) {
+            const parsed = parseSeries(s.dosis ?? "")
+            if (parsed > 0) { series = parsed; break }
+          }
+        }
+        if (series > 0) map.set(grupo, (map.get(grupo) ?? 0) + series)
+      }
+      for (const p of pendingByDay[dia.id] ?? []) {
+        const grupo = p.ejercicio.grupo_muscular ?? "Sin grupo"
+        let series = 0
+        for (const semKey of Object.keys(p.dosis)) {
+          const parsed = parseSeries(p.dosis[Number(semKey)] ?? "")
+          if (parsed > 0) { series = parsed; break }
+        }
+        if (series > 0) map.set(grupo, (map.get(grupo) ?? 0) + series)
+      }
+    }
+    return Array.from(map.entries())
+      .map(([grupo, series]) => ({ grupo, series }))
+      .sort((a, b) => b.series - a.series)
+  }, [plan, activeHojaId, localData, pendingByDay])
+
   if (isLoading || !plan) return <Loader />
   if (!plan.hojas) return (
     <div className="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground text-sm">
@@ -835,6 +875,30 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
               Agregar día
             </Button>
           </div>
+
+          {activeHoja && volumenPorGrupo.length > 0 && (
+            <div className="rounded-xl border bg-card overflow-hidden mt-1">
+              <div className="px-4 py-2 border-b bg-muted/30 flex items-center gap-2">
+                <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Volumen semanal por grupo
+                </span>
+              </div>
+              <div className="divide-y">
+                {volumenPorGrupo.map(({ grupo, series }) => (
+                  <div key={grupo} className="px-4 py-2 flex items-center justify-between text-sm">
+                    <span className="font-medium capitalize">{grupo}</span>
+                    <span className="font-bold tabular-nums">
+                      {series}
+                      <span className="text-xs font-normal text-muted-foreground ml-1">
+                        {series === 1 ? "serie semanal" : "series semanales"}
+                      </span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
