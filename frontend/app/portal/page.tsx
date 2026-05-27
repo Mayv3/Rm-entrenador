@@ -20,6 +20,7 @@ import { SaveStatusIndicator } from "@/components/portal/save-status-indicator"
 import { supabase } from "@/lib/supabase-client"
 import { determineSubscriptionStatus, formatDate, getStatusColor } from "@/lib/payment-utils"
 import { usePlanes, Plan } from "@/hooks/use-planes"
+import { useServicios } from "@/hooks/use-servicios"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { AntroView, ParsedAntro } from "@/components/antropometrias/antro-view"
@@ -167,6 +168,8 @@ export default function PortalPage() {
   const [showCompare, setShowCompare] = useState(false)
   const [showPlanes, setShowPlanes] = useState(false)
   const [expandedPlan, setExpandedPlan] = useState<number | null>(null)
+  const [showServicios, setShowServicios] = useState(false)
+  const [expandedServicio, setExpandedServicio] = useState<number | null>(null)
   const [showMiPlan, setShowMiPlan] = useState(false)
   const [calendarOpen, setCalendarOpen] = useState(false)
   const miPlanHistoryDepth = useRef(0)
@@ -221,6 +224,7 @@ export default function PortalPage() {
   })
 
   const { data: planes = [] } = usePlanes()
+  const { data: servicios = [] } = useServicios()
 
   const { data: nutricionPdfs = [] } = useQuery<AntroRecord[]>({
     queryKey: ["portalNutricion", student?.id],
@@ -357,11 +361,23 @@ export default function PortalPage() {
           {/* Planes disponibles */}
           <button
             onClick={() => setShowPlanes(true)}
-            className="group w-full px-5 py-3.5 flex items-center gap-3 hover:bg-muted/40 active:scale-[0.99] transition-all text-left"
+            className="group w-full px-5 py-3.5 flex items-center gap-3 hover:bg-muted/40 active:scale-[0.99] transition-all text-left border-b border-border"
           >
             <div className="flex-1 min-w-0">
               <p className="font-bold text-sm text-foreground">Planes disponibles</p>
               <p className="text-[11px] text-muted-foreground mt-0.5">Ver todos los planes</p>
+            </div>
+            <ArrowRight className="h-5 w-5 text-[var(--primary-color)] transition-transform group-hover:translate-x-1" />
+          </button>
+
+          {/* Servicios disponibles */}
+          <button
+            onClick={() => setShowServicios(true)}
+            className="group w-full px-5 py-3.5 flex items-center gap-3 hover:bg-muted/40 active:scale-[0.99] transition-all text-left"
+          >
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-sm text-foreground">Servicios disponibles</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Ver todos los servicios</p>
             </div>
             <ArrowRight className="h-5 w-5 text-[var(--primary-color)] transition-transform group-hover:translate-x-1" />
           </button>
@@ -763,6 +779,68 @@ export default function PortalPage() {
                   )
                 })
               })()
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Servicios disponibles */}
+      <Dialog open={showServicios} onOpenChange={setShowServicios}>
+        <DialogContent className="w-[90vw] !max-w-[420px] max-h-[90vh] p-0 gap-0 overflow-hidden rounded-2xl flex flex-col">
+          <div className="px-5 py-4 border-b border-border flex items-center gap-2 shrink-0">
+            <div className="h-8 w-8 rounded-xl bg-[var(--primary-color)]/10 flex items-center justify-center">
+              <Salad className="h-4 w-4 text-[var(--primary-color)]" />
+            </div>
+            <DialogTitle className="text-base font-bold">Servicios disponibles</DialogTitle>
+          </div>
+          <div className="px-4 py-4 flex flex-col gap-3 flex-1 min-h-0 overflow-y-auto">
+            {servicios.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-6">No hay servicios cargados</p>
+            ) : (
+              servicios.map((s) => {
+                const isExpanded = expandedServicio === s.id
+                const hasContent = !!s.descripcion
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => setExpandedServicio(isExpanded ? null : s.id)}
+                    className="relative rounded-2xl overflow-hidden border w-full text-left transition-all active:scale-[0.98]"
+                    style={{ borderColor: `${s.color ?? "#9e9e9e"}40` }}
+                  >
+                    <div
+                      className="absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl"
+                      style={{ backgroundColor: s.color ?? "#9e9e9e" }}
+                    />
+                    <div
+                      className="px-5 py-4 flex items-center justify-between"
+                      style={{ backgroundColor: `${s.color ?? "#9e9e9e"}0d` }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm">{s.nombre}</span>
+                        {hasContent && (
+                          <ArrowRight className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`} />
+                        )}
+                      </div>
+                      <div
+                        className="px-3 py-1.5 rounded-xl font-bold text-sm"
+                        style={{
+                          color: s.color ?? "#9e9e9e",
+                          backgroundColor: `${s.color ?? "#9e9e9e"}20`,
+                        }}
+                      >
+                        ${Number(s.precio).toLocaleString("es-AR")}
+                      </div>
+                    </div>
+                    {isExpanded && s.descripcion && (
+                      <div
+                        className="px-5 py-3 border-t text-xs text-muted-foreground [&_strong]:font-semibold [&_strong]:text-foreground [&_p]:mb-1 [&_br]:block"
+                        style={{ borderColor: `${s.color ?? "#9e9e9e"}30`, backgroundColor: `${s.color ?? "#9e9e9e"}08` }}
+                        dangerouslySetInnerHTML={{ __html: s.descripcion }}
+                      />
+                    )}
+                  </button>
+                )
+              })
             )}
           </div>
         </DialogContent>

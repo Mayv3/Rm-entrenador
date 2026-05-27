@@ -5,12 +5,13 @@ import { useRouter } from "next/navigation";
 import { StudentsTable } from "@/components/students/students-table";
 import { PaymentsTable } from "@/components/payments/payments-table";
 import { PlanesTable } from "@/components/planes/planes-table";
+import { ServiciosTable } from "@/components/servicios/servicios-table";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Image from "next/image";
 import logoRodrigoEntrenador from "../../assets/LOGO-RODRIGO-VERDE.png";
-import { Users, CreditCard, Tag, LogOut, Moon, Sun, Globe, Copy, Check, Ruler, Salad, BarChart2, ClipboardList } from "lucide-react";
+import { Users, CreditCard, Tag, LogOut, Moon, Sun, Globe, Copy, Check, Ruler, Salad, BarChart2, ClipboardList, HeartPulse } from "lucide-react";
 import { AntropometriasSection } from "@/components/antropometrias/antropometrias-section";
 import { NutricionSection } from "@/components/nutricion/nutricion-section";
 import { EstadisticasSection } from "@/components/estadisticas/estadisticas-section";
@@ -82,7 +83,7 @@ export default function Dashboard() {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  const [activeTab, setActiveTab] = useState<"students" | "payments" | "planes" | "portal" | "antropometrias" | "nutricion" | "estadisticas" | "planificaciones">("students");
+  const [activeTab, setActiveTab] = useState<"students" | "payments" | "planes" | "servicios" | "portal" | "antropometrias" | "nutricion" | "estadisticas" | "planificaciones">("students");
   const [copied, setCopied] = useState(false);
   const [planToOpen, setPlanToOpen] = useState<number | null>(null);
 
@@ -111,6 +112,7 @@ export default function Dashboard() {
     { value: "payments", label: "Pagos", icon: CreditCard },
     { value: "planificaciones", label: "Planificaciones", icon: ClipboardList },
     { value: "planes", label: "Planes", icon: Tag },
+    { value: "servicios", label: "Servicios", icon: HeartPulse },
     { value: "portal", label: "Portal", icon: Globe },
     { value: "antropometrias", label: "Antropometría", icon: Ruler },
     { value: "nutricion", label: "Nutrición", icon: Salad },
@@ -193,11 +195,12 @@ export default function Dashboard() {
           {activeTab === "students" ? <StudentsTable onOpenPlan={handleOpenPlan} />
             : activeTab === "payments" ? <PaymentsTable />
               : activeTab === "planes" ? <PlanesTable />
-                : activeTab === "antropometrias" ? <AntropometriasSection />
-                  : activeTab === "nutricion" ? <NutricionSection />
-                    : activeTab === "estadisticas" ? <EstadisticasSection />
-                      : activeTab === "planificaciones" ? <PlanificacionesSection initialPlanId={planToOpen} />
-                        : <PortalSection copied={copied} setCopied={setCopied} />
+                : activeTab === "servicios" ? <ServiciosTable />
+                  : activeTab === "antropometrias" ? <AntropometriasSection />
+                    : activeTab === "nutricion" ? <NutricionSection />
+                      : activeTab === "estadisticas" ? <EstadisticasSection />
+                        : activeTab === "planificaciones" ? <PlanificacionesSection initialPlanId={planToOpen} />
+                          : <PortalSection copied={copied} setCopied={setCopied} />
           }
         </div>
       </main>

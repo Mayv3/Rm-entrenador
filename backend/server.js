@@ -6,6 +6,7 @@ import { addClientSupabase, deleteClientSupabase, getMembersSupabase, updateClie
 import { addPaymentSupabase, deletePaymentSupabase, getPaymentsSupabase, updatePaymentInSupabase, getPaymentHistory, getAllPaymentHistory, deleteHistoryEntry, updateHistoryEntry } from "./controllers/paymentsController.js";
 import { enviarRecordatoriosVencidos, previewRecordatoriosVencidos, sendTestAPIMail, recordatorioAntropometrias, recordatorioCumpleanos } from "./controllers/mailingController.js";
 import { getPlanes, addPlan, updatePlan, deletePlan } from "./controllers/planesController.js";
+import { getServicios, addServicio, updateServicio, deleteServicio } from "./controllers/serviciosController.js";
 import {
   getEjercicios, createEjercicio, updateEjercicio, deleteEjercicio,
   getPlanificaciones, getPlanificacionesByAlumno, getPlanificacionById,
@@ -111,6 +112,13 @@ app.get("/planes", getPlanes);
 app.post("/planes", addPlan);
 app.put("/planes/:id", updatePlan);
 app.delete("/planes/:id", deletePlan);
+
+// Servicios
+
+app.get("/servicios", getServicios);
+app.post("/servicios", addServicio);
+app.put("/servicios/:id", updateServicio);
+app.delete("/servicios/:id", deleteServicio);
 
 // Ejercicios (librería)
 app.get("/ejercicios", getEjercicios);

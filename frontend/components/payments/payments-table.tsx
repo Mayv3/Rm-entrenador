@@ -1,12 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Calendar, Edit, History, MessageSquare, MoreHorizontal, Plus, Search, Trash2 } from "lucide-react";
+import { Calendar, Edit, HeartPulse, History, MessageSquare, MoreHorizontal, Plus, Search, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { AddPaymentDialog } from "./add-payment-dialog";
+import { AddServicioPaymentDialog } from "./add-servicio-payment-dialog";
 import { EditPaymentDialog } from "./edit-payment-dialog";
 import { DeletePaymentDialog } from "./delete-payment-dialog";
 import { PaymentHistoryDialog } from "./payment-history-dialog";
@@ -104,6 +105,7 @@ export function PaymentsTable() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(false);
+  const [isAddServicioPayOpen, setIsAddServicioPayOpen] = useState(false);
   const [isEditPaymentOpen, setIsEditPaymentOpen] = useState(false);
   const [isDeletePaymentOpen, setIsDeletePaymentOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -120,13 +122,15 @@ export function PaymentsTable() {
 
   const payments = useMemo<Payment[]>(
     () =>
-      rawPayments.map((p) => ({
-        ...p,
-        monto: Number(p.monto.toString().replace(/[^\d.-]/g, "")),
-        fecha_de_pago: parseLocalDate(p.fecha_de_pago),
-        fecha_de_vencimiento: parseLocalDate(p.fecha_de_vencimiento),
-        status: determineSubscriptionStatus(p),
-      })),
+      rawPayments
+        .filter((p) => !String(p.modalidad ?? "").startsWith("Servicio:"))
+        .map((p) => ({
+          ...p,
+          monto: Number(p.monto.toString().replace(/[^\d.-]/g, "")),
+          fecha_de_pago: parseLocalDate(p.fecha_de_pago),
+          fecha_de_vencimiento: parseLocalDate(p.fecha_de_vencimiento),
+          status: determineSubscriptionStatus(p),
+        })),
     [rawPayments]
   );
 
@@ -305,6 +309,15 @@ export function PaymentsTable() {
             <Plus className="h-3.5 w-3.5" />
             <span className="hidden md:inline">Nuevo Pago</span>
           </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="fixed bottom-44 right-4 w-16 h-16 rounded-full gap-1 border-[var(--primary-color)] text-[var(--primary-color)] hover:text-[var(--primary-color)] active:scale-90 md:active:scale-95 transition-transform duration-100 md:static md:h-10 md:w-[160px] md:py-2 md:rounded-md"
+            onClick={() => setIsAddServicioPayOpen(true)}
+          >
+            <HeartPulse className="h-3.5 w-3.5" />
+            <span className="hidden md:inline">Pagar servicio</span>
+          </Button>
         </div>
       </div>
 
@@ -331,6 +344,7 @@ export function PaymentsTable() {
       )}
 
       <AddPaymentDialog open={isAddPaymentOpen} onOpenChange={setIsAddPaymentOpen} onPaymentUpdated={() => {}} />
+      <AddServicioPaymentDialog open={isAddServicioPayOpen} onOpenChange={setIsAddServicioPayOpen} />
       <PaymentHistoryGlobalDialog open={isGlobalHistoryOpen} onOpenChange={setIsGlobalHistoryOpen} />
       {selectedPayment && (
         <>
