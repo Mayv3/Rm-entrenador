@@ -28,6 +28,7 @@ import {
   BatteryWarning,
   Frown,
   Activity,
+  Eye,
 } from "lucide-react"
 
 interface PlanSemana {
@@ -180,6 +181,7 @@ export function StudentPlanificacionSection({
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map())
   const serieAdvanceDebounceRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
   const registrosFormRef = useRef<Record<number, FormRow>>({})
+  const [previewPlan, setPreviewPlan] = useState(false)
 
   const clampSerieValue = (field: keyof SerieRow, value: string): string => {
     if (value === "") return ""
@@ -315,6 +317,7 @@ export function StudentPlanificacionSection({
     setSaveMessage("")
     setSavedSuccess(false)
     dirtyEjIds.current.clear()
+    setPreviewPlan(false)
   }, [planificacion?.id])
 
   const hojaActiva = useMemo(() => {
@@ -426,6 +429,7 @@ export function StudentPlanificacionSection({
       setCheckinMostrado(false)
       dirtyEjIds.current.clear()
       pendingSerieRestoreRef.current = {}
+      setPreviewPlan(false)
       return
     }
 
@@ -1236,20 +1240,22 @@ export function StudentPlanificacionSection({
       {/* Header */}
       <div className="flex items-center gap-2">
         <button
-          onClick={() => history.back()}
+          onClick={() => { if (previewPlan) setPreviewPlan(false); else history.back() }}
           className="h-8 w-8 rounded-xl bg-muted/50 dark:bg-white/[0.05] hover:bg-muted/70 dark:bg-white/[0.08] flex items-center justify-center transition-colors flex-shrink-0"
         >
           <ChevronLeft className="h-4 w-4 text-muted-foreground dark:text-zinc-400" />
         </button>
         <div className="flex-1 min-w-0">
-          <p className="text-[11px] text-muted-foreground dark:text-zinc-500">Semana {semanaSeleccionada}</p>
+          <p className="text-[11px] text-muted-foreground dark:text-zinc-500">
+            {previewPlan ? "Vista previa · " : ""}Semana {semanaSeleccionada}
+          </p>
           <p className="text-sm font-bold text-foreground dark:text-white leading-tight truncate">
             Día {diaSeleccionado?.numero_dia} · {diaSeleccionado?.nombre}
           </p>
         </div>
         {loadingSession
           ? <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground dark:text-zinc-500 flex-shrink-0" />
-          : allCompleted ? (
+          : (allCompleted && !previewPlan) ? (
             <span className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold border bg-green-500/15 border-green-500/30 text-green-400 flex-shrink-0">
               <CheckCircle2 className="h-3.5 w-3.5 text-green-400" />
               Completado
@@ -1262,7 +1268,7 @@ export function StudentPlanificacionSection({
         <div className="flex items-center justify-center py-20">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground dark:text-zinc-500" />
         </div>
-      ) : !checkinMostrado ? (
+      ) : (!checkinMostrado && !previewPlan) ? (
         /* ── Check-in inicial ── */
         <div className="flex-1 flex flex-col items-center justify-center min-h-[60vh] gap-6 px-4">
           <div className="text-center space-y-1 mb-2">
@@ -1323,11 +1329,19 @@ export function StudentPlanificacionSection({
           >
             {durmioMal || fatiga || desmotivacion || dolor ? "Confirmar" : "¡Estoy excelente!"}
           </button>
+
+          <button
+            onClick={() => setPreviewPlan(true)}
+            className="w-full max-w-sm py-3 rounded-2xl bg-transparent border border-sky-500/30 text-sky-400 text-xs font-bold hover:bg-sky-500/10 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+          >
+            <Eye className="h-3.5 w-3.5" />
+            Ver planificación del día
+          </button>
         </div>
       ) : (
         <>
           {/* Estado de salud */}
-          {!excelente && (
+          {!previewPlan && !excelente && (
           <div className="space-y-2">
             <div className={`grid gap-1.5 ${(durmioMal || fatiga || desmotivacion || dolor) ? "grid-cols-4" : "grid-cols-5"}`}>
               {([
@@ -1517,14 +1531,14 @@ export function StudentPlanificacionSection({
                       <Play className="h-3 w-3" fill="currentColor" />
                     </button>
                   )}
-                  <CardSaveBadge ejId={ej.id} />
-                  {isFilled && (
+                  {!previewPlan && <CardSaveBadge ejId={ej.id} />}
+                  {!previewPlan && isFilled && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-green-500/10 border border-green-500/20 px-2 py-0.5 text-[10px] font-semibold text-green-400 flex-shrink-0">
                       <CheckCircle2 className="h-2.5 w-2.5" />
                       Completado
                     </span>
                   )}
-                  {(!isFilled || esSaltado) ? (
+                  {!previewPlan && (!isFilled || esSaltado) ? (
                     <button
                       onClick={() => handleToggleSkip(ej.id)}
                       className={`h-7 px-2.5 rounded-lg flex items-center gap-1.5 text-[10px] font-semibold transition-all border flex-shrink-0 ${
@@ -1566,7 +1580,10 @@ export function StudentPlanificacionSection({
                   </div>
                 )}
 
-                {/* Serie pills + scroll */}
+                {/* Serie pills + scroll (oculto en modo solo lectura) */}
+                {previewPlan ? (
+                  <div className="pb-3" />
+                ) : (
                 <div className="pb-4">
                   {/* S1/S2/S3 pills */}
                   <div className="grid grid-cols-3 gap-2 px-4 mt-4 mb-3">
@@ -1730,6 +1747,7 @@ export function StudentPlanificacionSection({
                     <span className="text-[9px] text-muted-foreground/70 dark:text-zinc-600 text-right block">{row.notas.length}/100</span>
                   </div>
                 </div>
+                )}
               </div>
             )
           })}
