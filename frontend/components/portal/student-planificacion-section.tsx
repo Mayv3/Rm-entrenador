@@ -1417,7 +1417,14 @@ export function StudentPlanificacionSection({
                 >
                   {movilidad.map((item, i) => (
                     <div key={item.id} className="snap-start flex-shrink-0 w-full px-4">
-                      <div className="relative w-full">
+                      <div
+                        className={`relative w-full ${item.video_url ? "cursor-pointer" : ""}`}
+                        onClick={item.video_url ? () => setVideoModal({ nombre: item.nombre, url: item.video_url! }) : undefined}
+                        role={item.video_url ? "button" : undefined}
+                        tabIndex={item.video_url ? 0 : undefined}
+                        onKeyDown={item.video_url ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setVideoModal({ nombre: item.nombre, url: item.video_url! }) } } : undefined}
+                        aria-label={item.video_url ? `Ver video de ${item.nombre}` : undefined}
+                      >
                         {item.imagen_url ? (
                           <img
                             src={item.imagen_url}
@@ -1430,15 +1437,9 @@ export function StudentPlanificacionSection({
                           </div>
                         )}
                         {item.video_url && (
-                          <button
-                            onClick={() => setVideoModal({ nombre: item.nombre, url: item.video_url! })}
-                            className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/30 hover:bg-black/50 transition-colors group"
-                            aria-label={`Ver video de ${item.nombre}`}
-                          >
-                            <span className="h-12 w-12 rounded-full bg-amber-400 text-black flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                              <Play className="h-5 w-5" fill="currentColor" />
-                            </span>
-                          </button>
+                          <span className="pointer-events-none absolute top-2 left-2 h-7 w-7 rounded-full bg-amber-400 text-black flex items-center justify-center shadow-md">
+                            <Play className="h-3.5 w-3.5" fill="currentColor" />
+                          </span>
                         )}
                       </div>
                     </div>
