@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import axios from "axios"
 
 interface EditPaymentDialogProps {
@@ -53,7 +53,8 @@ export function EditPaymentDialog({ open, onOpenChange, payment, onPaymentUpdate
     modality: "",
     whatsapp: "",
   })
-  const [selectedPlanId, setSelectedPlanId] = useState("")
+  const [selectedBaseId, setSelectedBaseId] = useState("")
+  const [selectedMeses, setSelectedMeses] = useState(1)
   const [isLoading, setIsLoading] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [dateDisplay, setDateDisplay] = useState("")
@@ -75,29 +76,38 @@ export function EditPaymentDialog({ open, onOpenChange, payment, onPaymentUpdate
 
   useEffect(() => {
     if (payment) {
-      const paymentDate = payment.fecha_de_pago
-        ? new Date(payment.fecha_de_pago).toISOString().split("T")[0]
-        : new Date().toISOString().split("T")[0]
-      const dueDate = payment.fecha_de_vencimiento
-        ? new Date(payment.fecha_de_vencimiento).toISOString().split("T")[0]
-        : calculateDueDate(paymentDate, 1)
+      const match = planes.find((p) =>
+        payment.modalidad === (p.parent_id == null ? `${p.nombre} · Individual` : `${p.nombre} · ${p.duracion_meses} meses`) ||
+        payment.modalidad === p.nombre
+      )
+      let meses = 1
+      if (match) {
+        if (match.parent_id == null) {
+          setSelectedBaseId(String(match.id))
+          meses = 1
+        } else {
+          setSelectedBaseId(String(match.parent_id))
+          meses = match.duracion_meses ?? 1
+        }
+      } else {
+        setSelectedBaseId("")
+      }
+      setSelectedMeses(meses)
+
+      // Al editar (renovación): fecha de pago = HOY, vencimiento = HOY + meses del plan
+      const today = new Date().toISOString().split("T")[0]
+      const dueDate = calculateDueDate(today, meses)
 
       setFormData({
         id: String(payment.id),
         studentId: String(payment.alumno_id || payment.id_estudiante || ""),
         name: payment.nombre || "",
         amount: payment.monto?.toString() || "",
-        date: paymentDate,
+        date: today,
         dueDate,
         modality: payment.modalidad || "",
         whatsapp: payment.whatsapp || "",
       })
-
-      const match = planes.find((p) =>
-        payment.modalidad === (p.parent_id == null ? `${p.nombre} · Individual` : `${p.nombre} · ${p.duracion_meses} meses`) ||
-        payment.modalidad === p.nombre
-      )
-      setSelectedPlanId(match ? String(match.id) : "")
     }
   }, [payment?.id, planes.length])
 
@@ -113,21 +123,63 @@ export function EditPaymentDialog({ open, onOpenChange, payment, onPaymentUpdate
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handlePlanSelect = (planId: string) => {
-    const plan = planes.find((p) => String(p.id) === planId)
-    if (!plan) return
-    setSelectedPlanId(planId)
-    const meses = plan.duracion_meses ?? 1
-    const label = plan.parent_id == null
-      ? `${plan.nombre} · Individual`
-      : `${plan.nombre} · ${meses} meses`
+  const handleBaseSelect = (baseId: string) => {
+    const base = planes.find((p) => String(p.id) === baseId)
+    if (!base) return
+    setSelectedBaseId(baseId)
+    setSelectedMeses(1)
     setFormData((prev) => ({
       ...prev,
-      modality: label,
-      amount: String(plan.precio),
+      modality: `${base.nombre} · Individual`,
+      amount: String(base.precio),
+      dueDate: calculateDueDate(prev.date, 1),
+    }))
+  }
+
+  // Subplanes disponibles del plan base seleccionado (3 y 6 meses)
+  const durationOptions = useMemo(() => {
+    if (!selectedBaseId) return []
+    const subs = subplanMap.get(Number(selectedBaseId)) ?? []
+    return subs
+      .filter((s) => s.duracion_meses === 3 || s.duracion_meses === 6)
+      .sort((a, b) => (a.duracion_meses ?? 0) - (b.duracion_meses ?? 0))
+  }, [selectedBaseId, subplanMap])
+
+  const applyDuration = (meses: number) => {
+    const base = planes.find((p) => String(p.id) === selectedBaseId)
+    if (!base) return
+    if (meses === 1) {
+      setSelectedMeses(1)
+      setFormData((prev) => ({
+        ...prev,
+        modality: `${base.nombre} · Individual`,
+        amount: String(base.precio),
+        dueDate: calculateDueDate(prev.date, 1),
+      }))
+      return
+    }
+    const sub = durationOptions.find((s) => s.duracion_meses === meses)
+    if (!sub) return
+    setSelectedMeses(meses)
+    setFormData((prev) => ({
+      ...prev,
+      modality: `${base.nombre} · ${meses} meses`,
+      amount: String(sub.precio),
       dueDate: calculateDueDate(prev.date, meses),
     }))
   }
+
+  // % de descuento del plan multi-mes vs pagar el individual × meses
+  const descuento = useMemo(() => {
+    if (selectedMeses <= 1 || !selectedBaseId) return 0
+    const base = planes.find((p) => String(p.id) === selectedBaseId)
+    const monto = Number(formData.amount)
+    if (!base || base.precio <= 0 || !monto) return 0
+    const full = base.precio * selectedMeses
+    if (full <= 0) return 0
+    const pct = Math.round((1 - monto / full) * 100)
+    return pct > 0 ? pct : 0
+  }, [selectedBaseId, selectedMeses, formData.amount, planes])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -202,41 +254,67 @@ export function EditPaymentDialog({ open, onOpenChange, payment, onPaymentUpdate
                 </div>
                 <div className="grid gap-1.5">
                   <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Plan</Label>
-                  <Select value={selectedPlanId} onValueChange={handlePlanSelect}>
+                  <Select value={selectedBaseId} onValueChange={handleBaseSelect}>
                     <SelectTrigger className="h-9 w-full">
                       <SelectValue placeholder="Seleccionar" />
                     </SelectTrigger>
                     <SelectContent>
                       {basePlans.map((base) => (
-                        <SelectGroup key={base.id}>
-                          <SelectLabel className="text-[10px] font-semibold uppercase tracking-wide">{base.nombre}</SelectLabel>
-                          <SelectItem value={String(base.id)}>
-                            <span className="flex items-center gap-1.5">
-                              <span className="text-xs font-medium text-blue-500">Individual</span>
-                              {base.precio > 0 && <span className="text-[11px] text-muted-foreground">${base.precio.toLocaleString("es-AR")}</span>}
-                            </span>
-                          </SelectItem>
-                          {(subplanMap.get(base.id) ?? [])
-                            .sort((a, b) => (a.duracion_meses ?? 0) - (b.duracion_meses ?? 0))
-                            .map((sub) => (
-                              <SelectItem key={sub.id} value={String(sub.id)}>
-                                <span className="flex items-center gap-1.5">
-                                  <span className={`text-xs font-medium ${sub.duracion_meses === 3 ? "text-amber-500" : "text-emerald-600"}`}>{sub.duracion_meses} meses</span>
-                                  {sub.precio > 0 && <span className="text-[11px] text-muted-foreground">${sub.precio.toLocaleString("es-AR")}</span>}
-                                </span>
-                              </SelectItem>
-                            ))}
-                        </SelectGroup>
+                        <SelectItem key={base.id} value={String(base.id)}>
+                          <span className="flex items-center gap-1.5">
+                            <span className="text-xs font-medium">{base.nombre}</span>
+                            {base.precio > 0 && <span className="text-[11px] text-muted-foreground">${base.precio.toLocaleString("es-AR")}</span>}
+                          </span>
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
               </div>
 
+              {selectedBaseId && durationOptions.length > 0 && (
+                <div className="grid gap-1.5">
+                  <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Duración (opcional)</Label>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant={selectedMeses === 1 ? "default" : "outline"}
+                      size="sm"
+                      className={`flex-1 h-9 ${selectedMeses === 1 ? "bg-[var(--primary-color)] hover:bg-[var(--primary-color)]/90 text-white" : ""}`}
+                      onClick={() => applyDuration(1)}
+                    >
+                      Individual
+                    </Button>
+                    {durationOptions.map((sub) => (
+                      <Button
+                        key={sub.id}
+                        type="button"
+                        variant={selectedMeses === sub.duracion_meses ? "default" : "outline"}
+                        size="sm"
+                        className={`flex-1 h-9 ${selectedMeses === sub.duracion_meses ? "bg-[var(--primary-color)] hover:bg-[var(--primary-color)]/90 text-white" : ""}`}
+                        onClick={() => applyDuration(sub.duracion_meses!)}
+                      >
+                        {sub.duracion_meses} meses
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="grid gap-1.5">
                   <Label htmlFor="amount" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Monto</Label>
-                  <Input id="amount" name="amount" type="number" value={formData.amount} onChange={handleChange} placeholder="0.00" className="h-9" required />
+                  <div className="relative">
+                    {descuento > 0 && (
+                      <span
+                        className="absolute -top-2.5 -right-2.5 z-10 flex flex-col items-center justify-center w-9 h-9 rounded-full bg-emerald-500 text-white shadow-md ring-2 ring-background leading-none"
+                        title={`Descuento aplicado: ${descuento}%`}
+                      >
+                        <span className="text-[11px] font-bold">-{descuento}%</span>
+                      </span>
+                    )}
+                    <Input id="amount" name="amount" type="number" value={formData.amount} onChange={handleChange} placeholder="0.00" className="h-9" required />
+                  </div>
                 </div>
                 <div className="grid gap-1.5">
                   <Label htmlFor="date" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Fecha de pago</Label>

@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Loader2, CreditCard } from "lucide-react"
 import axios from "axios"
 import { calculateDueDate, isoToDisplayDate, displayDateToIso } from "@/lib/utils"
@@ -56,7 +56,8 @@ export function AddPaymentDialog({ open, onOpenChange, onPaymentUpdated }: AddPa
     dueDate: calculateDueDate(new Date().toISOString().split("T")[0], 1),
     modalidad: "",
   })
-  const [selectedPlanId, setSelectedPlanId] = useState("")
+  const [selectedBaseId, setSelectedBaseId] = useState("")
+  const [selectedMeses, setSelectedMeses] = useState(1)
   const [students, setStudents] = useState<Student[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
@@ -91,8 +92,8 @@ export function AddPaymentDialog({ open, onOpenChange, onPaymentUpdated }: AddPa
   }, [])
 
   useEffect(() => {
-    setFormData((prev) => ({ ...prev, dueDate: calculateDueDate(prev.date, 1) }))
-  }, [formData.date])
+    setFormData((prev) => ({ ...prev, dueDate: calculateDueDate(prev.date, selectedMeses) }))
+  }, [formData.date, selectedMeses])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -104,21 +105,63 @@ export function AddPaymentDialog({ open, onOpenChange, onPaymentUpdated }: AddPa
     setFormData((prev) => ({ ...prev, alumno_id: value, name: selected?.name ?? "" }))
   }
 
-  const handlePlanSelect = (planId: string) => {
-    const plan = planes.find((p) => String(p.id) === planId)
-    if (!plan) return
-    setSelectedPlanId(planId)
-    const meses = plan.duracion_meses ?? 1
-    const label = plan.parent_id == null
-      ? `${plan.nombre} · Individual`
-      : `${plan.nombre} · ${meses} meses`
+  const handleBaseSelect = (baseId: string) => {
+    const base = planes.find((p) => String(p.id) === baseId)
+    if (!base) return
+    setSelectedBaseId(baseId)
+    setSelectedMeses(1)
     setFormData((prev) => ({
       ...prev,
-      modalidad: label,
-      amount: String(plan.precio),
+      modalidad: `${base.nombre} · Individual`,
+      amount: String(base.precio),
+      dueDate: calculateDueDate(prev.date, 1),
+    }))
+  }
+
+  // Subplanes disponibles del plan base seleccionado, indexados por duración en meses
+  const durationOptions = useMemo(() => {
+    if (!selectedBaseId) return []
+    const subs = subplanMap.get(Number(selectedBaseId)) ?? []
+    return subs
+      .filter((s) => s.duracion_meses === 3 || s.duracion_meses === 6)
+      .sort((a, b) => (a.duracion_meses ?? 0) - (b.duracion_meses ?? 0))
+  }, [selectedBaseId, subplanMap])
+
+  const applyDuration = (meses: number) => {
+    const base = planes.find((p) => String(p.id) === selectedBaseId)
+    if (!base) return
+    if (meses === 1) {
+      setSelectedMeses(1)
+      setFormData((prev) => ({
+        ...prev,
+        modalidad: `${base.nombre} · Individual`,
+        amount: String(base.precio),
+        dueDate: calculateDueDate(prev.date, 1),
+      }))
+      return
+    }
+    const sub = durationOptions.find((s) => s.duracion_meses === meses)
+    if (!sub) return
+    setSelectedMeses(meses)
+    setFormData((prev) => ({
+      ...prev,
+      modalidad: `${base.nombre} · ${meses} meses`,
+      amount: String(sub.precio),
       dueDate: calculateDueDate(prev.date, meses),
     }))
   }
+
+  // % de descuento del plan multi-mes vs pagar el individual × meses
+  const descuento = useMemo(() => {
+    if (selectedMeses <= 1 || !selectedBaseId) return 0
+    const base = planes.find((p) => String(p.id) === selectedBaseId)
+    const monto = Number(formData.amount)
+    if (!base || base.precio <= 0 || !monto) return 0
+    const full = base.precio * selectedMeses
+    if (full <= 0) return 0
+    const pct = Math.round((1 - monto / full) * 100)
+    return pct > 0 ? pct : 0
+  }, [selectedBaseId, selectedMeses, formData.amount, planes])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -148,7 +191,8 @@ export function AddPaymentDialog({ open, onOpenChange, onPaymentUpdated }: AddPa
         onOpenChange(false)
         onPaymentUpdated()
         setShowConfirm(false)
-        setSelectedPlanId("")
+        setSelectedBaseId("")
+        setSelectedMeses(1)
         setFormData({
           alumno_id: "",
           name: "",
@@ -227,41 +271,67 @@ export function AddPaymentDialog({ open, onOpenChange, onPaymentUpdated }: AddPa
                 </div>
                 <div className="grid gap-1.5">
                   <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Plan</Label>
-                  <Select value={selectedPlanId} onValueChange={handlePlanSelect}>
+                  <Select value={selectedBaseId} onValueChange={handleBaseSelect}>
                     <SelectTrigger className="h-9 w-full">
                       <SelectValue placeholder="Seleccionar" />
                     </SelectTrigger>
                     <SelectContent>
                       {basePlans.map((base) => (
-                        <SelectGroup key={base.id}>
-                          <SelectLabel className="text-[10px] font-semibold uppercase tracking-wide">{base.nombre}</SelectLabel>
-                          <SelectItem value={String(base.id)}>
-                            <span className="flex items-center gap-1.5">
-                              <span className="text-xs font-medium text-blue-500">Individual</span>
-                              {base.precio > 0 && <span className="text-[11px] text-muted-foreground">${base.precio.toLocaleString("es-AR")}</span>}
-                            </span>
-                          </SelectItem>
-                          {(subplanMap.get(base.id) ?? [])
-                            .sort((a, b) => (a.duracion_meses ?? 0) - (b.duracion_meses ?? 0))
-                            .map((sub) => (
-                              <SelectItem key={sub.id} value={String(sub.id)}>
-                                <span className="flex items-center gap-1.5">
-                                  <span className={`text-xs font-medium ${sub.duracion_meses === 3 ? "text-amber-500" : "text-emerald-600"}`}>{sub.duracion_meses} meses</span>
-                                  {sub.precio > 0 && <span className="text-[11px] text-muted-foreground">${sub.precio.toLocaleString("es-AR")}</span>}
-                                </span>
-                              </SelectItem>
-                            ))}
-                        </SelectGroup>
+                        <SelectItem key={base.id} value={String(base.id)}>
+                          <span className="flex items-center gap-1.5">
+                            <span className="text-xs font-medium">{base.nombre}</span>
+                            {base.precio > 0 && <span className="text-[11px] text-muted-foreground">${base.precio.toLocaleString("es-AR")}</span>}
+                          </span>
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
               </div>
 
+              {selectedBaseId && durationOptions.length > 0 && (
+                <div className="grid gap-1.5">
+                  <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Duración (opcional)</Label>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant={selectedMeses === 1 ? "default" : "outline"}
+                      size="sm"
+                      className={`flex-1 h-9 ${selectedMeses === 1 ? "bg-[var(--primary-color)] hover:bg-[var(--primary-color)]/90 text-white" : ""}`}
+                      onClick={() => applyDuration(1)}
+                    >
+                      Individual
+                    </Button>
+                    {durationOptions.map((sub) => (
+                      <Button
+                        key={sub.id}
+                        type="button"
+                        variant={selectedMeses === sub.duracion_meses ? "default" : "outline"}
+                        size="sm"
+                        className={`flex-1 h-9 ${selectedMeses === sub.duracion_meses ? "bg-[var(--primary-color)] hover:bg-[var(--primary-color)]/90 text-white" : ""}`}
+                        onClick={() => applyDuration(sub.duracion_meses!)}
+                      >
+                        {sub.duracion_meses} meses
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="grid gap-1.5">
                   <Label htmlFor="amount" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Monto</Label>
-                  <Input id="amount" name="amount" type="number" value={formData.amount} onChange={handleChange} placeholder="0.00" className="h-9" required />
+                  <div className="relative">
+                    {descuento > 0 && (
+                      <span
+                        className="absolute -top-2.5 -right-2.5 z-10 flex flex-col items-center justify-center w-9 h-9 rounded-full bg-emerald-500 text-white shadow-md ring-2 ring-background leading-none"
+                        title={`Descuento aplicado: ${descuento}%`}
+                      >
+                        <span className="text-[11px] font-bold">-{descuento}%</span>
+                      </span>
+                    )}
+                    <Input id="amount" name="amount" type="number" value={formData.amount} onChange={handleChange} placeholder="0.00" className="h-9" required />
+                  </div>
                 </div>
                 <div className="grid gap-1.5">
                   <Label htmlFor="date" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Fecha de pago</Label>
