@@ -94,16 +94,20 @@ export function EditPaymentDialog({ open, onOpenChange, payment, onPaymentUpdate
       }
       setSelectedMeses(meses)
 
-      // Al editar (renovación): fecha de pago = HOY, vencimiento = HOY + meses del plan
-      const today = new Date().toISOString().split("T")[0]
-      const dueDate = calculateDueDate(today, meses)
+      // Mantener las fechas reales del pago (no forzar HOY)
+      const paymentDate = payment.fecha_de_pago
+        ? new Date(payment.fecha_de_pago).toISOString().split("T")[0]
+        : new Date().toISOString().split("T")[0]
+      const dueDate = payment.fecha_de_vencimiento
+        ? new Date(payment.fecha_de_vencimiento).toISOString().split("T")[0]
+        : calculateDueDate(paymentDate, meses)
 
       setFormData({
         id: String(payment.id),
         studentId: String(payment.alumno_id || payment.id_estudiante || ""),
         name: payment.nombre || "",
         amount: payment.monto?.toString() || "",
-        date: today,
+        date: paymentDate,
         dueDate,
         modality: payment.modalidad || "",
         whatsapp: payment.whatsapp || "",
@@ -318,7 +322,7 @@ export function EditPaymentDialog({ open, onOpenChange, payment, onPaymentUpdate
                 </div>
                 <div className="grid gap-1.5">
                   <Label htmlFor="date" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Fecha de pago</Label>
-                  <Input id="date" name="date" type="date" value={formData.date} onChange={(e) => setFormData((prev) => ({ ...prev, date: e.target.value }))} className="h-9" required />
+                  <Input id="date" name="date" type="date" value={formData.date} onChange={(e) => { const d = e.target.value; setFormData((prev) => ({ ...prev, date: d, dueDate: d ? calculateDueDate(d, selectedMeses) : prev.dueDate })) }} className="h-9" required />
                 </div>
               </div>
 
