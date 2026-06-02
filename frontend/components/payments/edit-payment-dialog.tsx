@@ -240,13 +240,13 @@ export function EditPaymentDialog({ open, onOpenChange, payment, onPaymentUpdate
                 </div>
                 <div className="grid gap-1.5">
                   <Label htmlFor="date" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Fecha de pago</Label>
-                  <Input id="date" name="date" type="text" inputMode="numeric" placeholder="dd/mm/yyyy" value={dateDisplay} onChange={(e) => handleDateDisplayChange(e.target.value)} className="h-9" required />
+                  <Input id="date" name="date" type="date" value={formData.date} onChange={(e) => setFormData((prev) => ({ ...prev, date: e.target.value }))} className="h-9" required />
                 </div>
               </div>
 
               <div className="grid gap-1.5">
                 <Label htmlFor="dueDate" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Fecha de vencimiento</Label>
-                <Input id="dueDate" name="dueDate" type="text" inputMode="numeric" placeholder="dd/mm/yyyy" value={dueDateDisplay} onChange={(e) => handleDueDateDisplayChange(e.target.value)} className="h-9" />
+                <Input id="dueDate" name="dueDate" type="date" value={formData.dueDate} onChange={(e) => setFormData((prev) => ({ ...prev, dueDate: e.target.value }))} className="h-9" />
               </div>
 
             </div>
