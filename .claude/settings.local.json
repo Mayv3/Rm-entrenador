@@ -12,7 +12,9 @@
       "Bash(npx *)",
       "mcp__supabase-fitflow__list_projects",
       "Bash(curl *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)"
     ]
   },
   "enableAllProjectMcpServers": true,
