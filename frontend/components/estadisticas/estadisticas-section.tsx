@@ -6,7 +6,7 @@ import axios from "axios"
 import { BarChart } from "@mui/x-charts/BarChart"
 import type { BarItemIdentifier } from "@mui/x-charts"
 import { queryKeys } from "@/lib/query-keys"
-import { TrendingUp, TrendingDown, Users, Award, X } from "lucide-react"
+import { TrendingUp, TrendingDown, Users, Award, X, ChevronLeft, ChevronRight } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { parseLocalDate } from "@/lib/payment-utils"
 import { usePlanes, getPlanColor as getPlanColorFromList } from "@/hooks/use-planes"
@@ -149,7 +149,7 @@ function ChartCard({ title, action, children, className = "" }: {
 }) {
   return (
     <div className={`rounded-2xl bg-zinc-900 border border-zinc-800 p-5 flex flex-col gap-4 h-full ${className}`}>
-      <div className="flex items-center justify-between min-h-[28px]">
+      <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-0 min-h-[28px]">
         <span className="text-sm font-semibold text-zinc-100">{title}</span>
         {action}
       </div>
@@ -195,7 +195,7 @@ function arcPath(cx: number, cy: number, outerR: number, innerR: number, startDe
 }
 
 function DonutChart({ segments, size = 200, onSelect }: {
-  segments: { value: number; color: string; label: string }[]
+  segments: { value: number; color: string; label: string; subLabel?: string }[]
   size?: number
   onSelect: (label: string) => void
 }) {
@@ -257,6 +257,11 @@ function DonutChart({ segments, size = 200, onSelect }: {
               {segments.find(s => s.label === hovered)?.value ?? 0}
             </span>
             <span className="text-[10px] text-zinc-400 mt-1">{hovered}</span>
+            {segments.find(s => s.label === hovered)?.subLabel && (
+              <span className="text-[10px] text-zinc-500 mt-0.5 text-center px-2">
+                {segments.find(s => s.label === hovered)?.subLabel}
+              </span>
+            )}
           </>
         ) : (
           <>
@@ -271,43 +276,74 @@ function DonutChart({ segments, size = 200, onSelect }: {
 
 // ─── StudentsDrillDialog ──────────────────────────────────────────────────────
 
-function StudentsDrillDialog({ category, students, color, getColor, onClose }: {
+function StudentsDrillDialog({ category, students, color, getColor, onClose, details, groups }: {
   category: string
   students: Student[]
   color: string
   getColor: (nombre: string) => string
   onClose: () => void
+  details?: Map<number, string>
+  groups?: { title: string; students: Student[]; details?: Map<number, string> }[]
 }) {
+  const renderRow = (s: Student, dmap?: Map<number, string>) => {
+    const detail = dmap?.get(s.id)
+    return (
+      <div key={s.id} className="flex items-center justify-between py-3 gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-7 h-7 rounded-full bg-zinc-800 flex items-center justify-center shrink-0 text-xs font-bold text-zinc-300">
+            {s.nombre.charAt(0).toUpperCase()}
+          </div>
+          <div className="flex flex-col min-w-0">
+            <span className="text-sm font-medium truncate">{s.nombre}</span>
+            {detail && (
+              <span className="text-sm font-medium text-zinc-300 leading-tight">{detail}</span>
+            )}
+          </div>
+        </div>
+        <span
+          className="text-xs font-medium shrink-0 px-2 py-0.5 rounded-md"
+          style={{ color: getColor(s.modalidad || ""), background: `${getColor(s.modalidad || "")}20` }}
+        >
+          {s.modalidad || "—"}
+        </span>
+      </div>
+    )
+  }
+
+  const useGroups = !!groups && groups.length > 0
+  const totalCount = useGroups ? groups!.reduce((n, g) => n + g.students.length, 0) : students.length
+
   return (
     <Dialog open onOpenChange={v => !v && onClose()}>
-      <DialogContent className="w-[90vw] max-w-md bg-zinc-900 border-zinc-800 text-zinc-100 max-h-[80vh] flex flex-col pr-14">
+      <DialogContent className={`w-[90vw] ${useGroups ? "max-w-2xl" : "max-w-md"} bg-zinc-900 border-zinc-800 text-zinc-100 max-h-[80vh] flex flex-col pr-14`}>
         <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2 text-base">
             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: color }} />
             {category}
-            <span className="ml-auto text-sm font-normal text-zinc-400">{students.length} alumnos</span>
+            <span className="ml-auto text-sm font-normal text-zinc-400">{totalCount} alumnos</span>
           </DialogTitle>
         </DialogHeader>
-        {students.length === 0 ? (
+        {totalCount === 0 ? (
           <p className="text-sm text-zinc-500 text-center py-8">Sin alumnos en esta categoría</p>
+        ) : useGroups ? (
+          <div className="overflow-y-auto -mx-6 px-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-1">
+              {groups!.filter(g => g.students.length > 0).map(g => (
+                <div key={g.title} className="flex flex-col">
+                  <div className="flex items-center gap-2 py-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-500 border-b border-zinc-800">
+                    {g.title}
+                    <span className="text-zinc-600">({g.students.length})</span>
+                  </div>
+                  <div className="flex flex-col divide-y divide-zinc-800">
+                    {g.students.map(s => renderRow(s, g.details))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         ) : (
           <div className="overflow-y-auto flex flex-col divide-y divide-zinc-800 -mx-6 px-6">
-            {students.map(s => (
-              <div key={s.id} className="flex items-center justify-between py-3 gap-3">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-7 h-7 rounded-full bg-zinc-800 flex items-center justify-center shrink-0 text-xs font-bold text-zinc-300">
-                    {s.nombre.charAt(0).toUpperCase()}
-                  </div>
-                  <span className="text-sm font-medium truncate">{s.nombre}</span>
-                </div>
-                <span
-                  className="text-xs font-medium shrink-0 px-2 py-0.5 rounded-md"
-                  style={{ color: getColor(s.modalidad || ""), background: `${getColor(s.modalidad || "")}20` }}
-                >
-                  {s.modalidad || "—"}
-                </span>
-              </div>
-            ))}
+            {students.map(s => renderRow(s, details))}
           </div>
         )}
       </DialogContent>
@@ -379,15 +415,22 @@ function PaymentsDrillDialog({ title, payments, getColor, onClose }: {
 // ─── DonutLegend ─────────────────────────────────────────────────────────────
 
 const SEGMENT_DESCRIPTIONS: Record<string, string> = {
-  Activos:   "Plan vigente, sin vencer",
+  Activos:   "Plan vigente + altas del mes",
   Inactivos: "Vencido hace 1–14 días",
   Altas:     "Nuevos este mes",
   Bajas:     "Vencido hace más de 15 días",
 }
 
-function DonutLegend({ segments, onSelect }: {
-  segments: { value: number; color: string; label: string }[]
+const SEGMENT_DESCRIPTIONS_MENSUAL: Record<string, string> = {
+  Activos: "Pagó o se dio de alta en el mes",
+  Altas:   "Inició en el mes",
+  Bajas:   "Venció en el mes y no renovó",
+}
+
+function DonutLegend({ segments, onSelect, descriptions = SEGMENT_DESCRIPTIONS }: {
+  segments: { value: number; color: string; label: string; subLabel?: string }[]
   onSelect: (label: string) => void
+  descriptions?: Record<string, string>
 }) {
   const total = segments.reduce((s, d) => s + d.value, 0)
   return (
@@ -410,7 +453,7 @@ function DonutLegend({ segments, onSelect }: {
           {/* description tooltip */}
           <div className="pointer-events-none absolute bottom-full left-0 mb-2 z-20 hidden group-hover:block">
             <div className="bg-zinc-800 border border-zinc-700 text-zinc-200 text-[11px] rounded-lg px-3 py-2 whitespace-nowrap shadow-xl">
-              {SEGMENT_DESCRIPTIONS[s.label] ?? s.label}
+              {descriptions[s.label] ?? s.label}
             </div>
           </div>
         </button>
@@ -427,6 +470,7 @@ export function EstadisticasSection() {
   const [selectedYear,  setSelectedYear]  = useState(today.getFullYear())
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth())
   const [billingYear,   setBillingYear]   = useState(today.getFullYear())
+  const [estadoMode,    setEstadoMode]    = useState<"general" | "mensual">("mensual")
 
   const { data: planes = [] } = usePlanes()
   const planColor = (nombre: string) => getPlanColorFromList(planes, nombre)
@@ -493,6 +537,40 @@ export function EstadisticasSection() {
     const altas = altasList.length
 
     const studentMap = new Map(students.map(s => [s.id, s]))
+
+    // ── Estado mensual ──────────────────────────────────────────────
+    // Activos = realizaron un pago en el mes; Bajas = vencimiento cayó en el mes.
+    // Se cruzan pagos actuales (pagos) + archivados (historial_pagos), dedup por alumno.
+    const inSelMonth = (dateStr?: string | null) => {
+      const d = parseLocalDate(dateStr ?? "")
+      return !!d && d.getMonth() === selectedMonth && d.getFullYear() === selectedYear
+    }
+    const paidDates    = new Map<number, string>() // alumno_id → fecha_de_pago en el mes
+    const expiredDates = new Map<number, string>() // alumno_id → fecha_de_vencimiento en el mes
+    const lastPagoDate = new Map<number, string>() // alumno_id → fecha del último pago (cualquier mes)
+    ;[...payments, ...paymentHistory].forEach(p => {
+      if (inSelMonth(p.fecha_de_pago)        && !paidDates.has(p.alumno_id))    paidDates.set(p.alumno_id, p.fecha_de_pago)
+      if (inSelMonth(p.fecha_de_vencimiento) && !expiredDates.has(p.alumno_id)) expiredDates.set(p.alumno_id, p.fecha_de_vencimiento)
+      if (p.fecha_de_pago) {
+        const cur = lastPagoDate.get(p.alumno_id)
+        if (!cur || (parseLocalDate(p.fecha_de_pago)?.getTime() ?? 0) > (parseLocalDate(cur)?.getTime() ?? 0)) {
+          lastPagoDate.set(p.alumno_id, p.fecha_de_pago)
+        }
+      }
+    })
+    // Baja real = venció en el mes Y no renovó (no hay pago igual o posterior al vencimiento)
+    const renovo = (id: number, venc: string) => {
+      const lp = lastPagoDate.get(id)
+      const v  = parseLocalDate(venc)
+      const lpd = lp ? parseLocalDate(lp) : null
+      return !!(lpd && v && lpd.getTime() >= v.getTime())
+    }
+    // Activos = pagaron en el mes ∪ altas del mes (dedup por alumno)
+    const altaIds = new Set(altasList.map(s => s.id))
+    const activosMesList = students.filter(s => paidDates.has(s.id) || altaIds.has(s.id))
+    const bajasMesList   = students.filter(s => { const v = expiredDates.get(s.id); return !!v && !renovo(s.id, v) })
+    const activosMes = activosMesList.length
+    const bajasMes   = bajasMesList.length
 
     // Pagos del mes seleccionado (para drill facturación)
     const currentMonthPayments = paymentHistory
@@ -561,6 +639,8 @@ export function EstadisticasSection() {
       currentBilling, prevBilling, billingDiff, monthlyBilling,
       activos, inactivos, bajas, altas,
       activosList, inactivosList, bajasList, altasList,
+      activosMes, bajasMes, activosMesList, bajasMesList,
+      paidDates, expiredDates,
       currentMonthPayments,
       total: students.length,
       topPlanEntry, topPlanPct, topPlanStudents,
@@ -580,6 +660,8 @@ export function EstadisticasSection() {
     currentBilling, prevBilling, billingDiff, monthlyBilling,
     activos, inactivos, bajas, altas,
     activosList, inactivosList, bajasList, altasList,
+    activosMes, bajasMes, activosMesList, bajasMesList,
+    paidDates, expiredDates,
     currentMonthPayments,
     total,
     topPlanEntry, topPlanPct, topPlanStudents,
@@ -587,22 +669,67 @@ export function EstadisticasSection() {
     ageGroups, ageGroupsM, ageGroupsF, ageGroupsN, studentsByAge, years,
   } = stats
 
-  const drillData: Record<string, Student[]> = {
-    Activos: activosList, Inactivos: inactivosList, Altas: altasList, Bajas: bajasList,
-  }
+  // Activos incluye las altas del mes (mensual y general). Desglose disjunto: activos vs altas.
+  const altaIds = new Set(altasList.map(s => s.id))
+  const baseActivos = estadoMode === "mensual" ? activosMesList : activosList
+  const baseActivosIds = new Set(baseActivos.map(s => s.id))
+  const activosUnionList = [...baseActivos, ...altasList.filter(s => !baseActivosIds.has(s.id))]
+  const activosPagoList  = activosUnionList.filter(s => !altaIds.has(s.id))
+  const activosTotal     = activosUnionList.length
+  const activosPagoCount = activosPagoList.length
+  const activosAltaCount = altasList.length
+
+  const drillData: Record<string, Student[]> = estadoMode === "mensual"
+    ? { Activos: activosUnionList, Altas: altasList, Bajas: bajasMesList }
+    : { Activos: activosUnionList, Inactivos: inactivosList, Altas: altasList, Bajas: bajasList }
 
   const prevMonth      = selectedMonth === 0 ? 11 : selectedMonth - 1
   const longPlanNames  = planNames.some(p => p.length > 8)
 
-  const donutSegments = [
-    { value: activos,   color: C.activos,   label: "Activos"   },
-    { value: inactivos, color: C.inactivos, label: "Inactivos" },
-    { value: altas,     color: C.altas,     label: "Altas"     },
-    { value: bajas,     color: C.bajas,     label: "Bajas"     },
+  const activosSegment = { value: activosTotal, color: C.activos, label: "Activos", subLabel: `${activosPagoCount} activos · ${activosAltaCount} altas` }
+  const donutSegments = estadoMode === "mensual"
+    ? [
+        activosSegment,
+        { value: bajasMes, color: C.bajas, label: "Bajas" },
+      ]
+    : [
+        activosSegment,
+        { value: inactivos, color: C.inactivos, label: "Inactivos" },
+        { value: bajas,     color: C.bajas,     label: "Bajas" },
+      ]
+
+  // Detalle por alumno en el drill: fecha que justifica la categoría
+  const fmtDate = (d?: string) => { if (!d) return null; const p = parseLocalDate(d); return p ? p.toLocaleDateString("es-AR") : d }
+
+  const activosPagoDetails = estadoMode === "mensual"
+    ? new Map<number, string>(activosPagoList.map(s => [s.id, `Pagó: ${fmtDate(paidDates.get(s.id)) ?? "—"}`]))
+    : undefined
+  const altasDetails = new Map<number, string>(altasList.map(s => [s.id, `Inició: ${fmtDate(s.fecha_de_inicio) ?? "—"}`]))
+  const bajasDetails = new Map<number, string>(bajasMesList.map(s => [s.id, `Venció: ${fmtDate(expiredDates.get(s.id)) ?? "—"}`]))
+
+  const drillDetails: Record<string, Map<number, string>> =
+    estadoMode === "mensual"
+      ? { Altas: altasDetails, Bajas: bajasDetails }
+      : { Altas: altasDetails }
+
+  // Drill de Activos separado en grupos (ambos modos): Activos + Altas (nuevos del mes)
+  const activosGroups = [
+    { title: "Activos",         students: activosPagoList, details: activosPagoDetails },
+    { title: "Altas (nuevos)",  students: altasList,       details: altasDetails },
   ]
 
   // shared axis style for MUI charts
   const axisStyle = { tickLabelStyle: { fill: C.axis, fontSize: 11 } }
+
+  // Navegación mes a mes (con rollover de año) — afecta filtro global
+  const stepMonth = (delta: number) => {
+    let m = selectedMonth + delta
+    let y = selectedYear
+    if (m < 0)       { m = 11; y -= 1 }
+    else if (m > 11) { m = 0;  y += 1 }
+    setSelectedMonth(m)
+    setSelectedYear(y)
+  }
 
   return (
     <div className="space-y-5 pb-6">
@@ -655,15 +782,15 @@ export function EstadisticasSection() {
 
         {/* Activos */}
         <StatCard label="Alumnos activos" icon={<Users className="h-3.5 w-3.5" />} accentColor={C.activos}
-          onClick={() => setDrillStudents({ title: "Alumnos Activos", list: activosList })}
+          onClick={() => setDrillStudents({ title: "Alumnos Activos", list: activosUnionList })}
         >
           <div className="flex items-end justify-between">
             <p className="text-3xl font-bold text-zinc-100 leading-none tracking-tight">
-              {pct(activos, total)}<span className="text-lg text-zinc-400 ml-0.5">%</span>
+              {pct(activosTotal, total)}<span className="text-lg text-zinc-400 ml-0.5">%</span>
             </p>
-            <span className="text-xs text-zinc-500 mb-0.5">{activos} / {total}</span>
+            <span className="text-xs text-zinc-500 mb-0.5">{activosTotal} / {total}</span>
           </div>
-          <ProgressBar value={pct(activos, total)} color={C.activos} />
+          <ProgressBar value={pct(activosTotal, total)} color={C.activos} />
         </StatCard>
 
         {/* Plan más frecuente */}
@@ -685,10 +812,61 @@ export function EstadisticasSection() {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
 
         {/* Donut */}
-        <ChartCard title="Estado de alumnos" className="lg:col-span-2">
+        <ChartCard
+          title="Estado de alumnos"
+          className="lg:col-span-2"
+          action={
+            <div className="flex items-center gap-2 flex-wrap">
+              {estadoMode === "mensual" && (
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => stepMonth(-1)}
+                    className="flex items-center justify-center w-6 h-6 rounded-md border border-zinc-700 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700 transition-colors"
+                    aria-label="Mes anterior"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="text-[11px] font-medium text-zinc-300 min-w-[88px] text-center tabular-nums">
+                    {MONTHS_LONG[selectedMonth]} {selectedYear}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => stepMonth(1)}
+                    className="flex items-center justify-center w-6 h-6 rounded-md border border-zinc-700 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700 transition-colors"
+                    aria-label="Mes siguiente"
+                  >
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+              <div className="flex items-center rounded-md border border-zinc-700 overflow-hidden text-[11px] font-medium">
+                {(["general", "mensual"] as const).map(m => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setEstadoMode(m)}
+                    className={`px-2.5 py-1 transition-colors ${estadoMode === m ? "bg-zinc-700 text-zinc-100" : "text-zinc-400 hover:text-zinc-200"}`}
+                  >
+                    {m === "general" ? "General" : "Mensual"}
+                  </button>
+                ))}
+              </div>
+            </div>
+          }
+        >
           <div className="flex flex-col items-center justify-center gap-6 flex-1 py-2">
+            {estadoMode === "mensual" && (
+              <span className="text-[11px] text-zinc-500 -mb-3 text-center">
+                Activos: pago + altas del mes · Altas: inicio · Bajas: vencimiento sin renovar
+              </span>
+            )}
             <DonutChart segments={donutSegments} size={260} onSelect={setDrillCategory} />
-            <DonutLegend segments={donutSegments} onSelect={setDrillCategory} />
+            <DonutLegend
+              segments={donutSegments}
+              onSelect={setDrillCategory}
+              descriptions={estadoMode === "mensual" ? SEGMENT_DESCRIPTIONS_MENSUAL : SEGMENT_DESCRIPTIONS}
+            />
           </div>
         </ChartCard>
 
@@ -812,8 +990,8 @@ export function EstadisticasSection() {
                   valueFormatter: (v: number | null) => formatARSFull(v ?? 0),
                 },
               ]}
-              height={260}
-              margin={{ left: 0, right: 16, top: 8, bottom: longPlanNames ? 56 : 24 }}
+              height={300}
+              margin={{ left: 0, right: 16, top: 8, bottom: 0 }}
               tooltip={{ trigger: "axis" }}
               borderRadius={6}
               sx={{ width: "100%", ...chartSx, "& .MuiBarElement-root": { cursor: "pointer" } }}
@@ -848,6 +1026,8 @@ export function EstadisticasSection() {
           students={drillData[drillCategory] ?? []}
           color={donutSegments.find(s => s.label === drillCategory)?.color ?? C.primary}
           getColor={planColor}
+          details={drillDetails[drillCategory]}
+          groups={drillCategory === "Activos" ? activosGroups : undefined}
           onClose={() => setDrillCategory(null)}
         />
       )}
