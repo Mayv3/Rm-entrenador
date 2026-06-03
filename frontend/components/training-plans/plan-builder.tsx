@@ -9,12 +9,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader } from "@/components/ui/loader"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { queryKeys } from "@/lib/query-keys"
-import { ArrowLeft, Plus, Loader2, Save, Eye, EyeOff, Trash2, TrendingUp, AlertTriangle, CheckCircle2, StickyNote, CalendarDays, FileText } from "lucide-react"
+import { ArrowLeft, Plus, Loader2, Save, Eye, EyeOff, Trash2, TrendingUp, AlertTriangle, CheckCircle2, StickyNote, CalendarDays, FileText, ClipboardList } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { PlanCalendarioDialog } from "./plan-calendario-dialog"
 import { DayBlock } from "./day-block"
 import { ExerciseLibraryPanel } from "./exercise-library-panel"
 import { ExerciseLibrarySheet } from "./exercise-library-sheet"
+import { ExerciseListDialog } from "./exercise-list-dialog"
 import { MovilidadSection } from "./movilidad-section"
 import type { Planificacion, Ejercicio } from "@/types/planificaciones"
 import { CATEGORIA_COLORS, CATEGORIA_ROW_STYLE } from "@/types/planificaciones"
@@ -52,6 +53,7 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
   const [hojaToDelete, setHojaToDelete] = useState<{ id: number; nombre: string } | null>(null)
   const [libSheetOpen, setLibSheetOpen] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
+  const [exerciseListOpen, setExerciseListOpen] = useState(false)
   const [progresoOpen, setProgresoOpen] = useState(false)
   const [calendarioOpen, setCalendarioOpen] = useState(false)
   const [movilidadCollapseSignal, setMovilidadCollapseSignal] = useState(0)
@@ -749,7 +751,7 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
             variant="outline"
             onClick={handleCreateHoja}
             disabled={creatingHoja}
-            className="h-11 px-4 text-sm border-dashed gap-2 shrink-0 md:h-8 md:px-3 md:text-xs md:gap-1.5"
+            className="h-11 px-4 text-xs border-dashed gap-2 shrink-0 md:h-8 md:px-3 md:text-xs md:gap-1.5"
           >
             {creatingHoja ? <Loader2 className="h-4 w-4 animate-spin md:h-3 md:w-3" /> : <Plus className="h-4 w-4 md:h-3 md:w-3" />}
             Nueva hoja
@@ -760,10 +762,20 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
           size="sm"
           variant="outline"
           onClick={() => setPreviewOpen(true)}
-          className="h-11 px-4 text-sm gap-2 shrink-0 md:h-8 md:px-3 md:text-xs md:gap-1.5 md:ml-auto"
+          className="h-11 px-4 text-xs gap-2 shrink-0 md:h-8 md:px-3 md:text-xs md:gap-1.5 md:ml-auto"
         >
           <Eye className="h-4 w-4 md:h-3.5 md:w-3.5" />
           Preview
+        </Button>
+
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setExerciseListOpen(true)}
+          className="h-11 px-4 text-xs gap-2 shrink-0 md:h-8 md:px-3 md:text-xs md:gap-1.5"
+        >
+          <ClipboardList className="h-4 w-4 md:h-3.5 md:w-3.5" />
+          Lista de ejercicios
         </Button>
 
         {!plantillaId && (
@@ -772,7 +784,7 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
               size="sm"
               variant="outline"
               onClick={() => setProgresoOpen(true)}
-              className="h-11 px-4 text-sm gap-2 shrink-0 md:h-8 md:px-3 md:text-xs md:gap-1.5 bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/30"
+              className="h-11 px-4 text-xs gap-2 shrink-0 md:h-8 md:px-3 md:text-xs md:gap-1.5 bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/30"
             >
               <TrendingUp className="h-4 w-4 md:h-3.5 md:w-3.5" />
               Progreso
@@ -782,7 +794,7 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
               size="sm"
               variant="outline"
               onClick={() => setCalendarioOpen(true)}
-              className="h-11 px-4 text-sm gap-2 shrink-0 md:h-8 md:px-3 md:text-xs md:gap-1.5 bg-[var(--primary-color)]/10 border-[var(--primary-color)]/30 text-[var(--primary-color)] hover:bg-[var(--primary-color)]/20"
+              className="h-11 px-4 text-xs gap-2 shrink-0 md:h-8 md:px-3 md:text-xs md:gap-1.5 bg-[var(--primary-color)]/10 border-[var(--primary-color)]/30 text-[var(--primary-color)] hover:bg-[var(--primary-color)]/20"
             >
               <CalendarDays className="h-4 w-4 md:h-3.5 md:w-3.5" />
               Asistencia
@@ -795,7 +807,7 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
                 setTemplateNombre(plan?.nombre ?? "")
                 setSaveAsTemplateOpen(true)
               }}
-              className="h-11 px-4 text-sm gap-2 shrink-0 md:h-8 md:px-3 md:text-xs md:gap-1.5"
+              className="h-11 px-4 text-xs gap-2 shrink-0 md:h-8 md:px-3 md:text-xs md:gap-1.5"
             >
               <FileText className="h-4 w-4 md:h-3.5 md:w-3.5" />
               Guardar como plantilla
@@ -940,6 +952,12 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
         localData={localData}
         pendingByDay={pendingByDay}
         movilidadItems={activeHoja ? (movByHoja[activeHoja.id] ?? activeHoja.movilidad.map((m) => ({ nombre: m.nombre, imagen_url: m.imagen_url ?? "" }))) : []}
+      />
+
+      <ExerciseListDialog
+        open={exerciseListOpen}
+        onOpenChange={setExerciseListOpen}
+        planId={planId}
       />
 
       <PlanProgresoDialog

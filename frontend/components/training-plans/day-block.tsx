@@ -1,10 +1,10 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, startTransition } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Trash2, Youtube, ChevronDown, ChevronUp, Loader2, GripVertical, GripHorizontal, Pencil, Plus, ArrowUp, ArrowDown, StickyNote } from "lucide-react"
+import { Trash2, Youtube, ChevronDown, ChevronUp, Loader2, GripVertical, Pencil, Plus, ArrowUp, ArrowDown } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import axios from "axios"
 import { useQueryClient } from "@tanstack/react-query"
@@ -13,22 +13,6 @@ import type { Planificacion } from "@/types/planificaciones"
 import { CATEGORIAS, CATEGORIA_COLORS, CATEGORIA_ROW_STYLE } from "@/types/planificaciones"
 import type { PlanDia, PlanEjercicio } from "@/types/planificaciones"
 import type { EjercicioLocal, PendingEjercicio } from "./plan-builder"
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core"
-import {
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-  arrayMove,
-} from "@dnd-kit/sortable"
-import { CSS } from "@dnd-kit/utilities"
 
 const SEMANAS = [1, 2, 3, 4, 5, 6]
 const CATEGORIA_ORDER = ["ACTIVADOR", "A", "B", "C", "D", "E"]
@@ -91,22 +75,18 @@ export function DayBlock({
     })
   }, [dia.ejercicios])
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } })
-  )
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event
-    if (!over || active.id === over.id) return
-
-    setOrderedEjs((prev) => {
-      const oldIndex = prev.findIndex((e) => e.id === Number(active.id))
-      const newIndex = prev.findIndex((e) => e.id === Number(over.id))
-      const reordered = arrayMove(prev, oldIndex, newIndex)
-      onOrderChange(reordered.map((e) => e.id))
-      return reordered
-    })
+  // Mover ejercicio guardado arriba/abajo con flechas (reemplaza el drag & drop)
+  const moveEjercicio = (index: number, dir: -1 | 1) => {
+    const target = index + dir
+    if (target < 0 || target >= orderedEjs.length) return
+    const reordered = [...orderedEjs]
+    const [moved] = reordered.splice(index, 1)
+    reordered.splice(target, 0, moved)
+    // Reorden visual inmediato (urgente, solo re-renderiza este día)
+    setOrderedEjs(reordered)
+    // Notificar al padre (dirty + payload de guardado) en transición:
+    // no bloquea el reorden visual con el re-render del PlanBuilder completo.
+    startTransition(() => onOrderChange(reordered.map((e) => e.id)))
   }
 
   const refetch = () => queryClient.invalidateQueries({ queryKey: queryKeys.planificacionById(planId) })
@@ -333,9 +313,7 @@ export function DayBlock({
                   <th className="px-2 py-2 w-10" />
                 </tr>
               </thead>
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                <SortableContext items={orderedEjs.map((e) => e.id)} strategy={verticalListSortingStrategy}>
-                  <tbody className="divide-y">
+              <tbody className="divide-y">
                     {totalCount === 0 && (
                       <tr>
                         <td colSpan={10} className="px-3 py-6 text-center text-muted-foreground">
@@ -344,8 +322,8 @@ export function DayBlock({
                       </tr>
                     )}
 
-                    {orderedEjs.map((ej) => (
-                      <SortableExerciseRow
+                    {orderedEjs.map((ej, idx) => (
+                      <ExerciseRow
                         key={ej.id}
                         ej={ej}
                         localData={localData}
@@ -355,6 +333,10 @@ export function DayBlock({
                         onSeriesChange={onSeriesChange}
                         onDelete={handleDeleteSaved}
                         onReplace={onReplaceEj}
+                        canMoveUp={idx > 0}
+                        canMoveDown={idx < orderedEjs.length - 1}
+                        onMoveUp={() => moveEjercicio(idx, -1)}
+                        onMoveDown={() => moveEjercicio(idx, 1)}
                       />
                     ))}
 
@@ -415,9 +397,7 @@ export function DayBlock({
                       </tr>
                       </React.Fragment>
                     ))}
-                  </tbody>
-                </SortableContext>
-              </DndContext>
+              </tbody>
             </table>
           </div>
         </div>
@@ -460,8 +440,9 @@ export function DayBlock({
   )
 }
 
-function SortableExerciseRow({
+function ExerciseRow({
   ej, localData, onSemanaChange, onCategoriaChange, onNotasProfesorChange, onSeriesChange, onDelete, onReplace,
+  canMoveUp, canMoveDown, onMoveUp, onMoveDown,
 }: {
   ej: PlanEjercicio
   localData: Record<number, EjercicioLocal>
@@ -471,33 +452,38 @@ function SortableExerciseRow({
   onSeriesChange: (planEjId: number, series: number) => void
   onDelete: (planEjId: number) => void
   onReplace: (planEjId: number) => void
+  canMoveUp: boolean
+  canMoveDown: boolean
+  onMoveUp: () => void
+  onMoveDown: () => void
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: ej.id })
-
   const local = localData[ej.id]
   const categoria = local?.categoria ?? ej.categoria
 
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.4 : 1,
-    ...CATEGORIA_ROW_STYLE[categoria],
-  }
-
   return (
-    <>
-    <tr ref={setNodeRef} style={style}>
+    <tr style={CATEGORIA_ROW_STYLE[categoria]}>
       <td className="px-1 py-1.5">
-        <div className="flex items-center gap-0.5">
-          <button
-            {...attributes}
-            {...listeners}
-            className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none shrink-0 flex items-center justify-center h-12 w-12 md:h-auto md:w-auto md:p-0 -ml-1 md:ml-0 rounded-md"
-            tabIndex={-1}
-          >
-            <GripHorizontal className="h-9 w-9 md:hidden" />
-            <GripVertical className="hidden md:block h-3.5 w-3.5" />
-          </button>
+        <div className="flex items-center gap-1">
+          <div className="flex flex-col shrink-0">
+            <button
+              type="button"
+              onClick={onMoveUp}
+              disabled={!canMoveUp}
+              title="Subir ejercicio"
+              className="flex items-center justify-center h-7 w-7 md:h-6 md:w-6 rounded text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-25 disabled:pointer-events-none transition-colors"
+            >
+              <ArrowUp className="h-4 w-4 md:h-3.5 md:w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={onMoveDown}
+              disabled={!canMoveDown}
+              title="Bajar ejercicio"
+              className="flex items-center justify-center h-7 w-7 md:h-6 md:w-6 rounded text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-25 disabled:pointer-events-none transition-colors"
+            >
+              <ArrowDown className="h-4 w-4 md:h-3.5 md:w-3.5" />
+            </button>
+          </div>
           <CategoriaSelect value={categoria} onChange={(v) => onCategoriaChange(ej.id, v)} />
         </div>
       </td>
@@ -560,7 +546,6 @@ function SortableExerciseRow({
         </div>
       </td>
     </tr>
-    </>
   )
 }
 

@@ -4,7 +4,7 @@ import { Fragment, useEffect, useMemo, useState } from "react"
 import axios from "axios"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Loader } from "@/components/ui/loader"
-import { Calendar as CalendarIcon, CheckCircle2, AlertTriangle } from "lucide-react"
+import { Calendar as CalendarIcon, AlertTriangle } from "lucide-react"
 import { Calendar } from "@/components/ui/calendar"
 import { es } from "date-fns/locale"
 import { CATEGORIA_COLORS, CATEGORIA_ROW_STYLE } from "@/types/planificaciones"
@@ -115,7 +115,7 @@ export function PlanCalendarioDialog({ open, onOpenChange, planId, alumnoNombre,
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={`${calendarOnly ? "max-w-md w-[95vw]" : "max-w-6xl w-[95vw]"} flex flex-col p-0 max-h-none h-auto overflow-visible`}>
+      <DialogContent className={`${calendarOnly ? "max-w-md w-[95vw]" : "max-w-6xl w-[95vw]"} flex flex-col p-0 max-h-[90vh] overflow-hidden`}>
         <DialogHeader className="px-6 pt-5 pb-4 border-b shrink-0">
           <DialogTitle className="text-base flex items-center gap-2">
             <CalendarIcon className="h-4 w-4 text-[var(--primary-color)]" />
@@ -128,11 +128,11 @@ export function PlanCalendarioDialog({ open, onOpenChange, planId, alumnoNombre,
           </DialogTitle>
         </DialogHeader>
 
-        <div className="px-6 py-5">
+        <div className="px-3 py-4 md:px-6 md:py-5 flex-1 min-h-0 overflow-y-auto">
           {loading ? (
             <div className="flex items-center justify-center py-20"><Loader /></div>
           ) : (
-            <div className={calendarOnly ? "flex justify-center" : "grid md:grid-cols-[360px,1fr] gap-8 items-center"}>
+            <div className={calendarOnly ? "flex justify-center" : "grid md:grid-cols-[360px,1fr] gap-4 md:gap-8 items-center"}>
               <div className="flex justify-center items-center h-full">
                 <Calendar
                   mode="single"
@@ -199,50 +199,34 @@ function DetalleAsistencia({ a }: { a: Asistencia }) {
   )
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-            <span className="font-semibold text-base capitalize">{fmtFecha(a.fecha)}</span>
-            {!a.es_de_este_plan && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                Otro plan
-              </span>
-            )}
-          </div>
-          {a.sesion && (
-            <p className="text-sm text-muted-foreground mt-1">
-              {a.sesion.planificacion_hojas?.nombre ?? ""}
-              {a.sesion.planificacion_dias && ` · Día ${a.sesion.planificacion_dias.numero_dia} - ${a.sesion.planificacion_dias.nombre}`}
-              {` · Semana ${a.sesion.semana}`}
-            </p>
-          )}
-        </div>
-
-        {activos.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 justify-end shrink-0 max-w-[50%]">
+    <div className="space-y-3 md:space-y-5">
+      <div className="space-y-1.5">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Estado de salud</p>
+        {activos.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5">
             {activos.map((f) => (
               <span key={f.key} className={`px-2 py-1 rounded text-xs font-medium ${f.className}`}>
                 {f.label}
               </span>
             ))}
           </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">Sin novedades</p>
         )}
       </div>
 
       {a.registros.length === 0 ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/40 rounded-md px-3 py-3">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/40 rounded-md px-3 py-2 md:py-3">
           <AlertTriangle className="h-4 w-4" />
           Marcó salud pero no cargó ejercicios.
         </div>
       ) : (
-        <div className="rounded-xl border overflow-hidden bg-card">
-          <table className="w-full text-sm border-collapse">
+        <div className="rounded-xl border overflow-x-auto bg-card">
+          <table className="w-max min-w-full text-xs md:text-sm border-collapse">
             <thead>
               <tr className="bg-muted/60 border-b">
-                <th className="px-4 py-2.5 text-left font-semibold w-12">#</th>
-                <th className="px-4 py-2.5 text-left font-semibold">Ejercicio</th>
+                <th className="px-2.5 md:px-4 py-2 md:py-2.5 text-left font-semibold w-12">#</th>
+                <th className="px-2.5 md:px-4 py-2 md:py-2.5 text-left font-semibold">Ejercicio</th>
                 <th className="px-3 py-2.5 text-center font-semibold w-20">Cat.</th>
                 {Array.from({ length: maxSeries }).map((_, i) => (
                   <th
@@ -277,14 +261,14 @@ function DetalleAsistencia({ a }: { a: Asistencia }) {
                 const esSaltado = series.every((s) => (s.peso_kg ?? 0) === 0)
                 return (
                   <tr key={r.id} style={rowStyle} className="hover:brightness-95 transition-colors">
-                    <td className="px-4 py-3 text-xs text-muted-foreground tabular-nums">{idx + 1}</td>
-                    <td className="px-4 py-3 font-medium">
+                    <td className="px-2.5 md:px-4 py-2 md:py-3 text-xs text-muted-foreground tabular-nums">{idx + 1}</td>
+                    <td className="px-2.5 md:px-4 py-2 md:py-3 font-medium">
                       {r.ejercicio_nombre_snapshot}
                       {r.notas && (
                         <p className="text-[11px] text-blue-500 dark:text-blue-300 italic mt-1">"{r.notas}"</p>
                       )}
                     </td>
-                    <td className="px-3 py-3 text-center">
+                    <td className="px-3 py-2 md:py-3 text-center">
                       {cat && (
                         <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${CATEGORIA_COLORS[cat] ?? ""}`}>
                           {cat}
@@ -296,16 +280,16 @@ function DetalleAsistencia({ a }: { a: Asistencia }) {
                       if (!s) {
                         return (
                           <Fragment key={i}>
-                            <td className={`px-1.5 py-3 text-center text-muted-foreground/30 ${i > 0 ? "border-l-2 border-border" : "border-l"}`}>—</td>
-                            <td className="px-1.5 py-3 text-center text-muted-foreground/30">—</td>
-                            <td className="px-1.5 py-3 text-center text-muted-foreground/30">—</td>
+                            <td className={`px-1.5 py-2 md:py-3 text-center text-muted-foreground/30 ${i > 0 ? "border-l-2 border-border" : "border-l"}`}>—</td>
+                            <td className="px-1.5 py-2 md:py-3 text-center text-muted-foreground/30">—</td>
+                            <td className="px-1.5 py-2 md:py-3 text-center text-muted-foreground/30">—</td>
                           </Fragment>
                         )
                       }
                       if (esSaltado) {
                         return (
                           <Fragment key={i}>
-                            <td colSpan={3} className={`px-2 py-3 text-center text-amber-500 italic text-xs font-medium ${i > 0 ? "border-l-2 border-border" : "border-l"}`}>
+                            <td colSpan={3} className={`px-2 py-2 md:py-3 text-center text-amber-500 italic text-xs font-medium ${i > 0 ? "border-l-2 border-border" : "border-l"}`}>
                               Saltado
                             </td>
                           </Fragment>
@@ -313,11 +297,11 @@ function DetalleAsistencia({ a }: { a: Asistencia }) {
                       }
                       return (
                         <Fragment key={i}>
-                          <td className={`px-1.5 py-3 text-center font-bold tabular-nums ${i > 0 ? "border-l-2 border-border" : "border-l"}`}>
+                          <td className={`px-1.5 py-2 md:py-3 text-center font-bold tabular-nums ${i > 0 ? "border-l-2 border-border" : "border-l"}`}>
                             {s.peso_kg ?? "—"}
                           </td>
-                          <td className="px-1.5 py-3 text-center tabular-nums">{s.repeticiones ?? "—"}</td>
-                          <td className="px-1.5 py-3 text-center tabular-nums text-muted-foreground">{s.rpe ?? "—"}</td>
+                          <td className="px-1.5 py-2 md:py-3 text-center tabular-nums">{s.repeticiones ?? "—"}</td>
+                          <td className="px-1.5 py-2 md:py-3 text-center tabular-nums text-muted-foreground">{s.rpe ?? "—"}</td>
                         </Fragment>
                       )
                     })}
