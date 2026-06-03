@@ -22,12 +22,13 @@ import { CATEGORIA_COLORS, CATEGORIA_ROW_STYLE } from "@/types/planificaciones"
 const CATEGORIA_ORDER = ["ACTIVADOR", "A", "B", "C", "D", "E"]
 
 export type SemanaLocal = { dosis: string; rpe: string; notas: string }
-export type EjercicioLocal = { categoria: string; notas_profesor: string; semanas: Record<number, SemanaLocal> }
+export type EjercicioLocal = { categoria: string; notas_profesor: string; series: number; semanas: Record<number, SemanaLocal> }
 export type PendingEjercicio = {
   tempId: string
   ejercicio: Ejercicio
   categoria: string
   notas_profesor: string
+  series: number
   dosis: Record<number, string>
   rpe: Record<number, string>
   notas: Record<number, string>
@@ -111,6 +112,7 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
         data[ej.id] = {
           categoria: ej.categoria,
           notas_profesor: ej.notas_profesor ?? "",
+          series: ej.series ?? 3,
           semanas: Object.fromEntries(
             ej.semanas.map((s) => [s.semana, { dosis: s.dosis ?? "", rpe: s.rpe?.toString() ?? "", notas: s.notas_profesor ?? "" }])
           ),
@@ -163,6 +165,7 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
             [ej.id]: {
               categoria: ej.categoria,
               notas_profesor: ej.notas_profesor ?? "",
+              series: ej.series ?? 3,
               semanas: Object.fromEntries(
                 ej.semanas.map((s) => [s.semana, { dosis: s.dosis ?? "", rpe: s.rpe?.toString() ?? "", notas: s.notas_profesor ?? "" }])
               ),
@@ -226,6 +229,15 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
     markDirty()
   }
 
+  // ── Cambios en cantidad de series ────────────────────────────────────────────
+  const handleSeriesChange = (planEjId: number, series: number) => {
+    setLocalData((prev) => ({
+      ...prev,
+      [planEjId]: { ...prev[planEjId], series },
+    }))
+    markDirty()
+  }
+
   // ── Pendientes por día ──────────────────────────────────────────────────────
   const handlePendingChange = (diaId: number, pending: PendingEjercicio[]) => {
     setPendingByDay((prev) => ({ ...prev, [diaId]: pending }))
@@ -267,6 +279,7 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
       const semanas: { planificacion_ejercicio_id: number; semana: number; dosis: string | null; rpe: number | null; notas_profesor: string | null }[] = []
       const categorias: { planificacion_ejercicio_id: number; categoria: string }[] = []
       const notasProfesor: { planificacion_ejercicio_id: number; notas_profesor: string }[] = []
+      const seriesUpdates: { planificacion_ejercicio_id: number; series: number }[] = []
 
       plan.hojas.flatMap((h) => h.dias).forEach((dia) => {
         dia.ejercicios.forEach((ej) => {
@@ -277,6 +290,9 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
           }
           if ((local.notas_profesor ?? "") !== (ej.notas_profesor ?? "")) {
             notasProfesor.push({ planificacion_ejercicio_id: ej.id, notas_profesor: local.notas_profesor ?? "" })
+          }
+          if ((local.series ?? 3) !== (ej.series ?? 3)) {
+            seriesUpdates.push({ planificacion_ejercicio_id: ej.id, series: local.series ?? 3 })
           }
           for (let s = 1; s <= 6; s++) {
             const localSem = local.semanas[s]
@@ -297,7 +313,7 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
         })
       })
 
-      const pendingByDayPayload: Record<string, { ejercicio_id: number; categoria: string; orden: number; notas_profesor: string | null; semanas: { semana: number; dosis: string | null; rpe: number | null; notas_profesor: string | null }[] }[]> = {}
+      const pendingByDayPayload: Record<string, { ejercicio_id: number; categoria: string; orden: number; series: number; notas_profesor: string | null; semanas: { semana: number; dosis: string | null; rpe: number | null; notas_profesor: string | null }[] }[]> = {}
       for (const [diaId, pending] of Object.entries(snapshotPendingByDay)) {
         if (!pending.length) continue
         pendingByDayPayload[diaId] = [...pending]
@@ -306,6 +322,7 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
             ejercicio_id: p.ejercicio.id,
             categoria: p.categoria,
             orden: i,
+            series: p.series ?? 3,
             notas_profesor: p.notas_profesor || null,
             semanas: [1, 2, 3, 4, 5, 6].map((s) => ({
               semana: s,
@@ -328,6 +345,7 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
           semanas,
           categorias,
           notasProfesor,
+          seriesUpdates,
           deletes: snapshotPendingDeletes,
           orden: ordenItems,
         }
@@ -842,6 +860,7 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
                 onSemanaChange={handleSemanaChange}
                 onCategoriaChange={handleCategoriaChange}
                 onNotasProfesorChange={handleNotasProfesorChange}
+                onSeriesChange={handleSeriesChange}
                 onPendingChange={(p) => handlePendingChange(dia.id, p)}
                 onOrderChange={(ids) => handleOrderChange(dia.id, ids)}
                 onDeleteEj={handleDeleteEj}

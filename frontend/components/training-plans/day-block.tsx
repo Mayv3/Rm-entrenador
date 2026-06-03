@@ -44,6 +44,7 @@ interface DayBlockProps {
   onSemanaChange: (planEjId: number, semana: number, field: "dosis" | "rpe" | "notas", value: string) => void
   onCategoriaChange: (planEjId: number, categoria: string) => void
   onNotasProfesorChange: (planEjId: number, value: string) => void
+  onSeriesChange: (planEjId: number, series: number) => void
   onPendingChange: (pending: PendingEjercicio[]) => void
   onOrderChange: (orderedIds: number[]) => void
   onDeleteEj: (planEjId: number) => void
@@ -57,7 +58,7 @@ interface DayBlockProps {
 
 export function DayBlock({
   dia, planId, localData, pending, isActive, onActivate, onDeleted,
-  onSemanaChange, onCategoriaChange, onNotasProfesorChange, onPendingChange, onOrderChange, onDeleteEj, onReplaceEj, onOpenLibrary,
+  onSemanaChange, onCategoriaChange, onNotasProfesorChange, onSeriesChange, onPendingChange, onOrderChange, onDeleteEj, onReplaceEj, onOpenLibrary,
   canMoveUp, canMoveDown, onMoveUp, onMoveDown,
 }: DayBlockProps) {
   const queryClient = useQueryClient()
@@ -123,6 +124,7 @@ export function DayBlock({
         ejercicio,
         categoria: "A",
         notas_profesor: "",
+        series: 3,
         dosis: {},
         rpe: {},
         notas: {},
@@ -194,7 +196,12 @@ export function DayBlock({
     }
   }
 
-  const setPendingField = (tempId: string, field: "categoria" | "dosis" | "rpe" | "notas_profesor" | "notas_semana", semana: number | null, value: string) => {
+  const setPendingField = (tempId: string, field: "categoria" | "dosis" | "rpe" | "notas_profesor" | "notas_semana" | "series", semana: number | null, value: string) => {
+    if (field === "series") {
+      const n = Math.max(1, Math.min(8, parseInt(value) || 3))
+      onPendingChange(pending.map((p) => (p.tempId === tempId ? { ...p, series: n } : p)))
+      return
+    }
     if (field === "categoria") {
       const idx = pending.findIndex((p) => p.tempId === tempId)
       onPendingChange(pending.map((p, i) => {
@@ -206,7 +213,6 @@ export function DayBlock({
     }
     onPendingChange(pending.map((p) => {
       if (p.tempId !== tempId) return p
-      if (field === "categoria") return { ...p, categoria: value }
       if (field === "notas_profesor") return { ...p, notas_profesor: value }
       if (field === "dosis" && semana !== null) {
         const newDosis = { ...p.dosis }
@@ -318,6 +324,7 @@ export function DayBlock({
                 <tr className="border-b bg-muted/30">
                   <th className="px-2 py-2 text-left font-medium text-muted-foreground w-20">Cat.</th>
                   <th className="px-3 py-2 text-left font-medium text-muted-foreground">Ejercicio</th>
+                  <th className="px-2 py-2 text-center font-medium text-muted-foreground w-16">Series</th>
                   {SEMANAS.map((s) => (
                     <th key={s} className="px-2 py-2 text-center font-medium text-muted-foreground w-32 2xl:w-40">
                       Sem. {s}
@@ -331,7 +338,7 @@ export function DayBlock({
                   <tbody className="divide-y">
                     {totalCount === 0 && (
                       <tr>
-                        <td colSpan={9} className="px-3 py-6 text-center text-muted-foreground">
+                        <td colSpan={10} className="px-3 py-6 text-center text-muted-foreground">
                           {isActive ? "Hacé click en un ejercicio del panel para agregarlo." : "Seleccioná este día."}
                         </td>
                       </tr>
@@ -345,6 +352,7 @@ export function DayBlock({
                         onSemanaChange={onSemanaChange}
                         onCategoriaChange={handleCategoriaForRow}
                         onNotasProfesorChange={onNotasProfesorChange}
+                        onSeriesChange={onSeriesChange}
                         onDelete={handleDeleteSaved}
                         onReplace={onReplaceEj}
                       />
@@ -366,6 +374,9 @@ export function DayBlock({
                             )}
                             <span className="font-medium block max-w-[180px] truncate 2xl:max-w-none 2xl:overflow-visible 2xl:whitespace-normal 2xl:text-clip" title={p.ejercicio.nombre}>{p.ejercicio.nombre}</span>
                           </div>
+                        </td>
+                        <td className="px-1 py-1.5 text-center">
+                          <SeriesSelect value={p.series ?? 3} onChange={(v) => setPendingField(p.tempId, "series", null, String(v))} />
                         </td>
                         {SEMANAS.map((s) => {
                           const pendingRpe = p.rpe[s] || (s % 2 === 0 ? (p.rpe[s - 1] ?? "") : "")
@@ -450,13 +461,14 @@ export function DayBlock({
 }
 
 function SortableExerciseRow({
-  ej, localData, onSemanaChange, onCategoriaChange, onNotasProfesorChange, onDelete, onReplace,
+  ej, localData, onSemanaChange, onCategoriaChange, onNotasProfesorChange, onSeriesChange, onDelete, onReplace,
 }: {
   ej: PlanEjercicio
   localData: Record<number, EjercicioLocal>
   onSemanaChange: (planEjId: number, semana: number, field: "dosis" | "rpe" | "notas", value: string) => void
   onCategoriaChange: (planEjId: number, categoria: string) => void
   onNotasProfesorChange: (planEjId: number, value: string) => void
+  onSeriesChange: (planEjId: number, series: number) => void
   onDelete: (planEjId: number) => void
   onReplace: (planEjId: number) => void
 }) {
@@ -499,6 +511,9 @@ function SortableExerciseRow({
           )}
           <span className="font-medium block max-w-[100px] truncate 2xl:max-w-none 2xl:overflow-visible 2xl:whitespace-normal 2xl:text-clip" title={ej.ejercicios.nombre}>{ej.ejercicios.nombre}</span>
         </div>
+      </td>
+      <td className="px-1 py-1.5 text-center">
+        <SeriesSelect value={local?.series ?? ej.series ?? 3} onChange={(v) => onSeriesChange(ej.id, v)} />
       </td>
       {SEMANAS.map((s) => {
         const sem = local?.semanas?.[s]
@@ -546,6 +561,21 @@ function SortableExerciseRow({
       </td>
     </tr>
     </>
+  )
+}
+
+function SeriesSelect({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  return (
+    <Select value={String(value)} onValueChange={(v) => onChange(Number(v))}>
+      <SelectTrigger className="h-7 w-14 text-xs px-1 shrink-0 mx-auto">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {[3, 4].map((n) => (
+          <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   )
 }
 

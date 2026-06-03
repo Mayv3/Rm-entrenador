@@ -397,7 +397,7 @@ export async function deleteDia(req, res) {
 
 export async function addEjercicioADia(req, res) {
   const { diaId } = req.params;
-  const { ejercicio_id, categoria, orden } = req.body;
+  const { ejercicio_id, categoria, orden, series } = req.body;
 
   if (!ejercicio_id) return res.status(400).json({ error: "ejercicio_id es obligatorio" });
 
@@ -408,6 +408,7 @@ export async function addEjercicioADia(req, res) {
       ejercicio_id,
       categoria: categoria ?? "A",
       orden: orden ?? 0,
+      series: series ?? 3,
     }])
     .select("*, ejercicios(id, nombre, grupo_muscular, video_url)")
     .single();
@@ -438,12 +439,13 @@ export async function addEjercicioADia(req, res) {
 
 export async function updateEjercicioEnDia(req, res) {
   const { planEjId } = req.params;
-  const { categoria, orden, ejercicio_id } = req.body;
+  const { categoria, orden, ejercicio_id, series } = req.body;
 
   const updates = {};
   if (categoria !== undefined) updates.categoria = categoria;
   if (orden !== undefined) updates.orden = orden;
   if (ejercicio_id !== undefined) updates.ejercicio_id = ejercicio_id;
+  if (series !== undefined) updates.series = series;
 
   if (Object.keys(updates).length === 0) {
     return res.status(400).json({ error: "No hay campos para actualizar" });
@@ -546,6 +548,7 @@ export async function addEjerciciosADiaBulk(req, res) {
     ejercicio_id: e.ejercicio_id,
     categoria: e.categoria ?? "A",
     orden: e.orden ?? i,
+    series: e.series ?? 3,
   }));
 
   const { data: insertedEjs, error: ejError } = await supabase
@@ -635,10 +638,11 @@ export async function saveMovilidad(req, res) {
 export async function saveAll(req, res) {
   const { id } = req.params
   const {
-    pendingByDay = {},   // { [diaId]: [{ ejercicio_id, categoria, orden, semanas, notas_profesor }] }
+    pendingByDay = {},   // { [diaId]: [{ ejercicio_id, categoria, orden, series, semanas, notas_profesor }] }
     semanas = [],        // [{ planificacion_ejercicio_id, semana, dosis, rpe }]
     categorias = [],     // [{ planificacion_ejercicio_id, categoria }]
     notasProfesor = [],  // [{ planificacion_ejercicio_id, notas_profesor }]
+    seriesUpdates = [],  // [{ planificacion_ejercicio_id, series }]
     deletes = [],        // [planEjId]
     orden = [],          // [{ id, orden }]
   } = req.body
@@ -655,6 +659,7 @@ export async function saveAll(req, res) {
         ejercicio_id: e.ejercicio_id,
         categoria: e.categoria ?? "A",
         orden: e.orden ?? i,
+        series: e.series ?? 3,
         notas_profesor: e.notas_profesor ?? null,
       }))
 
@@ -686,7 +691,7 @@ export async function saveAll(req, res) {
   }
 
   // 2. Upsert semanas + categorías de ejercicios existentes
-  if (semanas.length > 0 || categorias.length > 0 || notasProfesor.length > 0) {
+  if (semanas.length > 0 || categorias.length > 0 || notasProfesor.length > 0 || seriesUpdates.length > 0) {
     ops.push((async () => {
       const innerOps = []
       for (const s of semanas) {
@@ -705,6 +710,11 @@ export async function saveAll(req, res) {
       for (const n of notasProfesor) {
         innerOps.push(
           supabase.from("planificacion_ejercicios").update({ notas_profesor: n.notas_profesor || null }).eq("id", n.planificacion_ejercicio_id)
+        )
+      }
+      for (const su of seriesUpdates) {
+        innerOps.push(
+          supabase.from("planificacion_ejercicios").update({ series: su.series }).eq("id", su.planificacion_ejercicio_id)
         )
       }
       const results = await Promise.all(innerOps)

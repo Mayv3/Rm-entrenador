@@ -35,6 +35,7 @@ interface PlanSemana {
   semana: number
   dosis: string | null
   rpe: number | null
+  notas_profesor?: string | null
 }
 
 interface PlanEjercicioPortal {
@@ -43,6 +44,7 @@ interface PlanEjercicioPortal {
   ejercicio_id: number
   categoria: string
   orden: number
+  series?: number | null
   ejercicios: {
     id: number
     nombre: string
@@ -115,15 +117,20 @@ type SerieRow = {
 }
 
 type FormRow = {
-  series: [SerieRow, SerieRow, SerieRow]
+  series: SerieRow[]
   notas: string
 }
 
 const EMPTY_SERIE: SerieRow = { peso_kg: "", repeticiones: "", rpe: "" }
-const EMPTY_FORM_ROW = (): FormRow => ({
-  series: [{ ...EMPTY_SERIE }, { ...EMPTY_SERIE }, { ...EMPTY_SERIE }],
+const DEFAULT_SERIES = 3
+const clampSeries = (v: unknown) => Math.min(8, Math.max(1, Number(v) || DEFAULT_SERIES))
+const EMPTY_FORM_ROW = (count: number = DEFAULT_SERIES): FormRow => ({
+  series: Array.from({ length: count }, () => ({ ...EMPTY_SERIE })),
   notas: "",
 })
+// Ajusta un array de series a `count` (pad con vacías / trunca)
+const padSeries = (arr: SerieRow[] | undefined, count: number): SerieRow[] =>
+  Array.from({ length: count }, (_, i) => arr?.[i] ?? { ...EMPTY_SERIE })
 
 
 const queryKeyPlan = (studentId: number) => ["portalPlanificacion", studentId] as const
@@ -347,6 +354,12 @@ export function StudentPlanificacionSection({
     [diaSeleccionado]
   )
 
+  // Cantidad de series por ejercicio (la define el profesor; default 3)
+  const ejerciciosDelDiaRef = useRef(ejerciciosDelDia)
+  ejerciciosDelDiaRef.current = ejerciciosDelDia
+  const getSeriesCount = (planEjId: number) =>
+    clampSeries(ejerciciosDelDiaRef.current.find((e) => e.id === planEjId)?.series)
+
   const { data: sessionData, isFetching: loadingSession } = useQuery<SsnData>({
     queryKey: queryKeySesion(
       planificacion?.id ?? 0,
@@ -456,7 +469,8 @@ export function StudentPlanificacionSection({
         saltados.add(ej.id)
       }
 
-      const series: [SerieRow, SerieRow, SerieRow] = [0, 1, 2].map((i) => {
+      const count = clampSeries(ej.series)
+      const series: SerieRow[] = Array.from({ length: count }, (_, i) => {
         const s = savedSeries[i]
         if (s) {
           return {
@@ -473,7 +487,7 @@ export function StudentPlanificacionSection({
           }
         }
         return { ...EMPTY_SERIE }
-      }) as [SerieRow, SerieRow, SerieRow]
+      })
       next[ej.id] = { series, notas: existing?.notas ?? "" }
     }
     // Overlay cualquier dato sin guardar persistido en localStorage
@@ -489,7 +503,7 @@ export function StudentPlanificacionSection({
               const localRow = row as FormRow
               const hasLocalData = (localRow.series ?? []).some((s) => s.peso_kg !== "" || s.repeticiones !== "" || s.rpe !== "") || (localRow.notas ?? "") !== ""
               if (hasLocalData) {
-                next[ejId] = localRow
+                next[ejId] = { series: padSeries(localRow.series, getSeriesCount(ejId)), notas: localRow.notas ?? "" }
                 dirtyEjIds.current.add(ejId)
                 isDirty.current = true
               }
@@ -606,7 +620,7 @@ export function StudentPlanificacionSection({
       // Todos completos → último ej no salteado, serie 3 (la última cargada)
       const lastEj = [...ejerciciosDelDia].reverse().find((ej) => !saltados.has(ej.id))
       if (lastEj) {
-        const lastSerieIdx = 2
+        const lastSerieIdx = getSeriesCount(lastEj.id) - 1
         setActiveSerieMap({ [lastEj.id]: lastSerieIdx })
         pendingSerieRestoreRef.current = { [lastEj.id]: lastSerieIdx }
         const applyScroll = () => {
@@ -799,21 +813,22 @@ export function StudentPlanificacionSection({
       for (const ej of ejerciciosDelDia) {
         if (!dirtyIds.has(ej.id)) continue
 
-        const row = registrosFormRef.current[ej.id] ?? EMPTY_FORM_ROW()
+        const row = registrosFormRef.current[ej.id] ?? EMPTY_FORM_ROW(getSeriesCount(ej.id))
         const esSaltado = saltadoEjIds.has(ej.id)
 
         if (esSaltado) {
+          const count = getSeriesCount(ej.id)
           registros.push({
             planificacion_ejercicio_id: ej.id,
             peso_kg: 0,
             repeticiones: 0,
             rpe: 0,
             notas: null,
-            series: [
-              { peso_kg: 0, repeticiones: 0, rpe: 0, _saltado: true },
-              { peso_kg: 0, repeticiones: 0, rpe: 0 },
-              { peso_kg: 0, repeticiones: 0, rpe: 0 },
-            ],
+            series: Array.from({ length: count }, (_, i) =>
+              i === 0
+                ? { peso_kg: 0, repeticiones: 0, rpe: 0, _saltado: true }
+                : { peso_kg: 0, repeticiones: 0, rpe: 0 }
+            ),
           })
           continue
         }
@@ -849,11 +864,7 @@ export function StudentPlanificacionSection({
               repeticiones: null,
               rpe: null,
               notas: null,
-              series: [
-                { peso_kg: null, repeticiones: null, rpe: null },
-                { peso_kg: null, repeticiones: null, rpe: null },
-                { peso_kg: null, repeticiones: null, rpe: null },
-              ],
+              series: Array.from({ length: getSeriesCount(ej.id) }, () => ({ peso_kg: null, repeticiones: null, rpe: null })),
             })
           }
         }
@@ -903,11 +914,11 @@ export function StudentPlanificacionSection({
               repeticiones: 0,
               rpe: 0,
               notas: null,
-              series: [
-                { peso_kg: 0, repeticiones: 0, rpe: 0, _saltado: true },
-                { peso_kg: 0, repeticiones: 0, rpe: 0 },
-                { peso_kg: 0, repeticiones: 0, rpe: 0 },
-              ],
+              series: Array.from({ length: getSeriesCount(r.planificacion_ejercicio_id) }, (_, i) =>
+                i === 0
+                  ? { peso_kg: 0, repeticiones: 0, rpe: 0, _saltado: true }
+                  : { peso_kg: 0, repeticiones: 0, rpe: 0 }
+              ),
             }
           }
           const formRow = registrosForm[r.planificacion_ejercicio_id]
@@ -988,10 +999,10 @@ export function StudentPlanificacionSection({
     setSaveMessage("")
     setSavedSuccess(false)
 
-    const old = registrosFormRef.current[planEjId] ?? EMPTY_FORM_ROW()
+    const old = registrosFormRef.current[planEjId] ?? EMPTY_FORM_ROW(getSeriesCount(planEjId))
     const newSeries = old.series.map((s, i) =>
       i === serieIdx ? { ...s, [field]: clamped } : s
-    ) as [SerieRow, SerieRow, SerieRow]
+    )
     const updated = { ...registrosFormRef.current, [planEjId]: { ...old, series: newSeries } }
     registrosFormRef.current = updated
     setRegistrosForm(updated)
@@ -1011,7 +1022,7 @@ export function StudentPlanificacionSection({
     if (serieFilled) {
       const t = setTimeout(() => {
         serieAdvanceDebounceRef.current.delete(advanceKey)
-        if (serieIdx < 2) {
+        if (serieIdx < getSeriesCount(planEjId) - 1) {
           scrollToSerie(planEjId, serieIdx + 1)
         } else {
           const ejIdx = ejerciciosDelDia.findIndex((e) => e.id === planEjId)
@@ -1074,7 +1085,7 @@ export function StudentPlanificacionSection({
     isDirty.current = true
     setSaveMessage("")
     setSavedSuccess(false)
-    const old = registrosFormRef.current[planEjId] ?? EMPTY_FORM_ROW()
+    const old = registrosFormRef.current[planEjId] ?? EMPTY_FORM_ROW(getSeriesCount(planEjId))
     const updated = { ...registrosFormRef.current, [planEjId]: { ...old, notas: value } }
     registrosFormRef.current = updated
     setRegistrosForm(updated)
@@ -1089,7 +1100,7 @@ export function StudentPlanificacionSection({
     if (newSaltados.has(planEjId)) newSaltados.delete(planEjId)
     else newSaltados.add(planEjId)
     setSaltadoEjIds(newSaltados)
-    const updatedSkip = { ...registrosFormRef.current, [planEjId]: EMPTY_FORM_ROW() }
+    const updatedSkip = { ...registrosFormRef.current, [planEjId]: EMPTY_FORM_ROW(getSeriesCount(planEjId)) }
     registrosFormRef.current = updatedSkip
     setRegistrosForm(updatedSkip)
     persistFormLocal(updatedSkip, newSaltados)
@@ -1480,8 +1491,9 @@ export function StudentPlanificacionSection({
             const effectiveRpe = semanaPlan?.rpe ?? semanaPlanPrev?.rpe ?? null
             const effectiveDosis = semanaPlan?.dosis ?? semanaPlanPrev?.dosis ?? null
             const effectiveNota = semanaPlan?.notas_profesor ?? semanaPlanPrev?.notas_profesor ?? null
-            const row = registrosForm[ej.id] ?? EMPTY_FORM_ROW()
-            const isFilled = row.series.every((s) => !!s.peso_kg && !!s.repeticiones && !!s.rpe)
+            const seriesCount = clampSeries(ej.series)
+            const row = registrosForm[ej.id] ?? EMPTY_FORM_ROW(seriesCount)
+            const isFilled = row.series.length > 0 && row.series.every((s) => !!s.peso_kg && !!s.repeticiones && !!s.rpe)
             const regAnterior = registrosAnterioresMap.get(ej.id) ?? null
             const anteriorSeries: SerieRegistro[] | null = (() => {
               if (!regAnterior) return null
@@ -1586,10 +1598,10 @@ export function StudentPlanificacionSection({
                   <div className="pb-3" />
                 ) : (
                 <div className="pb-4">
-                  {/* S1/S2/S3 pills */}
-                  <div className="grid grid-cols-3 gap-2 px-4 mt-4 mb-3">
-                    {([0, 1, 2] as const).map((i) => {
-                      const s = row.series[i]
+                  {/* Pills de series (cantidad definida por el profesor) */}
+                  <div className="grid gap-2 px-4 mt-4 mb-3" style={{ gridTemplateColumns: `repeat(${Math.min(seriesCount, 4)}, minmax(0, 1fr))` }}>
+                    {Array.from({ length: seriesCount }, (_, i) => {
+                      const s = row.series[i] ?? EMPTY_SERIE
                       const filled = !!s.peso_kg && !!s.repeticiones && !!s.rpe
                       const active = getActiveSerie(ej.id) === i
                       return (
@@ -1629,8 +1641,8 @@ export function StudentPlanificacionSection({
                     style={{ scrollbarWidth: "none" }}
                     onScroll={(e) => handleSerieScroll(ej.id, e.currentTarget)}
                   >
-                    {([0, 1, 2] as const).map((serieIdx) => {
-                      const serie = row.series[serieIdx]
+                    {Array.from({ length: seriesCount }, (_, serieIdx) => {
+                      const serie = row.series[serieIdx] ?? EMPTY_SERIE
                       const anteriorSerie = anteriorSeries?.[serieIdx] ?? null
                       return (
                         <div key={serieIdx} className="snap-start flex-shrink-0 w-full px-4 space-y-3">

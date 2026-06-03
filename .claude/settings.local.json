@@ -14,7 +14,12 @@
       "Bash(curl *)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(grep -E \"portal[\\\\\\\\\\\\\\\\/]page|mi-plan-app|membership\")",
+      "mcp__supabase-rm__execute_sql",
+      "mcp__supabase-rm__apply_migration",
+      "Bash(git stash *)",
+      "Bash(echo \"=== lint done \\(rc=$?\\) ===\")"
     ]
   },
   "enableAllProjectMcpServers": true,
