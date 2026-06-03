@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabase.js";
+import { isMembershipExpired } from "../lib/membership.js";
 
 const daysMap = {
   monday: "Lun",
@@ -20,7 +21,24 @@ export const getStudentByEmail = async (req, res) => {
     .ilike("email", email);
 
   if (error || !data?.length) return res.status(404).json({ message: "Alumno no encontrado" });
-  return res.json(data[0]);
+
+  const student = data[0];
+
+  // Bloquear acceso al portal si la membresía venció hace más de 1 mes.
+  const { data: pagos } = await supabase
+    .from("pagos")
+    .select("fecha_de_vencimiento")
+    .eq("alumno_id", student.id);
+
+  if (isMembershipExpired(pagos)) {
+    return res.status(403).json({
+      code: "MEMBERSHIP_EXPIRED",
+      message:
+        "Tu membresía venció hace más de un mes. Contactá a tu entrenador para reactivar tu acceso.",
+    });
+  }
+
+  return res.json(student);
 };
 
 export const getMembersSupabase = async (req, res) => {

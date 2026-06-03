@@ -40,13 +40,18 @@ export default function MiPlanAppPage() {
 
   const email = session?.user?.email ?? ""
 
-  const { data: student, isLoading, isError } = useQuery({
+  const { data: student, isLoading, isError, error: studentError } = useQuery({
     queryKey: ["portalStudent", email],
     queryFn: () =>
       axios
         .get<Student>(`${process.env.NEXT_PUBLIC_URL_BACKEND}/student/by-email?email=${encodeURIComponent(email)}`)
         .then((r) => r.data),
     enabled: !!email,
+    retry: (failureCount, err: any) => {
+      const httpStatus = err?.response?.status
+      if (httpStatus === 403 || httpStatus === 404) return false
+      return failureCount < 2
+    },
   })
 
   const { data: planData } = useQuery<{ planificacion: { id: number; nombre: string } | null }>({
@@ -68,6 +73,31 @@ export default function MiPlanAppPage() {
             <Dumbbell className="h-5 w-5 text-green-400 animate-pulse" />
           </div>
           <Loader />
+        </div>
+      </div>
+    )
+  }
+
+  if ((studentError as any)?.response?.data?.code === "MEMBERSHIP_EXPIRED") {
+    const msg =
+      (studentError as any)?.response?.data?.message ??
+      "Tu membresía venció hace más de un mes. Contactá a tu entrenador para reactivar tu acceso."
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4 bg-background dark:bg-[#0a0a0a]">
+        <div className="text-center space-y-3 max-w-xs">
+          <div className="h-12 w-12 rounded-full bg-red-500/10 flex items-center justify-center mx-auto ring-1 ring-red-500/30">
+            <CalendarDays className="h-6 w-6 text-red-400" />
+          </div>
+          <p className="text-base font-bold text-foreground dark:text-white">Membresía vencida</p>
+          <p className="text-sm text-muted-foreground dark:text-zinc-400">{msg}</p>
+          <a
+            href="https://wa.me/543516671026"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold shadow hover:bg-emerald-700 active:scale-[0.97] transition-all"
+          >
+            Contactar a mi entrenador
+          </a>
         </div>
       </div>
     )

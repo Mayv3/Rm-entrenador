@@ -200,11 +200,16 @@ export default function PortalPage() {
 
   const email = session?.user?.email ?? ""
 
-  const { data: student, isLoading: loadingStudent, isError } = useQuery({
+  const { data: student, isLoading: loadingStudent, isError, error: studentError } = useQuery({
     queryKey: ["portalStudent", email],
     queryFn: () =>
       axios.get<Student>(`${process.env.NEXT_PUBLIC_URL_BACKEND}/student/by-email?email=${encodeURIComponent(email)}`).then(r => r.data),
     enabled: !!email,
+    retry: (failureCount, err: any) => {
+      const httpStatus = err?.response?.status
+      if (httpStatus === 403 || httpStatus === 404) return false
+      return failureCount < 2
+    },
   })
 
   const { data: payments = [], isLoading: loadingPayments } = useQuery({
@@ -251,6 +256,33 @@ export default function PortalPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader />
+      </div>
+    )
+  }
+
+  if ((studentError as any)?.response?.data?.code === "MEMBERSHIP_EXPIRED") {
+    const msg =
+      (studentError as any)?.response?.data?.message ??
+      "Tu membresía venció hace más de un mes. Contactá a tu entrenador para reactivar tu acceso."
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-4 text-center">
+        <div className="h-14 w-14 rounded-full bg-red-500/10 flex items-center justify-center ring-1 ring-red-500/30">
+          <CalendarDays className="h-7 w-7 text-red-500" />
+        </div>
+        <p className="text-foreground font-bold text-lg">Membresía vencida</p>
+        <p className="text-muted-foreground text-sm max-w-xs">{msg}</p>
+        <a
+          href="https://wa.me/543516671026"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold shadow hover:bg-emerald-700 active:scale-[0.97] transition-all"
+        >
+          <MessageSquare className="h-4 w-4" />
+          Contactar a mi entrenador
+        </a>
+        <button onClick={() => signOut({ callbackUrl: "/portal/login" })} className="text-xs text-red-500 underline">
+          Cerrar sesión
+        </button>
       </div>
     )
   }
