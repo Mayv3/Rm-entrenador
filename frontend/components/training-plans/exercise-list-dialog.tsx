@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { queryKeys } from "@/lib/query-keys"
+import { TipoEjercicioSelect } from "./tipo-ejercicio-select"
 import { Search, Plus, Loader2, Pencil, Trash2, Youtube, Check, X, Dumbbell } from "lucide-react"
 import type { Ejercicio } from "@/types/planificaciones"
 
@@ -170,25 +171,22 @@ export function ExerciseListDialog({ open, onOpenChange, planId }: ExerciseListD
                           autoFocus
                         />
                       </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <Label className="text-[11px]">Grupo muscular</Label>
-                          <Input
-                            value={form.grupo_muscular}
-                            onChange={(e) => setForm((f) => ({ ...f, grupo_muscular: e.target.value }))}
-                            className="h-8 text-sm"
-                            placeholder="Empuje"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-[11px]">Video URL</Label>
-                          <Input
-                            value={form.video_url}
-                            onChange={(e) => setForm((f) => ({ ...f, video_url: e.target.value }))}
-                            className="h-8 text-sm"
-                            placeholder="https://..."
-                          />
-                        </div>
+                      <div>
+                        <Label className="text-[11px]">Tipo de ejercicio</Label>
+                        <TipoEjercicioSelect
+                          size="sm"
+                          value={form.grupo_muscular}
+                          onChange={(v) => setForm((f) => ({ ...f, grupo_muscular: v }))}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-[11px]">Video URL</Label>
+                        <Input
+                          value={form.video_url}
+                          onChange={(e) => setForm((f) => ({ ...f, video_url: e.target.value }))}
+                          className="h-8 text-sm"
+                          placeholder="https://..."
+                        />
                       </div>
                       <div className="flex justify-end gap-2 pt-1">
                         <Button size="sm" variant="ghost" className="h-8" onClick={() => setEditingId(null)}>
@@ -262,18 +260,18 @@ export function ExerciseListDialog({ open, onOpenChange, planId }: ExerciseListD
                   onChange={(e) => setCreateForm((f) => ({ ...f, nombre: e.target.value }))}
                   autoFocus
                 />
-                <div className="grid grid-cols-2 gap-2">
-                  <Input
-                    placeholder="Grupo muscular"
+                <div>
+                  <Label className="text-[11px]">Tipo de ejercicio</Label>
+                  <TipoEjercicioSelect
                     value={createForm.grupo_muscular}
-                    onChange={(e) => setCreateForm((f) => ({ ...f, grupo_muscular: e.target.value }))}
-                  />
-                  <Input
-                    placeholder="Video URL"
-                    value={createForm.video_url}
-                    onChange={(e) => setCreateForm((f) => ({ ...f, video_url: e.target.value }))}
+                    onChange={(v) => setCreateForm((f) => ({ ...f, grupo_muscular: v }))}
                   />
                 </div>
+                <Input
+                  placeholder="Video URL"
+                  value={createForm.video_url}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, video_url: e.target.value }))}
+                />
                 <div className="flex gap-2">
                   <Button variant="outline" className="flex-1" onClick={() => setShowCreate(false)}>Cancelar</Button>
                   <Button

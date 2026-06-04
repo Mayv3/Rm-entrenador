@@ -6,7 +6,7 @@ import axios from "axios"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { TipoEjercicioSelect } from "./tipo-ejercicio-select"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { queryKeys } from "@/lib/query-keys"
@@ -219,15 +219,8 @@ export function ExerciseLibraryPanel({ onSelect, selectedDayName }: ExerciseLibr
                 onKeyDown={(e) => { if (e.key === "Enter") handleCreate() }} autoFocus />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="ej-grupo">Grupo muscular</Label>
-              <Select value={newGrupo} onValueChange={setNewGrupo}>
-                <SelectTrigger id="ej-grupo"><SelectValue placeholder="Seleccionar grupo" /></SelectTrigger>
-                <SelectContent>
-                  {grupos.filter((g) => g !== "Sin categoría").map((g) => (
-                    <SelectItem key={g} value={g}>{g}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="ej-grupo">Tipo de ejercicio</Label>
+              <TipoEjercicioSelect id="ej-grupo" value={newGrupo} onChange={setNewGrupo} />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="ej-video">URL de video <span className="text-muted-foreground font-normal">(opcional)</span></Label>
@@ -260,15 +253,8 @@ export function ExerciseLibraryPanel({ onSelect, selectedDayName }: ExerciseLibr
                 onKeyDown={(e) => { if (e.key === "Enter") handleSaveEdit() }} autoFocus />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="edit-grupo">Grupo muscular</Label>
-              <Select value={editGrupo} onValueChange={setEditGrupo}>
-                <SelectTrigger id="edit-grupo"><SelectValue placeholder="Seleccionar grupo" /></SelectTrigger>
-                <SelectContent>
-                  {grupos.filter((g) => g !== "Sin categoría").map((g) => (
-                    <SelectItem key={g} value={g}>{g}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="edit-grupo">Tipo de ejercicio</Label>
+              <TipoEjercicioSelect id="edit-grupo" value={editGrupo} onChange={setEditGrupo} />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="edit-video">URL de video <span className="text-muted-foreground font-normal">(opcional)</span></Label>

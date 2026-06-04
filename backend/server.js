@@ -9,6 +9,7 @@ import { getPlanes, addPlan, updatePlan, deletePlan } from "./controllers/planes
 import { getServicios, addServicio, updateServicio, deleteServicio } from "./controllers/serviciosController.js";
 import {
   getEjercicios, createEjercicio, updateEjercicio, deleteEjercicio,
+  getTiposEjercicio, createTipoEjercicio, updateTipoEjercicio, deleteTipoEjercicio,
   getPlanificaciones, getPlanificacionesByAlumno, getPlanificacionById,
   createPlanificacion, updatePlanificacion, deletePlanificacion,
   createHoja, updateHoja, deleteHoja,
@@ -125,6 +126,12 @@ app.get("/ejercicios", getEjercicios);
 app.post("/ejercicios", createEjercicio);
 app.put("/ejercicios/:id", updateEjercicio);
 app.delete("/ejercicios/:id", deleteEjercicio);
+
+// Tipos de ejercicio (grupos musculares)
+app.get("/tipos-ejercicio", getTiposEjercicio);
+app.post("/tipos-ejercicio", createTipoEjercicio);
+app.put("/tipos-ejercicio/:id", updateTipoEjercicio);
+app.delete("/tipos-ejercicio/:id", deleteTipoEjercicio);
 
 // Planificaciones
 app.get("/planificaciones", getPlanificaciones);

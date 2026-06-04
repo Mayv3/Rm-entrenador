@@ -4,6 +4,7 @@ import { cache } from "../lib/cache.js";
 // Claves de cache
 const KEYS = {
   ejercicios: "ejercicios",
+  tiposEjercicio: "tipos_ejercicio",
   ejerciciosMovilidad: "ejercicios_movilidad",
   planificaciones: "planificaciones",
   plan: (id) => `plan:${id}`,
@@ -73,6 +74,115 @@ export async function deleteEjercicio(req, res) {
   if (error) return res.status(500).json({ error: error.message });
   cache.del(KEYS.ejercicios)
   cache.delByPrefix("plan:")
+  res.json({ ok: true });
+}
+
+// ─── TIPOS DE EJERCICIO (grupos musculares) ───────────────────────────────────
+
+export async function getTiposEjercicio(req, res) {
+  const cached = cache.get(KEYS.tiposEjercicio)
+  if (cached) return res.json(cached)
+
+  const { data, error } = await supabase
+    .from("tipos_ejercicio")
+    .select("id, nombre")
+    .order("nombre", { ascending: true });
+  if (error) return res.status(500).json({ error: error.message });
+  cache.set(KEYS.tiposEjercicio, data)
+  res.json(data);
+}
+
+export async function createTipoEjercicio(req, res) {
+  const nombre = (req.body?.nombre ?? "").trim();
+  if (!nombre) return res.status(400).json({ error: "El nombre es obligatorio" });
+
+  const { data, error } = await supabase
+    .from("tipos_ejercicio")
+    .insert([{ nombre }])
+    .select("id, nombre")
+    .single();
+
+  // Si ya existe (índice único case-insensitive), devolver el existente
+  if (error) {
+    if (error.code === "23505") {
+      const { data: existing } = await supabase
+        .from("tipos_ejercicio")
+        .select("id, nombre")
+        .ilike("nombre", nombre)
+        .limit(1)
+        .maybeSingle();
+      if (existing) return res.status(200).json(existing);
+    }
+    return res.status(500).json({ error: error.message });
+  }
+
+  cache.del(KEYS.tiposEjercicio)
+  res.status(201).json(data);
+}
+
+export async function updateTipoEjercicio(req, res) {
+  const { id } = req.params;
+  const nombre = (req.body?.nombre ?? "").trim();
+  if (!nombre) return res.status(400).json({ error: "El nombre es obligatorio" });
+
+  // Nombre actual, para propagar el cambio a los ejercicios que lo usan
+  const { data: actual, error: getErr } = await supabase
+    .from("tipos_ejercicio")
+    .select("nombre")
+    .eq("id", id)
+    .single();
+  if (getErr) return res.status(404).json({ error: "Tipo no encontrado" });
+
+  const { data, error } = await supabase
+    .from("tipos_ejercicio")
+    .update({ nombre })
+    .eq("id", id)
+    .select("id, nombre")
+    .single();
+
+  if (error) {
+    if (error.code === "23505") return res.status(409).json({ error: "Ya existe un tipo con ese nombre" });
+    return res.status(500).json({ error: error.message });
+  }
+
+  // Cascada: el tipo se guarda como string en ejercicios.grupo_muscular
+  if (actual.nombre !== nombre) {
+    await supabase
+      .from("ejercicios")
+      .update({ grupo_muscular: nombre })
+      .eq("grupo_muscular", actual.nombre);
+    cache.del(KEYS.ejercicios)
+    cache.delByPrefix("plan:") // grupo_muscular viaja anidado en los planes
+  }
+  cache.del(KEYS.tiposEjercicio)
+  res.json(data);
+}
+
+export async function deleteTipoEjercicio(req, res) {
+  const { id } = req.params;
+
+  const { data: actual } = await supabase
+    .from("tipos_ejercicio")
+    .select("nombre")
+    .eq("id", id)
+    .single();
+
+  const { error } = await supabase
+    .from("tipos_ejercicio")
+    .delete()
+    .eq("id", id);
+  if (error) return res.status(500).json({ error: error.message });
+
+  // Los ejercicios que usaban este tipo quedan sin categoría
+  if (actual?.nombre) {
+    await supabase
+      .from("ejercicios")
+      .update({ grupo_muscular: null })
+      .eq("grupo_muscular", actual.nombre);
+    cache.del(KEYS.ejercicios)
+    cache.delByPrefix("plan:")
+  }
+  cache.del(KEYS.tiposEjercicio)
   res.json({ ok: true });
 }
 

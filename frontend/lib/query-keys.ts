@@ -11,6 +11,7 @@ export const queryKeys = {
   nutricionCounts: ["nutricionCounts"] as const,
   nutricionByAlumno: (id: number) => ["nutricionByAlumno", id] as const,
   ejercicios: ["ejercicios"] as const,
+  tiposEjercicio: ["tiposEjercicio"] as const,
   planificaciones: ["planificaciones"] as const,
   planificacionById: (id: number) => ["planificacion", id] as const,
   plantillas: ["plantillas"] as const,

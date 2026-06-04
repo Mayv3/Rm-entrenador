@@ -8,6 +8,11 @@ export interface Ejercicio {
   es_base: boolean
 }
 
+export interface TipoEjercicio {
+  id: number
+  nombre: string
+}
+
 export interface MovilidadItem {
   id: number
   hoja_id: number

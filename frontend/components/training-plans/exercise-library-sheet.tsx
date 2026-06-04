@@ -7,6 +7,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
+import { TipoEjercicioSelect } from "./tipo-ejercicio-select"
 import { queryKeys } from "@/lib/query-keys"
 import { Search, Plus, Loader2, Dumbbell, Check, ChevronDown, ChevronUp } from "lucide-react"
 import type { Ejercicio } from "@/types/planificaciones"
@@ -173,12 +174,8 @@ export function ExerciseLibrarySheet({ open, onOpenChange, onSelect, dayName, ti
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">Grupo muscular</Label>
-                  <Input
-                    placeholder="ej: Empuje"
-                    value={newGrupo}
-                    onChange={(e) => setNewGrupo(e.target.value)}
-                  />
+                  <Label className="text-xs">Tipo de ejercicio</Label>
+                  <TipoEjercicioSelect value={newGrupo} onChange={setNewGrupo} />
                 </div>
                 <div>
                   <Label className="text-xs">URL de video (opcional)</Label>
