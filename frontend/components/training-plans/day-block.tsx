@@ -363,7 +363,7 @@ export function DayBlock({
                         {SEMANAS.map((s) => {
                           const pendingRpe = p.rpe[s] || (s % 2 === 0 ? (p.rpe[s - 1] ?? "") : "")
                           return (
-                          <td key={s} className="px-1 py-1 align-top">
+                          <td key={s} className="px-1 py-1 align-middle">
                             <div className="flex gap-1">
                               <Input
                                 value={p.dosis[s] ?? ""}
@@ -498,7 +498,7 @@ function ExerciseRow({
         const prevSem = s % 2 === 0 ? local?.semanas?.[s - 1] : undefined
         const rpeValue = sem?.rpe || (s % 2 === 0 ? (prevSem?.rpe ?? "") : "")
         return (
-          <td key={s} className="px-1 py-1 align-top">
+          <td key={s} className="px-1 py-1 align-middle">
             <div className="flex gap-1">
               <Input
                 value={sem?.dosis ?? ""}
@@ -539,7 +539,7 @@ function SeriesSelect({ value, onChange }: { value: number; onChange: (v: number
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        {[3, 4].map((n) => (
+        {[2, 3, 4].map((n) => (
           <SelectItem key={n} value={String(n)}>{n}</SelectItem>
         ))}
       </SelectContent>
