@@ -364,25 +364,17 @@ export function DayBlock({
                           const pendingRpe = p.rpe[s] || (s % 2 === 0 ? (p.rpe[s - 1] ?? "") : "")
                           return (
                           <td key={s} className="px-1 py-1 align-top">
-                            <div className="flex flex-col gap-1">
-                              <div className="flex gap-1">
-                                <Input
-                                  value={p.dosis[s] ?? ""}
-                                  onChange={(e) => setPendingField(p.tempId, "dosis", s, e.target.value)}
-                                  placeholder="Dosis"
-                                  className="h-7 text-xs text-center px-1 placeholder:text-gray-300 min-w-[80px] md:min-w-0 flex-1"
-                                />
-                                <RpeSelect
-                                  value={pendingRpe}
-                                  onChange={(v) => setPendingField(p.tempId, "rpe", s, v)}
-                                  exerciseName={p.ejercicio.nombre}
-                                />
-                              </div>
+                            <div className="flex gap-1">
                               <Input
-                                value={p.notas[s] ?? ""}
-                                onChange={(e) => setPendingField(p.tempId, "notas_semana", s, e.target.value)}
-                                placeholder={`Nota S${s}`}
-                                className="h-7 text-xs placeholder:text-muted-foreground/40 bg-background/60 border-dashed"
+                                value={p.dosis[s] ?? ""}
+                                onChange={(e) => setPendingField(p.tempId, "dosis", s, e.target.value)}
+                                placeholder="Dosis"
+                                className="h-7 text-xs text-center px-1 placeholder:text-gray-300 min-w-[80px] md:min-w-0 flex-1"
+                              />
+                              <RpeSelect
+                                value={pendingRpe}
+                                onChange={(v) => setPendingField(p.tempId, "rpe", s, v)}
+                                exerciseName={p.ejercicio.nombre}
                               />
                             </div>
                           </td>
@@ -505,28 +497,19 @@ function ExerciseRow({
         const sem = local?.semanas?.[s]
         const prevSem = s % 2 === 0 ? local?.semanas?.[s - 1] : undefined
         const rpeValue = sem?.rpe || (s % 2 === 0 ? (prevSem?.rpe ?? "") : "")
-        const notaSem = sem?.notas ?? ""
         return (
           <td key={s} className="px-1 py-1 align-top">
-            <div className="flex flex-col gap-1">
-              <div className="flex gap-1">
-                <Input
-                  value={sem?.dosis ?? ""}
-                  onChange={(e) => onSemanaChange(ej.id, s, "dosis", e.target.value)}
-                  placeholder="Dosis"
-                  className="h-7 text-xs text-center px-1 placeholder:text-gray-300 min-w-[80px] md:min-w-0 flex-1"
-                />
-                <RpeSelect
-                  value={rpeValue}
-                  onChange={(v) => onSemanaChange(ej.id, s, "rpe", v)}
-                  exerciseName={ej.ejercicios.nombre}
-                />
-              </div>
+            <div className="flex gap-1">
               <Input
-                value={notaSem}
-                onChange={(e) => onSemanaChange(ej.id, s, "notas", e.target.value)}
-                placeholder={`Nota S${s}`}
-                className="h-7 text-xs placeholder:text-muted-foreground/40 bg-background/60 border-dashed"
+                value={sem?.dosis ?? ""}
+                onChange={(e) => onSemanaChange(ej.id, s, "dosis", e.target.value)}
+                placeholder="Dosis"
+                className="h-7 text-xs text-center px-1 placeholder:text-gray-300 min-w-[80px] md:min-w-0 flex-1"
+              />
+              <RpeSelect
+                value={rpeValue}
+                onChange={(v) => onSemanaChange(ej.id, s, "rpe", v)}
+                exerciseName={ej.ejercicios.nombre}
               />
             </div>
           </td>
