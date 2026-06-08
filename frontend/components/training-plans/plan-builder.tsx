@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader } from "@/components/ui/loader"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { queryKeys } from "@/lib/query-keys"
-import { ArrowLeft, Plus, Loader2, Save, Eye, EyeOff, Trash2, TrendingUp, AlertTriangle, CheckCircle2, StickyNote, CalendarDays, FileText, ClipboardList } from "lucide-react"
+import { ArrowLeft, Plus, Loader2, Save, Eye, EyeOff, Trash2, TrendingUp, AlertTriangle, CheckCircle2, StickyNote, CalendarDays, FileText, ClipboardList, Pencil, Check, Copy } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { PlanCalendarioDialog } from "./plan-calendario-dialog"
 import { DayBlock } from "./day-block"
@@ -50,6 +50,9 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
   const [activeDayId, setActiveDayId] = useState<number | null>(null)
   const [activeHojaId, setActiveHojaId] = useState<number | null>(null)
   const [creatingHoja, setCreatingHoja] = useState(false)
+  const [editingHojaId, setEditingHojaId] = useState<number | null>(null)
+  const [editingHojaNombre, setEditingHojaNombre] = useState("")
+  const [duplicatingHojaId, setDuplicatingHojaId] = useState<number | null>(null)
   const [hojaToDelete, setHojaToDelete] = useState<{ id: number; nombre: string } | null>(null)
   const [libSheetOpen, setLibSheetOpen] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
@@ -411,6 +414,41 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
     }).catch(console.error)
   }
 
+  const handleRenameHoja = (hojaId: number, nombre: string) => {
+    const trimmed = nombre.trim()
+    setEditingHojaId(null)
+    if (!plan || !trimmed) return
+    const hoja = plan.hojas.find((h) => h.id === hojaId)
+    if (!hoja || hoja.nombre === trimmed) return
+    // Optimistic cache update
+    queryClient.setQueryData<Planificacion>(queryKeys.planificacionById(planId), (old) =>
+      old ? { ...old, hojas: old.hojas.map((h) => (h.id === hojaId ? { ...h, nombre: trimmed } : h)) } : old
+    )
+    axios.put(`${process.env.NEXT_PUBLIC_URL_BACKEND}/planificaciones/hojas/${hojaId}`, {
+      nombre: trimmed,
+      estado: hoja.estado,
+    }).then(() => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.planificaciones })
+    }).catch(console.error)
+  }
+
+  const handleDuplicateHoja = async (hojaId: number) => {
+    if (!plan || duplicatingHojaId) return
+    setDuplicatingHojaId(hojaId)
+    try {
+      const res = await axios.post(`${process.env.NEXT_PUBLIC_URL_BACKEND}/planificaciones/hojas/${hojaId}/duplicate`)
+      initialized.current = false
+      await refetch()
+      await queryClient.invalidateQueries({ queryKey: queryKeys.planificaciones })
+      setActiveHojaId(res.data.id)
+      setActiveDayId(null)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setDuplicatingHojaId(null)
+    }
+  }
+
   const confirmDeleteHoja = () => {
     if (!plan || !hojaToDelete) return
     const hojaId = hojaToDelete.id
@@ -693,10 +731,35 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
         {[...plan.hojas].reverse().map((hoja) => {
           const esVisible = plan.hoja_activa_id === hoja.id
           const esActiva = activeHojaId === hoja.id
+          const esEditando = editingHojaId === hoja.id
           return (
             <div key={hoja.id} className="group/tab flex items-center gap-0.5 shrink-0">
+              {esEditando ? (
+                <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full border ${esActiva ? "border-[var(--primary-color)] bg-[var(--primary-color)]/10" : "border-border bg-muted/50"}`}>
+                  <input
+                    autoFocus
+                    value={editingHojaNombre}
+                    onChange={(e) => setEditingHojaNombre(e.target.value)}
+                    onBlur={() => handleRenameHoja(hoja.id, editingHojaNombre)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleRenameHoja(hoja.id, editingHojaNombre)
+                      if (e.key === "Escape") setEditingHojaId(null)
+                    }}
+                    className="w-24 bg-transparent text-xs font-medium outline-none"
+                  />
+                  <button
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => handleRenameHoja(hoja.id, editingHojaNombre)}
+                    className="rounded-full p-0.5 text-[var(--primary-color)] shrink-0"
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ) : (
               <button
                 onClick={() => { setActiveHojaId(hoja.id); setActiveDayId(null) }}
+                onDoubleClick={() => { setEditingHojaNombre(hoja.nombre); setEditingHojaId(hoja.id) }}
+                title="Doble click para renombrar"
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
                   esActiva
                     ? "bg-[var(--primary-color)] text-white border-[var(--primary-color)]"
@@ -709,9 +772,28 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
                   {hoja.dias.length}d
                 </span>
               </button>
+              )}
 
               {/* Acciones: siempre visibles en mobile, hover en desktop */}
-              <div className={`flex items-center gap-1 overflow-hidden transition-all duration-150 md:group-hover/tab:max-w-[64px] ${esVisible ? "max-w-[64px] md:max-w-[24px]" : "max-w-[64px] md:max-w-0"}`}>
+              {!esEditando && (
+              <div className={`flex items-center gap-1 overflow-hidden transition-all duration-150 md:group-hover/tab:max-w-[128px] ${esVisible ? "max-w-[128px] md:max-w-[24px]" : "max-w-[128px] md:max-w-0"}`}>
+                <button
+                  onClick={() => { setEditingHojaNombre(hoja.nombre); setEditingHojaId(hoja.id) }}
+                  title="Renombrar hoja"
+                  className="rounded-full p-1 text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+                {!plantillaId && (
+                  <button
+                    onClick={() => handleDuplicateHoja(hoja.id)}
+                    disabled={duplicatingHojaId !== null}
+                    title="Duplicar hoja"
+                    className="rounded-full p-1 text-muted-foreground hover:text-foreground transition-colors shrink-0 disabled:opacity-50"
+                  >
+                    {duplicatingHojaId === hoja.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Copy className="h-3.5 w-3.5" />}
+                  </button>
+                )}
                 <button
                   onClick={() => handleSetHojaActiva(esVisible ? null : hoja.id)}
                   title={esVisible ? "Alumno ve esta hoja — click para ocultar" : "Mostrar esta hoja al alumno"}
@@ -730,6 +812,7 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
                   </button>
                 )}
               </div>
+              )}
             </div>
           )
         })}

@@ -417,6 +417,135 @@ export async function deleteHoja(req, res) {
   res.json({ ok: true });
 }
 
+// Duplica una hoja completa (días/ejercicios/semanas/movilidad) dentro del mismo plan
+export async function duplicateHoja(req, res) {
+  const { hojaId } = req.params;
+  try {
+    // 1. Hoja origen
+    const { data: srcHoja, error: hErr } = await supabase
+      .from("planificacion_hojas")
+      .select("*")
+      .eq("id", hojaId)
+      .single();
+    if (hErr) throw new Error(hErr.message);
+    if (!srcHoja) return res.status(404).json({ error: "Hoja no encontrada" });
+
+    const planId = srcHoja.planificacion_id;
+
+    // 2. Días, movilidad y siguiente número en paralelo
+    const [diasRes, movRes, maxRes] = await Promise.all([
+      supabase.from("planificacion_dias").select("*").eq("hoja_id", hojaId).order("orden", { ascending: true }),
+      supabase.from("planificacion_movilidad").select("*").eq("hoja_id", hojaId).order("orden", { ascending: true }),
+      supabase.from("planificacion_hojas").select("numero").eq("planificacion_id", planId).order("numero", { ascending: false }).limit(1),
+    ]);
+    if (diasRes.error) throw new Error(diasRes.error.message);
+    if (movRes.error) throw new Error(movRes.error.message);
+    const srcDias = diasRes.data ?? [];
+    const srcMov = movRes.data ?? [];
+    const nextNumero = (maxRes.data?.[0]?.numero ?? srcHoja.numero ?? 0) + 1;
+
+    // 3. Ejercicios + semanas de todos los días en paralelo
+    const diaIds = srcDias.map((d) => d.id);
+    let srcEjs = [];
+    let srcSemanas = [];
+    if (diaIds.length > 0) {
+      const { data: ejs, error: eErr } = await supabase
+        .from("planificacion_ejercicios")
+        .select("*")
+        .in("planificacion_dia_id", diaIds);
+      if (eErr) throw new Error(eErr.message);
+      srcEjs = ejs ?? [];
+      const ejIds = srcEjs.map((e) => e.id);
+      if (ejIds.length > 0) {
+        const { data: sems, error: sErr } = await supabase
+          .from("planificacion_semanas")
+          .select("*")
+          .in("planificacion_ejercicio_id", ejIds);
+        if (sErr) throw new Error(sErr.message);
+        srcSemanas = sems ?? [];
+      }
+    }
+
+    // 4. Crear hoja nueva
+    const { data: newHoja, error: nhErr } = await supabase
+      .from("planificacion_hojas")
+      .insert([{
+        planificacion_id: planId,
+        nombre: `${srcHoja.nombre} (copia)`,
+        numero: nextNumero,
+        estado: "activa",
+      }])
+      .select()
+      .single();
+    if (nhErr) throw new Error(nhErr.message);
+
+    // 5. Movilidad (paralela con días)
+    const movPromise = srcMov.length === 0
+      ? Promise.resolve({ error: null })
+      : supabase.from("planificacion_movilidad").insert(
+          srcMov.map((m) => ({ hoja_id: newHoja.id, nombre: m.nombre, imagen_url: m.imagen_url ?? null, orden: m.orden }))
+        );
+
+    if (srcDias.length === 0) {
+      const { error } = await movPromise;
+      if (error) throw new Error(error.message);
+      invalidatePlanes(planId);
+      return res.status(201).json(newHoja);
+    }
+
+    // 6. Bulk insert días (preserva orden → mapeable por índice)
+    const { data: newDias, error: ndErr } = await supabase
+      .from("planificacion_dias")
+      .insert(srcDias.map((d) => ({ hoja_id: newHoja.id, numero_dia: d.numero_dia, nombre: d.nombre, orden: d.orden })))
+      .select("id");
+    if (ndErr) throw new Error(ndErr.message);
+    const diaIdMap = new Map(srcDias.map((d, i) => [d.id, newDias[i].id]));
+
+    // 7. Bulk insert ejercicios
+    if (srcEjs.length === 0) {
+      const { error } = await movPromise;
+      if (error) throw new Error(error.message);
+      invalidatePlanes(planId);
+      return res.status(201).json(newHoja);
+    }
+    const { data: newEjs, error: neErr } = await supabase
+      .from("planificacion_ejercicios")
+      .insert(srcEjs.map((e) => ({
+        planificacion_dia_id: diaIdMap.get(e.planificacion_dia_id),
+        ejercicio_id: e.ejercicio_id,
+        categoria: e.categoria,
+        orden: e.orden,
+        series: e.series,
+        notas_profesor: e.notas_profesor ?? null,
+      })))
+      .select("id");
+    if (neErr) throw new Error(neErr.message);
+    const ejIdMap = new Map(srcEjs.map((e, i) => [e.id, newEjs[i].id]));
+
+    // 8. Bulk insert semanas
+    const semanasPromise = srcSemanas.length === 0
+      ? Promise.resolve({ error: null })
+      : supabase.from("planificacion_semanas").insert(
+          srcSemanas.map((s) => ({
+            planificacion_ejercicio_id: ejIdMap.get(s.planificacion_ejercicio_id),
+            semana: s.semana,
+            dosis: s.dosis ?? null,
+            rpe: s.rpe ?? null,
+            notas_profesor: s.notas_profesor ?? null,
+          }))
+        );
+
+    const [movFinal, semFinal] = await Promise.all([movPromise, semanasPromise]);
+    if (movFinal?.error) throw new Error(movFinal.error.message);
+    if (semFinal?.error) throw new Error(semFinal.error.message);
+
+    invalidatePlanes(planId);
+    res.status(201).json(newHoja);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
 // ─── DÍAS ─────────────────────────────────────────────────────────────────────
 
 export async function createDia(req, res) {

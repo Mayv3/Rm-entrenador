@@ -12,7 +12,7 @@ import {
   getTiposEjercicio, createTipoEjercicio, updateTipoEjercicio, deleteTipoEjercicio,
   getPlanificaciones, getPlanificacionesByAlumno, getPlanificacionById,
   createPlanificacion, updatePlanificacion, deletePlanificacion,
-  createHoja, updateHoja, deleteHoja,
+  createHoja, updateHoja, deleteHoja, duplicateHoja,
   createDia, updateDia, deleteDia,
   addEjercicioADia, addEjerciciosADiaBulk, updateEjercicioEnDia, removeEjercicioDeDia,
   updateDosis, updateDosisBulk, guardarPlanCompleto, bulkUpdateOrden, saveMovilidad, getEjerciciosMovilidad, saveAll, getProgresoPlanificacion, getAsistenciasPlanificacion,
@@ -145,6 +145,7 @@ app.get("/planificaciones/alumno/:alumnoId", getPlanificacionesByAlumno);
 app.post("/planificaciones/:id/hojas", createHoja);
 app.put("/planificaciones/hojas/:hojaId", updateHoja);
 app.delete("/planificaciones/hojas/:hojaId", deleteHoja);
+app.post("/planificaciones/hojas/:hojaId/duplicate", duplicateHoja);
 
 // Días
 app.post("/planificaciones/hojas/:hojaId/dias", createDia);
