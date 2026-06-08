@@ -20,7 +20,8 @@
       "mcp__supabase-rm__apply_migration",
       "Bash(git stash *)",
       "Bash(echo \"=== lint done \\(rc=$?\\) ===\")",
-      "mcp__supabase-rm__list_tables"
+      "mcp__supabase-rm__list_tables",
+      "Bash(grep -E \"student-planificacion-section|portal/page|portal\\\\\\\\\\\\\\\\page\")"
     ]
   },
   "enableAllProjectMcpServers": true,

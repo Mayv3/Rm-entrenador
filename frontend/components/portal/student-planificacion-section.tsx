@@ -189,6 +189,7 @@ export function StudentPlanificacionSection({
   const serieAdvanceDebounceRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
   const registrosFormRef = useRef<Record<number, FormRow>>({})
   const [previewPlan, setPreviewPlan] = useState(false)
+  const didRestoreNavRef = useRef(false)
 
   const clampSerieValue = (field: keyof SerieRow, value: string): string => {
     if (value === "") return ""
@@ -245,14 +246,38 @@ export function StudentPlanificacionSection({
     try { localStorage.removeItem(key) } catch {}
   }
 
+  // Posición de scroll/serie. Antes vivía en sessionStorage, que se BORRA cuando el SO
+  // mata la PWA en segundo plano (celulares con poca RAM, ej. A16). localStorage sobrevive
+  // al cierre del proceso → al reabrir queda "suspendido" en el mismo lugar. TTL 24h para
+  // no restaurar una posición vieja de días atrás.
+  const POS_TTL_MS = 24 * 60 * 60 * 1000
+  const readPos = (key: string | null): Record<string, any> | null => {
+    if (!key) return null
+    try {
+      const raw = localStorage.getItem(key)
+      if (!raw) return null
+      const p = JSON.parse(raw)
+      if (p && typeof p.ts === "number" && Date.now() - p.ts > POS_TTL_MS) {
+        localStorage.removeItem(key)
+        return null
+      }
+      return p
+    } catch { return null }
+  }
+  const writePos = (key: string | null, patch: Record<string, unknown>) => {
+    if (!key) return
+    try {
+      const cur = readPos(key) ?? {}
+      localStorage.setItem(key, JSON.stringify({ ...cur, ...patch, ts: Date.now() }))
+    } catch {}
+  }
+
   const scrollToSerie = (ejId: number, idx: number) => {
     const el = serieScrollRefs.current.get(ejId)
     if (el) el.scrollTo({ left: idx * el.clientWidth, behavior: "smooth" })
     setActiveSerieMap((prev) => {
       const next = { ...prev, [ejId]: idx }
-      if (posStorageKey) {
-        sessionStorage.setItem(posStorageKey, JSON.stringify({ activeSerieMap: next, lastEjId: ejId }))
-      }
+      writePos(posStorageKey, { activeSerieMap: next, lastEjId: ejId })
       return next
     })
   }
@@ -262,9 +287,7 @@ export function StudentPlanificacionSection({
     setActiveSerieMap((prev) => {
       if (prev[ejId] === idx) return prev
       const next = { ...prev, [ejId]: idx }
-      if (posStorageKey) {
-        sessionStorage.setItem(posStorageKey, JSON.stringify({ activeSerieMap: next, lastEjId: ejId }))
-      }
+      writePos(posStorageKey, { activeSerieMap: next, lastEjId: ejId })
       return next
     })
   }
@@ -276,10 +299,9 @@ export function StudentPlanificacionSection({
     if (typeof window === "undefined") return
     if ("scrollRestoration" in history) history.scrollRestoration = "manual"
 
-    const scrollYKey = `${posStorageKey}-scrollY`
     let raf = 0
     const save = () => {
-      try { sessionStorage.setItem(scrollYKey, String(window.scrollY)) } catch {}
+      writePos(posStorageKey, { scrollY: window.scrollY })
     }
     const onScroll = () => {
       if (raf) return
@@ -326,6 +348,25 @@ export function StudentPlanificacionSection({
     dirtyEjIds.current.clear()
     setPreviewPlan(false)
   }, [planificacion?.id])
+
+  // Guarda la semana/día actual para poder reanudar tras un cold start (SO mató la PWA).
+  // No escribe hasta intentar restaurar, para no pisar el valor guardado en el arranque.
+  useEffect(() => {
+    if (!didRestoreNavRef.current) return
+    if (!studentId || !planificacion?.id) return
+    try {
+      if (semanaSeleccionada == null) {
+        localStorage.removeItem(`rmPlanNav-${studentId}`)
+      } else {
+        localStorage.setItem(`rmPlanNav-${studentId}`, JSON.stringify({
+          planId: planificacion.id,
+          semana: semanaSeleccionada,
+          diaId: diaSeleccionadoId,
+          ts: Date.now(),
+        }))
+      }
+    } catch {}
+  }, [studentId, planificacion?.id, semanaSeleccionada, diaSeleccionadoId])
 
   const hojaActiva = useMemo(() => {
     if (!planificacion) return null
@@ -538,22 +579,12 @@ export function StudentPlanificacionSection({
     // Restore scroll position after phone lock / app switch / page reload.
     // Precedence: exact window.scrollY > saved lastEjId/activeSerieMap > first-incomplete fallback.
     const storageKey = `planPos-${studentId}-${semanaSeleccionada}-${diaSeleccionado?.id}`
-    const saved = storageKey ? sessionStorage.getItem(storageKey) : null
-    const savedScrollYRaw = storageKey ? sessionStorage.getItem(`${storageKey}-scrollY`) : null
-    const savedY = savedScrollYRaw !== null ? Number(savedScrollYRaw) : NaN
+    const pos = readPos(storageKey)
+    const savedY = typeof pos?.scrollY === "number" ? pos.scrollY : NaN
     const hasUsefulScrollY = !Number.isNaN(savedY) && savedY > 0
 
-    let savedMap: Record<number, number> | null = null
-    let savedLastEjId: number | null = null
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved) as { activeSerieMap: Record<number, number>; lastEjId: number }
-        savedMap = parsed.activeSerieMap ?? null
-        savedLastEjId = parsed.lastEjId ?? null
-      } catch {
-        // malformed — ignore
-      }
-    }
+    const savedMap: Record<number, number> | null = pos?.activeSerieMap ?? null
+    const savedLastEjId: number | null = pos?.lastEjId ?? null
 
     // Compute first-incomplete fallback target (used when no useful saved position)
     let fallbackEjId: number | null = null
@@ -771,6 +802,8 @@ export function StudentPlanificacionSection({
         dirtyEjIds.current.clear()
         refetchResumenRef.current?.()
       } else {
+        // Cierre explícito de la planificación → no reanudar en el próximo arranque.
+        try { localStorage.removeItem(`rmPlanNav-${studentId}`) } catch {}
         onRequestCloseRef.current?.()
       }
     }
@@ -778,6 +811,36 @@ export function StudentPlanificacionSection({
     window.addEventListener("popstate", handlePopState)
     return () => window.removeEventListener("popstate", handlePopState)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Cold-start resume: si el SO mató la PWA (poca RAM), el estado de React y la pila de
+  // history se pierden. Restaura semana/día desde localStorage y reconstruye la pila de
+  // history (semanas → días → ejercicios) para que el botón Atrás siga funcionando.
+  useEffect(() => {
+    if (didRestoreNavRef.current) return
+    if (!planificacion?.id) return
+    didRestoreNavRef.current = true
+    try {
+      const raw = localStorage.getItem(`rmPlanNav-${studentId}`)
+      if (!raw) return
+      const nav = JSON.parse(raw) as { planId?: number; semana?: number; diaId?: number | null; ts?: number }
+      if (!nav || nav.planId !== planificacion.id) { localStorage.removeItem(`rmPlanNav-${studentId}`); return }
+      if (typeof nav.ts === "number" && Date.now() - nav.ts > POS_TTL_MS) { localStorage.removeItem(`rmPlanNav-${studentId}`); return }
+      const semana = nav.semana
+      if (typeof semana !== "number" || semana < 1 || semana > Math.max(1, planificacion.semanas ?? 1)) {
+        localStorage.removeItem(`rmPlanNav-${studentId}`); return
+      }
+      const hoja = planificacion.hojas.find((h) => h.id === planificacion.hoja_activa_id) || planificacion.hojas[0] || null
+      const diaId = nav.diaId
+      const validDia = diaId != null && (hoja?.dias ?? []).some((d) => d.id === diaId)
+      // La pila base ("weeks") ya la empujó el efecto de montaje anterior.
+      history.pushState({ planNav: "days", semana }, "")
+      if (validDia) history.pushState({ planNav: "exercises" }, "")
+      if (historyDepthRef) historyDepthRef.current = validDia ? 3 : 2
+      setSemanaSeleccionada(semana)
+      if (validDia) setDiaSeleccionadoId(diaId!)
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planificacion?.id, studentId])
 
   const semanaCompletadaMap = useMemo(() => {
     const map = new Map<number, boolean>()

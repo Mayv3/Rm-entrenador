@@ -173,6 +173,7 @@ export default function PortalPage() {
   const [showMiPlan, setShowMiPlan] = useState(false)
   const [calendarOpen, setCalendarOpen] = useState(false)
   const miPlanHistoryDepth = useRef(0)
+  const didRestoreMiPlanRef = useRef(false)
 
   function closeMiPlan() {
     const depth = miPlanHistoryDepth.current
@@ -246,6 +247,38 @@ export default function PortalPage() {
   })
   const hasAppPlan = !!appPlanResp?.planificacion
   const appPlanChecked = !!student?.id && !loadingAppPlan && !fetchingAppPlan && appPlanResp !== undefined
+
+  // Recordar si la planificación estaba abierta. En celulares con poca RAM (ej. A16) el SO
+  // mata la PWA en segundo plano y al volver hace cold start: React resetea showMiPlan a false
+  // y el alumno cae en el home en vez de su entrenamiento. Persistimos el flag en localStorage
+  // (sobrevive al cierre del proceso) y reabrimos el panel al arrancar.
+  useEffect(() => {
+    if (!student?.id) return
+    // No escribir hasta que el efecto de restauración haya corrido, si no borraría el flag
+    // (showMiPlan arranca en false) antes de poder reabrir el panel.
+    if (!didRestoreMiPlanRef.current) return
+    try {
+      if (showMiPlan) localStorage.setItem(`rmMiPlanOpen-${student.id}`, String(Date.now()))
+      else localStorage.removeItem(`rmMiPlanOpen-${student.id}`)
+    } catch {}
+  }, [showMiPlan, student?.id])
+
+  useEffect(() => {
+    if (didRestoreMiPlanRef.current) return
+    if (!student?.id || !appPlanChecked) return
+    didRestoreMiPlanRef.current = true
+    try {
+      const raw = localStorage.getItem(`rmMiPlanOpen-${student.id}`)
+      if (!hasAppPlan) { localStorage.removeItem(`rmMiPlanOpen-${student.id}`); return }
+      if (!raw) return
+      const ts = Number(raw)
+      if (!Number.isNaN(ts) && Date.now() - ts < 24 * 60 * 60 * 1000) {
+        setShowMiPlan(true)
+      } else {
+        localStorage.removeItem(`rmMiPlanOpen-${student.id}`)
+      }
+    } catch {}
+  }, [student?.id, appPlanChecked, hasAppPlan])
 
   const latestPayment = payments
     .sort((a, b) => new Date(b.fecha_de_pago).getTime() - new Date(a.fecha_de_pago).getTime())[0]
