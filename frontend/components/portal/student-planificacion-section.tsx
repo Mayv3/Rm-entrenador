@@ -1257,18 +1257,18 @@ export function StudentPlanificacionSection({
           <ChevronLeft className="h-4 w-4 text-muted-foreground dark:text-zinc-400" />
         </button>
         <div className="flex-1 min-w-0">
-          <p className="text-[11px] text-muted-foreground dark:text-zinc-500">
+          <p className="text-xs text-muted-foreground dark:text-zinc-500">
             {previewPlan ? "Vista previa · " : ""}Semana {semanaSeleccionada}
           </p>
-          <p className="text-sm font-bold text-foreground dark:text-white leading-tight truncate">
+          <p className="text-base font-bold text-foreground dark:text-white leading-tight truncate">
             Día {diaSeleccionado?.numero_dia} · {diaSeleccionado?.nombre}
           </p>
         </div>
         {loadingSession
           ? <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground dark:text-zinc-500 flex-shrink-0" />
           : (allCompleted && !previewPlan) ? (
-            <span className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold border bg-green-500/15 border-green-500/30 text-green-400 flex-shrink-0">
-              <CheckCircle2 className="h-3.5 w-3.5 text-green-400" />
+            <span className="flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-semibold border bg-green-500/15 border-green-500/30 text-green-400 flex-shrink-0">
+              <CheckCircle2 className="h-4 w-4 text-green-400" />
               Completado
             </span>
           ) : null
@@ -1409,11 +1409,12 @@ export function StudentPlanificacionSection({
             return (
               <div className="rounded-2xl border border-border dark:border-white/[0.07] bg-muted/30 dark:bg-white/[0.02]">
                 {/* Header */}
-                <div className="px-4 pt-3 pb-2 flex items-center gap-2 border-b border-border dark:border-white/[0.05]">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-amber-400 flex-shrink-0">Movilidad</span>
-                  <span className="text-[10px] text-muted-foreground dark:text-zinc-500 flex-shrink-0">·</span>
-                  <span className="text-[11px] font-semibold text-foreground dark:text-zinc-200 truncate flex-1">{mov.nombre}</span>
-                  <span className="text-[10px] font-semibold text-muted-foreground dark:text-zinc-500 flex-shrink-0">{movilidadIdx + 1}/{total}</span>
+                <div className="px-4 pt-3 pb-2 border-b border-border dark:border-white/[0.05]">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-black uppercase tracking-widest text-amber-400 flex-shrink-0">Movilidad</span>
+                    <span className="text-xs font-semibold text-muted-foreground dark:text-zinc-500 flex-shrink-0">{movilidadIdx + 1}/{total}</span>
+                  </div>
+                  <p className="text-base font-bold text-foreground dark:text-zinc-200 leading-snug mt-1">{mov.nombre}</p>
                 </div>
 
                 {/* Scroll carousel */}
@@ -1448,8 +1449,8 @@ export function StudentPlanificacionSection({
                           </div>
                         )}
                         {item.video_url && (
-                          <span className="pointer-events-none absolute top-2 left-2 h-7 w-7 rounded-full bg-amber-400 text-black flex items-center justify-center shadow-md">
-                            <Play className="h-3.5 w-3.5" fill="currentColor" />
+                          <span className="pointer-events-none absolute top-2 left-2 h-9 w-9 rounded-full bg-amber-400 text-black flex items-center justify-center shadow-md">
+                            <Play className="h-4 w-4" fill="currentColor" />
                           </span>
                         )}
                       </div>
@@ -1482,7 +1483,7 @@ export function StudentPlanificacionSection({
           {ejerciciosDelDia.length === 0 ? (
             <p className="text-sm text-muted-foreground dark:text-zinc-400 text-center py-8">Este día no tiene ejercicios asignados.</p>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-6">
               {ejerciciosDelDia.map((ej) => {
             const semanaPlan = ej.semanas.find((s) => s.semana === semanaSeleccionada)
             const semanaPlanPrev = semanaSeleccionada != null && semanaSeleccionada % 2 === 0
@@ -1514,7 +1515,7 @@ export function StudentPlanificacionSection({
                 key={ej.id}
                 data-ej-id={ej.id}
                 ref={(el) => { if (el) exerciseCardRefs.current.set(ej.id, el) }}
-                className={`rounded-2xl border transition-all duration-200 ${
+                className={`rounded-2xl border overflow-hidden transition-all duration-200 ${
                   esSaltado
                     ? "border-amber-500/20 opacity-60"
                     : "border-border dark:border-white/[0.07]"
@@ -1522,71 +1523,55 @@ export function StudentPlanificacionSection({
               >
                 {/* Category + name + video strip */}
                 <div
-                  className="px-4 pt-3 pb-2 flex items-center gap-2 rounded-t-2xl"
+                  className="px-4 py-3 rounded-t-2xl flex items-center gap-2"
                   style={{ backgroundColor: catBg ? `color-mix(in srgb, ${catBg} 60%, transparent)` : undefined }}
                 >
+                  {/* Categoría (izq) */}
                   <span
-                    className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md flex-shrink-0"
+                    className="text-xs font-black uppercase tracking-widest px-2.5 py-1 rounded-md flex-shrink-0"
                     style={{ color: catColor, backgroundColor: catBg }}
                   >
                     {ej.categoria}
                   </span>
-                  <span className="text-[10px] text-muted-foreground dark:text-zinc-500 flex-shrink-0">·</span>
-                  <p className="text-[11px] font-semibold text-foreground dark:text-zinc-200 truncate flex-1 min-w-0">
+                  {/* Nombre centrado en el medio */}
+                  <p className="flex-1 min-w-0 text-lg font-bold text-foreground dark:text-white leading-snug text-center">
                     {ej.ejercicios?.nombre ?? "Ejercicio"}
                   </p>
-                  {ej.ejercicios?.video_url && (
-                    <button
-                      onClick={() => setVideoModal({ nombre: ej.ejercicios!.nombre, url: ej.ejercicios!.video_url! })}
-                      className="h-7 w-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-opacity hover:opacity-80"
-                      style={{ backgroundColor: catBg, color: catColor }}
-                    >
-                      <Play className="h-3 w-3" fill="currentColor" />
-                    </button>
-                  )}
-                  {!previewPlan && <CardSaveBadge ejId={ej.id} />}
-                  {!previewPlan && isFilled && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-green-500/10 border border-green-500/20 px-2 py-0.5 text-[10px] font-semibold text-green-400 flex-shrink-0">
-                      <CheckCircle2 className="h-2.5 w-2.5" />
-                      Completado
-                    </span>
-                  )}
-                  {!previewPlan && (!isFilled || esSaltado) ? (
-                    <button
-                      onClick={() => handleToggleSkip(ej.id)}
-                      className={`h-7 px-2.5 rounded-lg flex items-center gap-1.5 text-[10px] font-semibold transition-all border flex-shrink-0 ${
-                        saltadoEjIds.has(ej.id)
-                          ? "bg-amber-500/15 border-amber-500/30 text-amber-400"
-                          : "ml-auto bg-transparent border-border dark:border-white/[0.05] text-muted-foreground/70 dark:text-zinc-600 hover:border-amber-500/30 hover:text-amber-400"
-                      }`}
-                    >
-                      <SkipForward className="h-3 w-3" />
-                      {saltadoEjIds.has(ej.id) ? "Saltado" : "Saltar"}
-                    </button>
-                  ) : null}
+                  {/* Video + guardado (der) */}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {!previewPlan && <CardSaveBadge ejId={ej.id} />}
+                    {ej.ejercicios?.video_url && (
+                      <button
+                        onClick={() => setVideoModal({ nombre: ej.ejercicios!.nombre, url: ej.ejercicios!.video_url! })}
+                        className="h-9 w-9 rounded-full bg-amber-400 text-black flex items-center justify-center flex-shrink-0 shadow-md transition-opacity hover:opacity-80"
+                      >
+                        <Play className="h-4 w-4" fill="currentColor" />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {effectiveNota && (
                   <div className="px-4 pt-2">
                     <div className="rounded-xl border border-violet-400 dark:border-violet-500/20 bg-violet-100 dark:bg-violet-500/[0.08] px-3 py-2">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-violet-700 dark:text-violet-400 mb-0.5">Nota del profesor · Semana {semanaSeleccionada}</p>
-                      <p className="text-xs text-foreground dark:text-zinc-200 whitespace-pre-wrap">{effectiveNota}</p>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-violet-700 dark:text-violet-400 mb-1">Nota del profesor · Semana {semanaSeleccionada}</p>
+                      <p className="text-sm text-foreground dark:text-zinc-200 whitespace-pre-wrap">{effectiveNota}</p>
                     </div>
                   </div>
                 )}
 
                 {/* Dosis / RPE prescrito — 50/50 */}
                 {(effectiveDosis || typeof effectiveRpe === "number") && (
-                  <div className="px-4 pt-2 pb-1 grid grid-cols-2 gap-2">
+                  <div className="px-4 pt-14 pb-0 grid grid-cols-2 gap-2">
                     {effectiveDosis ? (
-                      <span className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-100 dark:bg-blue-500/15 border border-blue-400 dark:border-blue-500/30 px-4 py-3 text-base font-extrabold text-blue-700 dark:text-blue-300">
-                        <Repeat className="h-5 w-5" />
+                      <span className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-100 dark:bg-blue-500/15 border border-blue-400 dark:border-blue-500/30 px-4 py-3.5 text-lg font-extrabold text-blue-700 dark:text-blue-300">
+                        <Repeat className="h-6 w-6" />
                         {effectiveDosis}
                       </span>
                     ) : <div />}
                     {typeof effectiveRpe === "number" ? (
-                      <span className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-100 dark:bg-orange-500/15 border border-orange-400 dark:border-orange-500/30 px-4 py-3 text-base font-extrabold text-orange-700 dark:text-orange-300">
-                        <Flame className="h-5 w-5" />
+                      <span className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-100 dark:bg-orange-500/15 border border-orange-400 dark:border-orange-500/30 px-4 py-3.5 text-lg font-extrabold text-orange-700 dark:text-orange-300">
+                        <Flame className="h-6 w-6" />
                         RPE {effectiveRpe}
                       </span>
                     ) : <div />}
@@ -1599,7 +1584,7 @@ export function StudentPlanificacionSection({
                 ) : (
                 <div className="pb-4">
                   {/* Pills de series (cantidad definida por el profesor) */}
-                  <div className="grid gap-2 px-4 mt-4 mb-3" style={{ gridTemplateColumns: `repeat(${Math.min(seriesCount, 4)}, minmax(0, 1fr))` }}>
+                  <div className="grid gap-2 px-4 mt-14 mb-3" style={{ gridTemplateColumns: `repeat(${Math.min(seriesCount, 4)}, minmax(0, 1fr))` }}>
                     {Array.from({ length: seriesCount }, (_, i) => {
                       const s = row.series[i] ?? EMPTY_SERIE
                       const filled = !!s.peso_kg && !!s.repeticiones && !!s.rpe
@@ -1608,7 +1593,7 @@ export function StudentPlanificacionSection({
                         <button
                           key={i}
                           onClick={() => scrollToSerie(ej.id, i)}
-                          className={`relative flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all border ${
+                          className={`relative flex items-center justify-center gap-2 py-3.5 rounded-xl text-base font-bold transition-all border ${
                             active
                               ? "bg-muted dark:bg-white/[0.12] border-green-400/60 text-foreground dark:text-white shadow-[0_0_12px_rgba(74,222,128,0.25)] scale-[1.03] z-10"
                               : filled
@@ -1649,8 +1634,8 @@ export function StudentPlanificacionSection({
                           {/* 3-col grid: peso / reps / rpe */}
                           <div className="grid grid-cols-3 gap-2">
                             <div className="space-y-1.5">
-                              <label className="flex items-center justify-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground dark:text-zinc-500">
-                                <Weight className="h-2.5 w-2.5" />
+                              <label className="flex items-center justify-center gap-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground dark:text-zinc-500">
+                                <Weight className="h-3.5 w-3.5" />
                                 Peso kg
                               </label>
                               <Input
@@ -1661,12 +1646,12 @@ export function StudentPlanificacionSection({
                                 value={serie.peso_kg}
                                 onChange={(e) => handleSerieChange(ej.id, serieIdx, "peso_kg", e.target.value)}
                                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNextInput(ej.id, serieIdx, "peso_kg") } }}
-                                className="bg-card/80 dark:bg-zinc-900/80 border-border dark:border-white/[0.08] focus:border-green-500/50 focus:ring-green-500/20 text-foreground dark:text-white placeholder:text-foreground/60 dark:placeholder:text-zinc-300 h-12 text-base font-bold text-center rounded-xl"
+                                className="bg-card/80 dark:bg-zinc-900/80 border-border dark:border-white/[0.08] focus:border-green-500/50 focus:ring-green-500/20 text-foreground dark:text-white placeholder:text-foreground/60 dark:placeholder:text-zinc-300 h-14 text-xl font-bold text-center rounded-xl"
                               />
                             </div>
                             <div className="space-y-1.5">
-                              <label className="flex items-center justify-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground dark:text-zinc-500">
-                                <RotateCcw className="h-2.5 w-2.5" />
+                              <label className="flex items-center justify-center gap-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground dark:text-zinc-500">
+                                <RotateCcw className="h-3.5 w-3.5" />
                                 Reps
                               </label>
                               <Input
@@ -1678,12 +1663,12 @@ export function StudentPlanificacionSection({
                                 value={serie.repeticiones}
                                 onChange={(e) => handleSerieChange(ej.id, serieIdx, "repeticiones", e.target.value)}
                                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNextInput(ej.id, serieIdx, "repeticiones") } }}
-                                className="bg-card/80 dark:bg-zinc-900/80 border-border dark:border-white/[0.08] focus:border-green-500/50 focus:ring-green-500/20 text-foreground dark:text-white placeholder:text-foreground/60 dark:placeholder:text-zinc-300 h-12 text-base font-bold text-center rounded-xl"
+                                className="bg-card/80 dark:bg-zinc-900/80 border-border dark:border-white/[0.08] focus:border-green-500/50 focus:ring-green-500/20 text-foreground dark:text-white placeholder:text-foreground/60 dark:placeholder:text-zinc-300 h-14 text-xl font-bold text-center rounded-xl"
                               />
                             </div>
                             <div className="space-y-1.5">
-                              <label className="flex items-center justify-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground dark:text-zinc-500">
-                                <Flame className="h-2.5 w-2.5" />
+                              <label className="flex items-center justify-center gap-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground dark:text-zinc-500">
+                                <Flame className="h-3.5 w-3.5" />
                                 RPE
                               </label>
                               <Input
@@ -1694,7 +1679,7 @@ export function StudentPlanificacionSection({
                                 value={serie.rpe}
                                 onChange={(e) => handleSerieChange(ej.id, serieIdx, "rpe", e.target.value)}
                                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNextInput(ej.id, serieIdx, "rpe") } }}
-                                className="bg-card/80 dark:bg-zinc-900/80 border-border dark:border-white/[0.08] focus:border-green-500/50 focus:ring-green-500/20 text-foreground dark:text-white placeholder:text-foreground/60 dark:placeholder:text-zinc-300 h-12 text-base font-bold text-center rounded-xl"
+                                className="bg-card/80 dark:bg-zinc-900/80 border-border dark:border-white/[0.08] focus:border-green-500/50 focus:ring-green-500/20 text-foreground dark:text-white placeholder:text-foreground/60 dark:placeholder:text-zinc-300 h-14 text-xl font-bold text-center rounded-xl"
                               />
                             </div>
                           </div>
@@ -1704,7 +1689,7 @@ export function StudentPlanificacionSection({
                             <div className="rounded-xl overflow-hidden border border-violet-500/15 bg-gradient-to-r from-violet-500/[0.07] to-transparent">
                               <div className="flex items-center gap-1.5 px-3 pt-2 pb-1">
                                 <div className="h-1 w-1 rounded-full bg-violet-400" />
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-violet-400">
+                                <span className="text-xs font-bold uppercase tracking-widest text-violet-400">
                                   Semana {semanaAnterior} · Serie {serieIdx + 1}
                                 </span>
                               </div>
@@ -1712,23 +1697,23 @@ export function StudentPlanificacionSection({
                                 <div className="flex items-stretch divide-x divide-white/[0.06] pb-2 px-1">
                                   {anteriorSerie.peso_kg !== null && (
                                     <div className="flex flex-col items-center flex-1 py-1 px-2">
-                                      <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground dark:text-zinc-500">Peso</span>
-                                      <span className="text-base font-black text-foreground dark:text-white leading-tight">{anteriorSerie.peso_kg}</span>
-                                      <span className="text-[9px] text-muted-foreground dark:text-zinc-500">kg</span>
+                                      <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground dark:text-zinc-500">Peso</span>
+                                      <span className="text-lg font-black text-foreground dark:text-white leading-tight">{anteriorSerie.peso_kg}</span>
+                                      <span className="text-[10px] text-muted-foreground dark:text-zinc-500">kg</span>
                                     </div>
                                   )}
                                   {anteriorSerie.repeticiones !== null && (
                                     <div className="flex flex-col items-center flex-1 py-1 px-2">
-                                      <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground dark:text-zinc-500">Reps</span>
-                                      <span className="text-base font-black text-foreground dark:text-white leading-tight">{anteriorSerie.repeticiones}</span>
-                                      <span className="text-[9px] text-muted-foreground dark:text-zinc-500">rep</span>
+                                      <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground dark:text-zinc-500">Reps</span>
+                                      <span className="text-lg font-black text-foreground dark:text-white leading-tight">{anteriorSerie.repeticiones}</span>
+                                      <span className="text-[10px] text-muted-foreground dark:text-zinc-500">rep</span>
                                     </div>
                                   )}
                                   {anteriorSerie.rpe !== null && (
                                     <div className="flex flex-col items-center flex-1 py-1 px-2">
-                                      <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground dark:text-zinc-500">RPE</span>
-                                      <span className="text-base font-black text-foreground dark:text-white leading-tight">{anteriorSerie.rpe}</span>
-                                      <span className="text-[9px] text-muted-foreground dark:text-zinc-500">/10</span>
+                                      <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground dark:text-zinc-500">RPE</span>
+                                      <span className="text-lg font-black text-foreground dark:text-white leading-tight">{anteriorSerie.rpe}</span>
+                                      <span className="text-[10px] text-muted-foreground dark:text-zinc-500">/10</span>
                                     </div>
                                   )}
                                 </div>
@@ -1745,21 +1730,43 @@ export function StudentPlanificacionSection({
                   </div>
 
                   {/* Notas */}
-                  <div className="px-4 pt-3 space-y-1.5">
-                    <label className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground dark:text-zinc-500">
-                      <StickyNote className="h-2.5 w-2.5" />
+                  <div className="px-4 pt-14 space-y-1.5">
+                    <label className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground dark:text-zinc-500">
+                      <StickyNote className="h-3.5 w-3.5" />
                       Mis notas
                     </label>
                     <Textarea
                       placeholder="Opcional…"
                       maxLength={100}
-                      className="min-h-16 resize-none bg-card/80 dark:bg-card dark:bg-zinc-900/80 border-border dark:border-white/[0.08] focus:border-green-500/50 focus:ring-green-500/20 text-foreground dark:text-white placeholder:text-muted-foreground/70 dark:text-zinc-600 text-sm rounded-xl"
+                      className="min-h-16 resize-none bg-card/80 dark:bg-card dark:bg-zinc-900/80 border-border dark:border-white/[0.08] focus:border-green-500/50 focus:ring-green-500/20 text-foreground dark:text-white placeholder:text-muted-foreground/70 dark:text-zinc-600 text-base rounded-xl"
                       value={row.notas}
                       onChange={(e) => handleNotasChange(ej.id, e.target.value)}
                     />
-                    <span className="text-[9px] text-muted-foreground/70 dark:text-zinc-600 text-right block">{row.notas.length}/100</span>
+                    <span className="text-sm text-muted-foreground dark:text-zinc-400 text-right block">{row.notas.length}/100</span>
                   </div>
                 </div>
+                )}
+
+                {/* Footer anclado al pie del contenedor: Saltar / Completado — uno a la vez (si está completo no se puede saltar) */}
+                {!previewPlan && (
+                  isFilled ? (
+                    <div className="flex items-center justify-center gap-2 px-4 py-3.5 border-t border-green-500/30 bg-green-500/15 text-base font-bold text-green-600 dark:text-green-400">
+                      <CheckCircle2 className="h-5 w-5" />
+                      Completado
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => handleToggleSkip(ej.id)}
+                      className={`w-full flex items-center justify-center gap-2 px-4 py-3.5 border-t text-base font-bold transition-colors active:scale-[0.99] ${
+                        esSaltado
+                          ? "border-amber-500/30 bg-amber-500/15 text-amber-500 dark:text-amber-400"
+                          : "border-border dark:border-white/[0.07] bg-transparent text-muted-foreground hover:bg-amber-500/5 hover:text-amber-500 dark:hover:text-amber-400"
+                      }`}
+                    >
+                      <SkipForward className="h-5 w-5" />
+                      {esSaltado ? "Saltado" : "Saltar"}
+                    </button>
+                  )
                 )}
               </div>
             )

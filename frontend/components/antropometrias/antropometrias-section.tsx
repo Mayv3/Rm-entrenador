@@ -6,7 +6,7 @@ import axios from "axios"
 import { queryKeys } from "@/lib/query-keys"
 import { Input } from "@/components/ui/input"
 import { FileText, Search, User, Calendar } from "lucide-react"
-import { format } from "date-fns"
+import { format, differenceInCalendarMonths } from "date-fns"
 import { es } from "date-fns/locale"
 import { AntroUploadDialog } from "./antro-upload-dialog"
 import { Loader } from "@/components/ui/loader"
@@ -20,13 +20,27 @@ interface Student {
 
 function AlumnoCard({ alumno, count, onClick }: { alumno: Student; count: number; onClick: () => void }) {
   const hasPdf = count > 0
+  // Meses desde la última antropometría (ignora días). Toca renovar cada 3 meses.
+  const meses = alumno.ultima_antro
+    ? differenceInCalendarMonths(new Date(), new Date(alumno.ultima_antro))
+    : 0
+  const tocaEsteMes = meses === 3 // vence este mes -> titila (verde + borde + pulse)
+  const atrasado = meses > 3 // vencía en meses anteriores -> solo borde verde
   return (
     <button
       onClick={onClick}
-      className="group flex flex-col items-center gap-2 rounded-xl border bg-card p-3 transition-all hover:border-[var(--primary-color)] hover:shadow-sm active:scale-[0.97]"
+      className={`group flex flex-col items-center gap-2 rounded-xl border p-3 transition-all hover:shadow-sm active:scale-[0.97] ${
+        tocaEsteMes
+          ? "border-2 border-[#22b567] bg-[#22b567]/30 animate-pulse"
+          : atrasado
+          ? "border-2 border-[#22b567] bg-card"
+          : "bg-card hover:border-[var(--primary-color)]"
+      }`}
     >
       <div className={`flex h-10 w-10 items-center justify-center rounded-full transition-colors ${
-        hasPdf ? "bg-[var(--primary-color)]/10 text-[var(--primary-color)]" : "bg-muted text-muted-foreground"
+        tocaEsteMes
+          ? "bg-[#22b567]/15 text-[#22b567]"
+          : hasPdf ? "bg-[var(--primary-color)]/10 text-[var(--primary-color)]" : "bg-muted text-muted-foreground"
       }`}>
         <User className="h-5 w-5" />
       </div>
@@ -39,7 +53,7 @@ function AlumnoCard({ alumno, count, onClick }: { alumno: Student; count: number
           </div>
         )}
         {alumno.ultima_antro && (
-          <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+          <div className={`flex items-center gap-1 text-[10px] ${tocaEsteMes ? "font-semibold text-[#22b567]" : "text-muted-foreground"}`}>
             <Calendar className="h-3 w-3" />
             {format(new Date(alumno.ultima_antro), "d MMM yy", { locale: es })}
           </div>
