@@ -1747,9 +1747,17 @@ export function StudentPlanificacionSection({
                 </div>
                 )}
 
-                {/* Footer anclado al pie del contenedor: Saltar / Completado — uno a la vez (si está completo no se puede saltar) */}
+                {/* Footer anclado al pie: Saltado / Completado / Saltar — uno a la vez. Saltado tiene prioridad sobre completado. */}
                 {!previewPlan && (
-                  isFilled ? (
+                  esSaltado ? (
+                    <button
+                      onClick={() => handleToggleSkip(ej.id)}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-3.5 border-t border-amber-500/30 bg-amber-500/15 text-base font-bold text-amber-500 dark:text-amber-400 transition-colors active:scale-[0.99]"
+                    >
+                      <SkipForward className="h-5 w-5" />
+                      Saltado
+                    </button>
+                  ) : isFilled ? (
                     <div className="flex items-center justify-center gap-2 px-4 py-3.5 border-t border-green-500/30 bg-green-500/15 text-base font-bold text-green-600 dark:text-green-400">
                       <CheckCircle2 className="h-5 w-5" />
                       Completado
@@ -1757,14 +1765,10 @@ export function StudentPlanificacionSection({
                   ) : (
                     <button
                       onClick={() => handleToggleSkip(ej.id)}
-                      className={`w-full flex items-center justify-center gap-2 px-4 py-3.5 border-t text-base font-bold transition-colors active:scale-[0.99] ${
-                        esSaltado
-                          ? "border-amber-500/30 bg-amber-500/15 text-amber-500 dark:text-amber-400"
-                          : "border-border dark:border-white/[0.07] bg-transparent text-muted-foreground hover:bg-amber-500/5 hover:text-amber-500 dark:hover:text-amber-400"
-                      }`}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-3.5 border-t border-border dark:border-white/[0.07] bg-transparent text-base font-bold text-muted-foreground transition-colors active:scale-[0.99] hover:bg-amber-500/5 hover:text-amber-500 dark:hover:text-amber-400"
                     >
                       <SkipForward className="h-5 w-5" />
-                      {esSaltado ? "Saltado" : "Saltar"}
+                      Saltar
                     </button>
                   )
                 )}
