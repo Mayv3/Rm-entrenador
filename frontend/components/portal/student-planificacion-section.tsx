@@ -123,6 +123,9 @@ type FormRow = {
 
 const EMPTY_SERIE: SerieRow = { peso_kg: "", repeticiones: "", rpe: "" }
 const DEFAULT_SERIES = 3
+// Paso 3: el envío a red se debounce para coalescer la ráfaga de saves por-serie.
+// La persistencia local (persistFormLocal) sigue siendo inmediata en cada tecla.
+const SAVE_DEBOUNCE_MS = 1500
 const clampSeries = (v: unknown) => Math.min(8, Math.max(1, Number(v) || DEFAULT_SERIES))
 const EMPTY_FORM_ROW = (count: number = DEFAULT_SERIES): FormRow => ({
   series: Array.from({ length: count }, () => ({ ...EMPTY_SERIE })),
@@ -159,6 +162,13 @@ export function StudentPlanificacionSection({
   const saveStatusResetRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pendingResaveRef = useRef(false)
   const savingEjIdsRef = useRef<number[]>([])
+  // SAVE-001: tracking de ediciones hechas MIENTRAS hay un save in-flight, para no
+  // borrarlas en onSuccess (el clear ciego anterior perdía ese dato en DB y localStorage).
+  const savingEstadoRef = useRef(false) // ¿el save in-flight incluía estado de salud?
+  const dirtyDuringSaveRef = useRef(new Set<number>()) // ejIds re-editados durante el save in-flight
+  const estadoDirtyDuringSaveRef = useRef(false) // estado re-tocado durante el save in-flight
+  const clientRevRef = useRef(0) // rev monotónico para LWW server-side (anti-reordenamiento de red)
+  const saveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const silentSaveRef = useRef(false)
   const currentSaveIsSilentRef = useRef(false)
   const onRequestCloseRef = useRef(onRequestClose)
@@ -729,7 +739,7 @@ export function StudentPlanificacionSection({
     function handleBeforeUnload(e: BeforeUnloadEvent) {
       if (isDirty.current) {
         silentSaveRef.current = true
-        saveMutateRef.current()
+        flushSaveRef.current()
         e.preventDefault()
         e.returnValue = ""
       }
@@ -737,19 +747,19 @@ export function StudentPlanificacionSection({
     function handleVisibility() {
       if (document.hidden && isDirty.current && !saveIsPendingRef.current) {
         silentSaveRef.current = true
-        saveMutateRef.current()
+        flushSaveRef.current()
       }
     }
     function handlePageHide() {
       if (isDirty.current && !saveIsPendingRef.current) {
         silentSaveRef.current = true
-        saveMutateRef.current()
+        flushSaveRef.current()
       }
     }
     const autosaveInterval = setInterval(() => {
       if (isDirty.current && !saveIsPendingRef.current) {
         silentSaveRef.current = true
-        saveMutateRef.current()
+        flushSaveRef.current()
       }
     }, 8000)
     window.addEventListener("beforeunload", handleBeforeUnload)
@@ -760,6 +770,7 @@ export function StudentPlanificacionSection({
       document.removeEventListener("visibilitychange", handleVisibility)
       window.removeEventListener("pagehide", handlePageHide)
       clearInterval(autosaveInterval)
+      if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current)
       if (saveStatusResetRef.current) clearTimeout(saveStatusResetRef.current)
       setSaveStatus("idle")
     }
@@ -773,7 +784,7 @@ export function StudentPlanificacionSection({
     function handlePopState(e: PopStateEvent) {
       if (isDirty.current) {
         silentSaveRef.current = true
-        saveMutateRef.current()
+        flushSaveRef.current()
       }
       if (historyDepthRef) historyDepthRef.current = Math.max(0, historyDepthRef.current - 1)
       const nav = (e.state as { planNav?: string; semana?: number } | null)
@@ -862,6 +873,9 @@ export function StudentPlanificacionSection({
   const saveMutation = useMutation({
     onMutate: () => {
       savingEjIdsRef.current = [...dirtyEjIds.current]
+      savingEstadoRef.current = estadoDirty.current
+      dirtyDuringSaveRef.current = new Set()
+      estadoDirtyDuringSaveRef.current = false
       currentSaveIsSilentRef.current = silentSaveRef.current
       silentSaveRef.current = false
       if (currentSaveIsSilentRef.current) return
@@ -933,12 +947,18 @@ export function StudentPlanificacionSection({
         }
       }
 
+      // client_rev monotónico: Date.now() domina entre recargas (tras un reload el ref vuelve a 0,
+      // pero Date.now() es mayor a cualquier rev previo); el +1 garantiza orden estricto aunque dos
+      // saves caigan en el mismo ms. El backend hace last-write-wins por client_rev.
+      const clientRev = Math.max(Date.now(), clientRevRef.current + 1)
+      clientRevRef.current = clientRev
       const payload: any = {
         alumno_id: studentId,
         hoja_id: hojaActiva.id,
         dia_id: diaSeleccionado.id,
         semana: semanaSeleccionada,
         estado: allCompleted ? "completado" : "abierta",
+        client_rev: clientRev,
         registros,
       }
       if (estadoDirty.current) {
@@ -951,10 +971,16 @@ export function StudentPlanificacionSection({
       await axios.put(`${process.env.NEXT_PUBLIC_URL_BACKEND}/portal/planificaciones/${planificacion.id}/sesiones`, payload)
     },
     onSuccess: async (_data: any) => {
-      dirtyEjIds.current.clear()
-      isDirty.current = false
-      estadoDirty.current = false
-      clearFormLocal()
+      // SAVE-001: borrar SOLO lo que se envió y NO se volvió a editar durante el save in-flight.
+      // El clear() ciego anterior, junto al guard `pendingResaveRef && isDirty` (con isDirty
+      // forzado a false acá mismo), cancelaba el re-save de esas ediciones → pérdida de dato.
+      for (const id of savingEjIdsRef.current) {
+        if (!dirtyDuringSaveRef.current.has(id)) dirtyEjIds.current.delete(id)
+      }
+      if (savingEstadoRef.current && !estadoDirtyDuringSaveRef.current) estadoDirty.current = false
+      isDirty.current = dirtyEjIds.current.size > 0 || estadoDirty.current
+      // Conservar el backup local si quedó algo pendiente; solo limpiarlo cuando todo está guardado.
+      if (dirtyEjIds.current.size === 0 && !estadoDirty.current) clearFormLocal()
       setSavedSuccess(true)
       setSaveMessage("")
       if (!currentSaveIsSilentRef.current) {
@@ -1034,7 +1060,8 @@ export function StudentPlanificacionSection({
       queryClient.invalidateQueries({ queryKey: semanaKey })
       queryClient.invalidateQueries({ queryKey: resumenKey })
 
-      if (pendingResaveRef.current && isDirty.current) {
+      // Reenviar si quedó algo pendiente (ediciones in-flight o estado re-tocado).
+      if (pendingResaveRef.current || dirtyEjIds.current.size > 0 || estadoDirty.current) {
         pendingResaveRef.current = false
         saveMutateRef.current()
       }
@@ -1054,11 +1081,31 @@ export function StudentPlanificacionSection({
   const saveIsPendingRef = useRef(saveMutation.isPending)
   saveIsPendingRef.current = saveMutation.isPending
 
+  // Envío inmediato (cancela cualquier debounce pendiente). Si ya hay un save in-flight, encola
+  // un re-save en vez de disparar un PUT concurrente. No envía nada si no quedó trabajo sucio.
+  const flushSave = () => {
+    if (saveDebounceRef.current) { clearTimeout(saveDebounceRef.current); saveDebounceRef.current = null }
+    if (dirtyEjIds.current.size === 0 && !estadoDirty.current) return
+    if (saveIsPendingRef.current) { pendingResaveRef.current = true; return }
+    saveMutateRef.current()
+  }
+  const flushSaveRef = useRef(flushSave)
+  flushSaveRef.current = flushSave
+  // Envío debounced: coalesce múltiples series completadas en un solo PUT.
+  const scheduleSave = () => {
+    if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current)
+    saveDebounceRef.current = setTimeout(() => {
+      saveDebounceRef.current = null
+      flushSaveRef.current()
+    }, SAVE_DEBOUNCE_MS)
+  }
+
 
   const handleSerieChange = (planEjId: number, serieIdx: number, field: keyof SerieRow, value: string) => {
     const clamped = clampSerieValue(field, value)
     isDirty.current = true
     dirtyEjIds.current.add(planEjId)
+    if (saveIsPendingRef.current) dirtyDuringSaveRef.current.add(planEjId)
     setSaveMessage("")
     setSavedSuccess(false)
 
@@ -1098,10 +1145,7 @@ export function StudentPlanificacionSection({
       serieAdvanceDebounceRef.current.set(advanceKey, t)
     }
 
-    if (shouldSave) {
-      if (!saveIsPendingRef.current) saveMutateRef.current()
-      else pendingResaveRef.current = true
-    }
+    if (shouldSave) scheduleSave()
   }
 
   const handleToggleEstado = (field: "durmioMal" | "fatiga" | "desmotivacion" | "dolor" | "excelente") => {
@@ -1111,6 +1155,7 @@ export function StudentPlanificacionSection({
     setters[field](refs[field].current)
     isDirty.current = true
     estadoDirty.current = true
+    if (saveIsPendingRef.current) estadoDirtyDuringSaveRef.current = true
     setEstadoLocalDirty(true)
   }
 
@@ -1130,7 +1175,8 @@ export function StudentPlanificacionSection({
     isDirty.current = true
     estadoDirty.current = true
     silentSaveRef.current = true
-    saveMutateRef.current()
+    if (saveIsPendingRef.current) estadoDirtyDuringSaveRef.current = true
+    flushSave()
   }
 
   const handleConfirmar = () => {
@@ -1141,7 +1187,8 @@ export function StudentPlanificacionSection({
     isDirty.current = true
     estadoDirty.current = true
     silentSaveRef.current = true
-    saveMutateRef.current()
+    if (saveIsPendingRef.current) estadoDirtyDuringSaveRef.current = true
+    flushSave()
   }
 
   const handleNotasChange = (planEjId: number, value: string) => {
@@ -1153,6 +1200,7 @@ export function StudentPlanificacionSection({
     registrosFormRef.current = updated
     setRegistrosForm(updated)
     dirtyEjIds.current.add(planEjId)
+    if (saveIsPendingRef.current) dirtyDuringSaveRef.current.add(planEjId)
   }
 
   const handleToggleSkip = (planEjId: number) => {
@@ -1169,7 +1217,8 @@ export function StudentPlanificacionSection({
     persistFormLocal(updatedSkip, newSaltados)
     dirtyEjIds.current.add(planEjId)
     silentSaveRef.current = true
-    saveMutateRef.current()
+    if (saveIsPendingRef.current) dirtyDuringSaveRef.current.add(planEjId)
+    flushSave()
   }
 
   if (loadingPlan) {
@@ -1448,7 +1497,8 @@ export function StudentPlanificacionSection({
                   onClick={() => {
                     estadoDirty.current = true
                     isDirty.current = true
-                    saveMutateRef.current()
+                    if (saveIsPendingRef.current) estadoDirtyDuringSaveRef.current = true
+                    flushSave()
                     setEstadoLocalDirty(false)
                   }}
                   disabled={saveMutation.isPending}

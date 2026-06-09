@@ -21,7 +21,12 @@
       "Bash(git stash *)",
       "Bash(echo \"=== lint done \\(rc=$?\\) ===\")",
       "mcp__supabase-rm__list_tables",
-      "Bash(grep -E \"student-planificacion-section|portal/page|portal\\\\\\\\\\\\\\\\page\")"
+      "Bash(grep -E \"student-planificacion-section|portal/page|portal\\\\\\\\\\\\\\\\page\")",
+      "mcp__supabase-rm__get_advisors",
+      "Bash(Select-Object -First 40)",
+      "PowerShell($env:Path = \"C:\\\\Program Files\\\\nodejs;\" + $env:Path; Set-Location \"C:\\\\Users\\\\nicop\\\\OneDrive\\\\Desktop\\\\Proyectos\\\\Rm-entrenador\\\\frontend\"; npx tsc --noEmit -p tsconfig.json 2>&1 | Select-Object -First 50)",
+      "PowerShell(Set-Location *)",
+      "PowerShell($env:Path = \"C:\\\\Program Files\\\\nodejs;\" + $env:Path; Set-Location \"C:\\\\Users\\\\nicop\\\\OneDrive\\\\Desktop\\\\Proyectos\\\\Rm-entrenador\\\\backend\"; node --check controllers/portalPlanController.js; if \\($?\\) { \"BACKEND SYNTAX OK\" })"
     ]
   },
   "enableAllProjectMcpServers": true,

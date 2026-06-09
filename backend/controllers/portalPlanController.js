@@ -238,6 +238,7 @@ export async function upsertPortalSesion(req, res) {
     desmotivacion,
     dolor,
     excelente,
+    client_rev,
   } = req.body;
 
   const alumnoId = Number(alumno_id);
@@ -249,135 +250,42 @@ export async function upsertPortalSesion(req, res) {
     return res.status(400).json({ error: "Faltan o son inválidos: alumno_id, hoja_id, dia_id, semana" });
   }
 
-  const { data: ejerciciosDia, error: ejerciciosError } = await supabase
-    .from("planificacion_ejercicios")
-    .select("id, categoria, ejercicio_id, ejercicios(id, nombre), planificacion_semanas(semana, dosis, rpe)")
-    .eq("planificacion_dia_id", diaId);
+  // Todo el guardado va en UNA función transaccional (guardar_sesion_portal): valida pertenencia,
+  // upsertea sesión + estado_diario + asistencia + registros y deriva los snapshots, todo o nada.
+  // Elimina las escrituras parciales y colapsa ~6 round-trips a 1.
+  const payload = {
+    alumno_id: alumnoId,
+    planificacion_id: planId,
+    hoja_id: hojaId,
+    dia_id: diaId,
+    semana: semanaNum,
+    estado: estado ?? "abierta",
+    fecha_entrenamiento: fecha_entrenamiento ?? null,
+    client_rev: Number.isFinite(Number(client_rev)) ? Number(client_rev) : 0,
+    registros: Array.isArray(registros) ? registros : [],
+  };
 
-  if (ejerciciosError) return res.status(500).json({ error: ejerciciosError.message });
-
-  const ejercicioMap = new Map((ejerciciosDia ?? []).map((e) => [Number(e.id), e]));
-
-  for (const reg of registros) {
-    const planEjId = Number(reg.planificacion_ejercicio_id);
-    if (!ejercicioMap.has(planEjId)) {
-      return res.status(400).json({
-        error: `El ejercicio ${planEjId} no pertenece al día ${diaId}`,
-      });
-    }
-  }
-
-  const { data: sesion, error: sesionError } = await supabase
-    .from("entrenamiento_sesiones")
-    .upsert(
-      {
-        alumno_id: alumnoId,
-        planificacion_id: planId,
-        hoja_id: hojaId,
-        dia_id: diaId,
-        semana: semanaNum,
-        estado: estado ?? "abierta",
-        fecha_entrenamiento: fecha_entrenamiento ?? null,
-      },
-      { onConflict: "alumno_id,planificacion_id,hoja_id,dia_id,semana" }
-    )
-    .select("*")
-    .single();
-
-  if (sesionError) return res.status(500).json({ error: sesionError.message });
-
-  console.log("[DB] Sesión upsert exitosa:", JSON.stringify(sesion, null, 2))
-
-  // Upsert estado diario (solo si el frontend envió los campos)
-  const hasEstadoDiario = req.body.durmio_mal !== undefined || req.body.fatiga !== undefined || req.body.desmotivacion !== undefined || req.body.dolor !== undefined || req.body.excelente !== undefined
-
+  // El check-in (estado de salud) solo se persiste si el frontend envió alguno de sus campos.
+  const hasEstadoDiario =
+    durmio_mal !== undefined || fatiga !== undefined || desmotivacion !== undefined || dolor !== undefined || excelente !== undefined;
   if (hasEstadoDiario) {
-    const { error: estadoError } = await supabase
-      .from("entrenamiento_estado_diario")
-      .upsert(
-        {
-          sesion_id: sesion.id,
-          durmio_mal: durmio_mal ?? false,
-          fatiga: fatiga ?? false,
-          desmotivacion: desmotivacion ?? false,
-          dolor: dolor ?? false,
-          excelente: excelente ?? false,
-        },
-        { onConflict: "sesion_id" }
-      );
-
-    if (estadoError) return res.status(500).json({ error: estadoError.message });
-
-    console.log("[DB] Estado diario guardado: durmio_mal=", durmio_mal, "fatiga=", fatiga, "desmotivacion=", desmotivacion, "dolor=", dolor, "excelente=", excelente)
-
-    const fechaAsistencia = (fecha_entrenamiento ?? new Date().toISOString()).slice(0, 10);
-    const { error: asistenciaError } = await supabase
-      .from("asistencias_alumnos")
-      .upsert(
-        {
-          alumno_id: alumnoId,
-          fecha: fechaAsistencia,
-          planificacion_id: planId,
-          sesion_id: sesion.id,
-        },
-        { onConflict: "alumno_id,sesion_id" }
-      );
-
-    if (asistenciaError) console.error("[DB] Error asistencia:", asistenciaError.message);
-    else console.log("[DB] Asistencia registrada:", alumnoId, fechaAsistencia);
+    payload.estado_diario = {
+      durmio_mal: !!durmio_mal,
+      fatiga: !!fatiga,
+      desmotivacion: !!desmotivacion,
+      dolor: !!dolor,
+      excelente: !!excelente,
+    };
   }
 
-  if (registros.length > 0) {
-    const rows = registros.map((reg) => {
-      const planEjId = Number(reg.planificacion_ejercicio_id);
-      const planEj = ejercicioMap.get(planEjId);
-      const prescripcionSemana = (planEj.planificacion_semanas ?? []).find(
-        (s) => Number(s.semana) === semanaNum
-      );
+  const { data, error } = await supabase.rpc("guardar_sesion_portal", { p: payload });
 
-      const seriesArr = Array.isArray(reg.series) ? reg.series : [];
-      const s0 = seriesArr[0] ?? {};
-      const toNum = (v) => (v === "" || v === null || v === undefined ? null : Number(v));
-
-      return {
-        sesion_id: sesion.id,
-        planificacion_ejercicio_id: planEjId,
-        ejercicio_id: Number(planEj.ejercicio_id),
-        peso_kg: toNum(s0.peso_kg ?? reg.peso_kg),
-        repeticiones: toNum(s0.repeticiones ?? reg.repeticiones),
-        rpe: toNum(s0.rpe ?? reg.rpe),
-        notas: reg.notas?.trim() ? reg.notas.trim() : null,
-        series: seriesArr,
-        ejercicio_nombre_snapshot: planEj.ejercicios?.nombre ?? "Ejercicio",
-        categoria_snapshot: planEj.categoria ?? null,
-        prescripcion_dosis: prescripcionSemana?.dosis ?? null,
-        prescripcion_rpe: prescripcionSemana?.rpe ?? null,
-      };
-    });
-
-    const { error: upsertRegistrosError } = await supabase
-      .from("entrenamiento_registros")
-      .upsert(rows, { onConflict: "sesion_id,planificacion_ejercicio_id" });
-
-    if (upsertRegistrosError) {
-      return res.status(500).json({ error: upsertRegistrosError.message });
+  if (error) {
+    if (error.message && error.message.includes("EJERCICIO_NO_PERTENECE")) {
+      return res.status(400).json({ error: "Un ejercicio no pertenece al día indicado" });
     }
-    console.log("[DB] Registros guardados:", JSON.stringify(rows, null, 2))
+    return res.status(500).json({ error: error.message });
   }
 
-  const { data: registrosGuardados, error: registrosError } = await supabase
-    .from("entrenamiento_registros")
-    .select("*")
-    .eq("sesion_id", sesion.id)
-    .order("id", { ascending: true });
-
-  if (registrosError) return res.status(500).json({ error: registrosError.message });
-
-  const { data: estadoDiario } = await supabase
-    .from("entrenamiento_estado_diario")
-    .select("*")
-    .eq("sesion_id", sesion.id)
-    .maybeSingle();
-
-  return res.json({ sesion, estado_diario: estadoDiario, registros: registrosGuardados ?? [] });
+  return res.json(data);
 }
