@@ -181,6 +181,56 @@ export async function getPortalSesion(req, res) {
   return res.json({ sesion, estado_diario: estadoDiario, registros: registros ?? [] });
 }
 
+// Pesos de la última semana entrenada de la hoja anterior, agrupados por ejercicio_id.
+// Se usa en semana 1 del bloque actual para mostrar la referencia del bloque previo.
+export async function getPortalHojaAnteriorPesos(req, res) {
+  const planId = Number(req.params.planId);
+  const alumnoId = Number(req.query.alumno_id);
+  const hojaId = Number(req.query.hoja_id); // hoja anterior
+
+  if (![planId, alumnoId, hojaId].every(Number.isFinite)) {
+    return res.status(400).json({ error: "Parámetros inválidos" });
+  }
+
+  const { data: sesiones, error: sErr } = await supabase
+    .from("entrenamiento_sesiones")
+    .select("id, semana")
+    .eq("planificacion_id", planId)
+    .eq("alumno_id", alumnoId)
+    .eq("hoja_id", hojaId);
+  if (sErr) return res.status(500).json({ error: sErr.message });
+  if (!sesiones || sesiones.length === 0) return res.json({ registros: {} });
+
+  const semanaBySesion = new Map(sesiones.map((s) => [s.id, s.semana]));
+  const sesionIds = sesiones.map((s) => s.id);
+
+  const { data: registros, error: rErr } = await supabase
+    .from("entrenamiento_registros")
+    .select("*")
+    .in("sesion_id", sesionIds);
+  if (rErr) return res.status(500).json({ error: rErr.message });
+
+  const tieneData = (r) => {
+    if (Array.isArray(r.series) && r.series.length > 0) {
+      return r.series.some((s) => Number(s?.peso_kg) > 0 || Number(s?.repeticiones) > 0);
+    }
+    return Number(r.peso_kg) > 0 || Number(r.repeticiones) > 0;
+  };
+
+  // Por ejercicio_id: el registro de mayor semana con datos reales (última vez entrenado en la hoja anterior)
+  const byEjercicio = {};
+  for (const r of registros ?? []) {
+    if (r.ejercicio_id == null || !tieneData(r)) continue;
+    const sem = semanaBySesion.get(r.sesion_id) ?? 0;
+    const prev = byEjercicio[r.ejercicio_id];
+    if (!prev || sem > prev._semana || (sem === prev._semana && r.id > prev.id)) {
+      byEjercicio[r.ejercicio_id] = { ...r, _semana: sem };
+    }
+  }
+
+  return res.json({ registros: byEjercicio });
+}
+
 export async function getPortalSesionesResumen(req, res) {
   const planId = Number(req.params.planId);
   const alumnoId = Number(req.query.alumno_id);

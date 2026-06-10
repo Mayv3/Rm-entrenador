@@ -12,14 +12,14 @@ import {
   getTiposEjercicio, createTipoEjercicio, updateTipoEjercicio, deleteTipoEjercicio,
   getPlanificaciones, getPlanificacionesByAlumno, getPlanificacionById,
   createPlanificacion, updatePlanificacion, deletePlanificacion,
-  createHoja, updateHoja, deleteHoja, duplicateHoja,
-  createDia, updateDia, deleteDia,
+  createHoja, updateHoja, deleteHoja, duplicateHoja, listHojasEliminadas, restoreHoja,
+  createDia, updateDia, deleteDia, duplicateDia,
   addEjercicioADia, addEjerciciosADiaBulk, updateEjercicioEnDia, removeEjercicioDeDia,
   updateDosis, updateDosisBulk, guardarPlanCompleto, bulkUpdateOrden, saveMovilidad, getEjerciciosMovilidad, saveAll, getProgresoPlanificacion, getAsistenciasPlanificacion,
 } from "./controllers/planificacionesController.js";
 import { getAntrosByAlumno, getAllAntrosCounts, createAntro, deleteAntro, updateAntroNombre, updateAntroFecha, getParsedAntro } from "./controllers/antropometriasController.js";
 import { getNutricionByAlumno, getAllNutricionCounts, createNutricion, deleteNutricion, updateNutricionNombre, updateNutricionHabitos } from "./controllers/nutricionController.js";
-import { getPortalPlanificacion, getPortalSesion, upsertPortalSesion, getPortalSesionesSemana, getPortalSesionesResumen } from "./controllers/portalPlanController.js";
+import { getPortalPlanificacion, getPortalSesion, upsertPortalSesion, getPortalSesionesSemana, getPortalSesionesResumen, getPortalHojaAnteriorPesos } from "./controllers/portalPlanController.js";
 import {
   getPlantillas, getPlantillaById, createPlantilla, updatePlantilla, deletePlantilla, asignarPlantilla, syncPlantilla, hidratarPlantilla,
 } from "./controllers/plantillasController.js";
@@ -142,15 +142,18 @@ app.delete("/planificaciones/:id", deletePlanificacion);
 app.get("/planificaciones/alumno/:alumnoId", getPlanificacionesByAlumno);
 
 // Hojas
+app.get("/planificaciones/:id/hojas/eliminadas", listHojasEliminadas);
 app.post("/planificaciones/:id/hojas", createHoja);
 app.put("/planificaciones/hojas/:hojaId", updateHoja);
 app.delete("/planificaciones/hojas/:hojaId", deleteHoja);
 app.post("/planificaciones/hojas/:hojaId/duplicate", duplicateHoja);
+app.post("/planificaciones/hojas/:hojaId/restore", restoreHoja);
 
 // Días
 app.post("/planificaciones/hojas/:hojaId/dias", createDia);
 app.put("/planificaciones/dias/:diaId", updateDia);
 app.delete("/planificaciones/dias/:diaId", deleteDia);
+app.post("/planificaciones/dias/:diaId/duplicate", duplicateDia);
 
 // Ejercicios en un día
 app.post("/planificaciones/dias/:diaId/ejercicios", addEjercicioADia);
@@ -195,6 +198,7 @@ app.use("/portal", noStore);
 app.get("/portal/alumnos/:alumnoId/planificacion", getPortalPlanificacion);
 app.get("/portal/planificaciones/:planId/sesiones/resumen", getPortalSesionesResumen);
 app.get("/portal/planificaciones/:planId/sesiones/semana", getPortalSesionesSemana);
+app.get("/portal/planificaciones/:planId/sesiones/hoja-anterior", getPortalHojaAnteriorPesos);
 app.get("/portal/planificaciones/:planId/sesiones", getPortalSesion);
 app.put("/portal/planificaciones/:planId/sesiones", upsertPortalSesion);
 

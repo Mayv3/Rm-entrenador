@@ -77,6 +77,27 @@ Se implementó en 4 pasos. Todo verificado: el frontend compila sin errores, el 
 
 ---
 
+## 📊 Impacto: consultas a la base por entrenamiento
+
+Ejemplo concreto: un día de **6 ejercicios × 3 series = 18 series cargadas**.
+
+| | Antes | Ahora |
+|--|-------|-------|
+| Envíos al servidor (PUT) | hasta **18** (1 por cada serie completada) | **~6** (1 por ejercicio, juntando con el debounce de 1.5s) |
+| Consultas a la base por envío | **~6** (escrituras sueltas + re-lectura, sin transacción) | **1** (función transaccional, sin re-lectura) |
+| **Total de consultas por entrenamiento** | **~90 a 108** | **~6** |
+| | | **≈ 15-18× menos** |
+
+> **De dónde salen los números:**
+> - *Antes:* cada serie disparaba un envío inmediato (18), y cada envío hacía ~6 idas y vueltas a la base (validar + upsert sesión + upsert estado + upsert asistencia + upsert registros + 2 re-lecturas). 18 × 6 ≈ 108.
+> - *Ahora:* el debounce junta las series de cada ejercicio en un solo envío (~6), y cada envío es **una sola** llamada a la función transaccional. 6 × 1 = 6.
+
+Además, antes cada uno de esos 18 envíos **devolvía todos los registros** de la sesión (datos que el navegador ni usaba); ahora la respuesta es mínima (`{ok, sesion_id, estado}`).
+
+**A escala** (ej. 100 alumnos × 4 entrenamientos por semana = 400 sesiones): de **~36.000 consultas/semana** a **~2.400/semana**.
+
+---
+
 ## 4. Estado de cada problema
 
 | # | Problema (antes) | Severidad | Estado ahora |
@@ -107,3 +128,72 @@ Estos no causan pérdida de datos, son mejoras de seguridad y costo:
 ### Cómo probarlo a mano
 1. Con red lenta (en el navegador: throttling 3G), cargá una serie de un ejercicio. Mientras dice "Guardando…", cargá otro ejercicio. Esperá, recargá la página → **ambos deben seguir ahí**.
 2. Mientras guarda, tocá "Saltar" en otro ejercicio → no debe haber dos guardados pisándose; el salto queda.
+
+---
+
+## 7. Resumen visual
+
+### Flujo del guardado (cómo viaja un dato)
+
+```
+  Alumno carga una serie  (peso · reps · RPE)
+        │
+        ▼
+  ┌──────────────────────────────┐
+  │  NAVEGADOR (teléfono)         │
+  │  • Guarda copia LOCAL ........│→ instantáneo, sobrevive si se cierra la app
+  │    (en cada tecla)            │
+  │  • Espera 1.5s (debounce) ....│→ junta varias series en UN solo envío
+  └──────────────────────────────┘
+        │
+        │   PUT  →  sube los datos  +  client_rev
+        ▼
+  ┌──────────────────────────────┐
+  │  SERVIDOR (backend)           │
+  │  llama a la función de la base│
+  └──────────────────────────────┘
+        │
+        ▼
+  ┌──────────────────────────────────────────────┐
+  │  BASE DE DATOS — guardar_sesion_portal()      │
+  │  UNA transacción · TODO o NADA:               │
+  │     1. valida ejercicios                      │
+  │     2. sesión        (LWW por client_rev)     │
+  │     3. estado salud  + asistencia             │
+  │     4. registros     (las series)             │
+  └──────────────────────────────────────────────┘
+        │
+        │   recibo  →  baja, mínimo
+        ▼
+  {"ok":true, "sesion_id":1595, "estado":"abierta"}
+        │
+        ▼
+  ✔  Esa tanda quedó guardada
+```
+
+### Cuadro sinóptico — qué se arregló
+
+```
+GUARDADO DE SERIES
+│
+├─ PASO 1 · Pérdida de datos ............. 🔴 → ✅
+│     Antes:  editar durante un guardado borraba el dato nuevo
+│     Ahora:  borrado selectivo → lo nuevo se conserva y reenvía
+│
+├─ PASO 2 · Doble guardado ............... 🟠 → ✅
+│     Antes:  saltar/confirmar lanzaba 2 guardados a la vez
+│     Ahora:  si hay uno en curso, encola (no pisa)
+│
+├─ PASO 3 · Demasiados envíos ............ 🟠 → ✅
+│     Antes:  1 envío por serie     (hasta 18 por sesión)
+│     Ahora:  debounce 1.5s          (~6 por sesión)
+│
+└─ PASO 4 · Base a medias + desorden ..... 🔴🟠 → ✅
+      Antes:  6 escrituras sueltas, sin transacción
+      Ahora:  1 función transaccional (todo o nada)
+              + client_rev → un guardado viejo no pisa uno nuevo
+
+RESULTADO
+  Consultas por entrenamiento (6 ej × 3 series):  ~108  →  ~6   (≈ 15-18× menos)
+  Pérdida de datos: ............................  posible  →  ~0
+```

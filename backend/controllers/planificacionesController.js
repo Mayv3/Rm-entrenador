@@ -201,7 +201,7 @@ export async function getPlanificaciones(req, res) {
 
   let query = supabase
     .from("planificaciones")
-    .select("*, alumnos(id, nombre), planificacion_hojas!planificacion_id(id, nombre, numero, estado)")
+    .select("*, alumnos(id, nombre), planificacion_hojas!planificacion_id(id, nombre, numero, estado, deleted_at)")
     .order("created_at", { ascending: false });
 
   if (workspaceIds.length > 0) {
@@ -210,8 +210,13 @@ export async function getPlanificaciones(req, res) {
 
   const { data, error } = await query
   if (error) return res.status(500).json({ error: error.message });
-  cache.set(KEYS.planificaciones, data)
-  res.json(data);
+  // Filtrar hojas soft-deleted de cada plan
+  const cleaned = (data ?? []).map((p) => ({
+    ...p,
+    planificacion_hojas: (p.planificacion_hojas ?? []).filter((h) => !h.deleted_at),
+  }))
+  cache.set(KEYS.planificaciones, cleaned)
+  res.json(cleaned);
 }
 
 export async function getPlanificacionesByAlumno(req, res) {
@@ -234,7 +239,7 @@ export async function getPlanificacionById(req, res) {
   // 1. Plan + hojas en paralelo
   const [planRes, hojasRes] = await Promise.all([
     supabase.from("planificaciones").select("*, alumnos(id, nombre)").eq("id", id).single(),
-    supabase.from("planificacion_hojas").select("*").eq("planificacion_id", id).order("numero", { ascending: true }),
+    supabase.from("planificacion_hojas").select("*").eq("planificacion_id", id).is("deleted_at", null).order("numero", { ascending: true }),
   ]);
 
   if (planRes.error) return res.status(500).json({ error: planRes.error.message });
@@ -408,13 +413,75 @@ export async function updateHoja(req, res) {
 
 export async function deleteHoja(req, res) {
   const { hojaId } = req.params;
-  const { error } = await supabase
+  try {
+    // Soft delete: marca la hoja como eliminada. Preserva días, ejercicios y
+    // todo el progreso del alumno (sesiones/registros). Las lecturas filtran deleted_at IS NULL.
+    const { data: hoja, error } = await supabase
+      .from("planificacion_hojas")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", hojaId)
+      .is("deleted_at", null)
+      .select("id, planificacion_id")
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+
+    // Si era la hoja activa, reasignar a la última hoja viva (o null)
+    if (hoja) {
+      const { data: plan } = await supabase
+        .from("planificaciones")
+        .select("hoja_activa_id")
+        .eq("id", hoja.planificacion_id)
+        .single();
+      if (plan && plan.hoja_activa_id === Number(hojaId)) {
+        const { data: viva } = await supabase
+          .from("planificacion_hojas")
+          .select("id")
+          .eq("planificacion_id", hoja.planificacion_id)
+          .is("deleted_at", null)
+          .order("numero", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        await supabase
+          .from("planificaciones")
+          .update({ hoja_activa_id: viva ? viva.id : null })
+          .eq("id", hoja.planificacion_id);
+      }
+    }
+
+    invalidatePlanes()
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("deleteHoja:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+}
+
+// Papelera: lista las hojas soft-deleted de un plan
+export async function listHojasEliminadas(req, res) {
+  const { id } = req.params;
+  const { data, error } = await supabase
     .from("planificacion_hojas")
-    .delete()
-    .eq("id", hojaId);
+    .select("id, nombre, numero, deleted_at")
+    .eq("planificacion_id", id)
+    .not("deleted_at", "is", null)
+    .order("deleted_at", { ascending: false });
   if (error) return res.status(500).json({ error: error.message });
-  invalidatePlanes()
-  res.json({ ok: true });
+  res.json(data ?? []);
+}
+
+// Restaura una hoja soft-deleted (deleted_at = null)
+export async function restoreHoja(req, res) {
+  const { hojaId } = req.params;
+  const { data, error } = await supabase
+    .from("planificacion_hojas")
+    .update({ deleted_at: null })
+    .eq("id", hojaId)
+    .not("deleted_at", "is", null)
+    .select("id, planificacion_id")
+    .maybeSingle();
+  if (error) return res.status(500).json({ error: error.message });
+  invalidatePlanes();
+  res.json({ ok: true, restored: !!data });
 }
 
 // Duplica una hoja completa (días/ejercicios/semanas/movilidad) dentro del mismo plan
@@ -436,7 +503,7 @@ export async function duplicateHoja(req, res) {
     const [diasRes, movRes, maxRes] = await Promise.all([
       supabase.from("planificacion_dias").select("*").eq("hoja_id", hojaId).order("orden", { ascending: true }),
       supabase.from("planificacion_movilidad").select("*").eq("hoja_id", hojaId).order("orden", { ascending: true }),
-      supabase.from("planificacion_hojas").select("numero").eq("planificacion_id", planId).order("numero", { ascending: false }).limit(1),
+      supabase.from("planificacion_hojas").select("numero").eq("planificacion_id", planId).is("deleted_at", null).order("numero", { ascending: false }).limit(1),
     ]);
     if (diasRes.error) throw new Error(diasRes.error.message);
     if (movRes.error) throw new Error(movRes.error.message);
@@ -630,6 +697,101 @@ export async function deleteDia(req, res) {
 
   invalidatePlanes()
   res.json({ ok: true });
+}
+
+export async function duplicateDia(req, res) {
+  const { diaId } = req.params;
+  try {
+    // 1. Día origen
+    const { data: srcDia, error: dErr } = await supabase
+      .from("planificacion_dias")
+      .select("*")
+      .eq("id", diaId)
+      .single();
+    if (dErr) throw new Error(dErr.message);
+    if (!srcDia) return res.status(404).json({ error: "Día no encontrado" });
+
+    // 2. Ejercicios + semanas del día
+    const { data: srcEjs, error: eErr } = await supabase
+      .from("planificacion_ejercicios")
+      .select("*")
+      .eq("planificacion_dia_id", diaId);
+    if (eErr) throw new Error(eErr.message);
+    const ejIds = (srcEjs ?? []).map((e) => e.id);
+
+    let srcSemanas = [];
+    if (ejIds.length > 0) {
+      const { data: sems, error: sErr } = await supabase
+        .from("planificacion_semanas")
+        .select("*")
+        .in("planificacion_ejercicio_id", ejIds);
+      if (sErr) throw new Error(sErr.message);
+      srcSemanas = sems ?? [];
+    }
+
+    // 3. Siguiente numero_dia y orden en la hoja
+    const { data: diasHoja, error: dhErr } = await supabase
+      .from("planificacion_dias")
+      .select("numero_dia, orden")
+      .eq("hoja_id", srcDia.hoja_id)
+      .order("orden", { ascending: false })
+      .limit(1);
+    if (dhErr) throw new Error(dhErr.message);
+    const maxOrden = diasHoja?.[0]?.orden ?? srcDia.orden;
+    const maxNumero = diasHoja?.[0]?.numero_dia ?? srcDia.numero_dia;
+
+    // 4. Crear día nuevo
+    const { data: newDia, error: ndErr } = await supabase
+      .from("planificacion_dias")
+      .insert([{
+        hoja_id: srcDia.hoja_id,
+        numero_dia: maxNumero + 1,
+        nombre: `${srcDia.nombre} (copia)`,
+        orden: maxOrden + 1,
+      }])
+      .select()
+      .single();
+    if (ndErr) throw new Error(ndErr.message);
+
+    if (srcEjs.length === 0) {
+      invalidatePlanes();
+      return res.status(201).json(newDia);
+    }
+
+    // 5. Bulk insert ejercicios
+    const { data: newEjs, error: neErr } = await supabase
+      .from("planificacion_ejercicios")
+      .insert(srcEjs.map((e) => ({
+        planificacion_dia_id: newDia.id,
+        ejercicio_id: e.ejercicio_id,
+        categoria: e.categoria,
+        orden: e.orden,
+        series: e.series,
+        notas_profesor: e.notas_profesor ?? null,
+      })))
+      .select("id");
+    if (neErr) throw new Error(neErr.message);
+    const ejIdMap = new Map(srcEjs.map((e, i) => [e.id, newEjs[i].id]));
+
+    // 6. Bulk insert semanas
+    if (srcSemanas.length > 0) {
+      const { error: nsErr } = await supabase
+        .from("planificacion_semanas")
+        .insert(srcSemanas.map((s) => ({
+          planificacion_ejercicio_id: ejIdMap.get(s.planificacion_ejercicio_id),
+          semana: s.semana,
+          dosis: s.dosis ?? null,
+          rpe: s.rpe ?? null,
+          notas_profesor: s.notas_profesor ?? null,
+        })));
+      if (nsErr) throw new Error(nsErr.message);
+    }
+
+    invalidatePlanes();
+    res.status(201).json(newDia);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 }
 
 // ─── EJERCICIOS EN UN DÍA ─────────────────────────────────────────────────────

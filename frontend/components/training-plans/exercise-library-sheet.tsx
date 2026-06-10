@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { TipoEjercicioSelect } from "./tipo-ejercicio-select"
 import { queryKeys } from "@/lib/query-keys"
-import { Search, Plus, Loader2, Dumbbell, Check, ChevronDown, ChevronUp } from "lucide-react"
+import { Search, Plus, Loader2, Dumbbell, Check, ChevronDown, ChevronUp, Youtube } from "lucide-react"
 import type { Ejercicio } from "@/types/planificaciones"
 
 interface ExerciseLibrarySheetProps {
@@ -209,20 +209,26 @@ export function ExerciseLibrarySheet({ open, onOpenChange, onSelect, dayName, ti
 
 function ExerciseButton({ ej, isAdded, onSelect }: { ej: Ejercicio; isAdded: boolean; onSelect: (e: Ejercicio) => void }) {
   return (
-    <button
-      onClick={() => onSelect(ej)}
-      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all group ${
-        isAdded
-          ? "bg-[var(--primary-color)]/10 text-[var(--primary-color)]"
-          : "hover:bg-muted"
-      }`}
-    >
-      <Dumbbell className="h-3.5 w-3.5 shrink-0 text-muted-foreground group-hover:text-foreground" />
-      <span className="text-sm flex-1 leading-tight">{ej.nombre}</span>
-      {isAdded
-        ? <Check className="h-3.5 w-3.5 shrink-0 text-[var(--primary-color)]" />
-        : <Plus className="h-3.5 w-3.5 shrink-0 text-[var(--primary-color)] opacity-0 group-hover:opacity-100 transition-opacity" />
-      }
-    </button>
+    <div className={`flex items-center rounded-lg group ${isAdded ? "bg-[var(--primary-color)]/10" : "hover:bg-muted"}`}>
+      <button
+        onClick={() => onSelect(ej)}
+        className={`flex items-center gap-3 px-3 py-2 text-left flex-1 min-w-0 ${isAdded ? "text-[var(--primary-color)]" : ""}`}
+      >
+        <Dumbbell className="h-3.5 w-3.5 shrink-0 text-muted-foreground group-hover:text-foreground" />
+        <span className="text-sm flex-1 leading-tight truncate">{ej.nombre}</span>
+        {isAdded
+          ? <Check className="h-3.5 w-3.5 shrink-0 text-[var(--primary-color)]" />
+          : <Plus className="h-3.5 w-3.5 shrink-0 text-[var(--primary-color)] opacity-0 group-hover:opacity-100 transition-opacity" />
+        }
+      </button>
+      {ej.video_url && (
+        <a href={ej.video_url} target="_blank" rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="p-2 shrink-0 text-red-500 hover:text-red-600 transition-colors"
+          title="Ver video">
+          <Youtube className="h-3.5 w-3.5" />
+        </a>
+      )}
+    </div>
   )
 }

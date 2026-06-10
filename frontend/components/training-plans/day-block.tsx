@@ -4,7 +4,7 @@ import React, { useState, useEffect, startTransition } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Trash2, Youtube, ChevronDown, ChevronUp, Loader2, GripVertical, Pencil, Plus, ArrowUp, ArrowDown } from "lucide-react"
+import { Trash2, Youtube, ChevronDown, ChevronUp, Loader2, GripVertical, Pencil, Plus, ArrowUp, ArrowDown, Copy } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import axios from "axios"
 import { useQueryClient } from "@tanstack/react-query"
@@ -38,12 +38,14 @@ interface DayBlockProps {
   canMoveDown: boolean
   onMoveUp: () => void
   onMoveDown: () => void
+  onDuplicate: () => void
+  duplicating: boolean
 }
 
 export function DayBlock({
   dia, planId, localData, pending, isActive, onActivate, onDeleted,
   onSemanaChange, onCategoriaChange, onNotasProfesorChange, onSeriesChange, onPendingChange, onOrderChange, onDeleteEj, onReplaceEj, onOpenLibrary,
-  canMoveUp, canMoveDown, onMoveUp, onMoveDown,
+  canMoveUp, canMoveDown, onMoveUp, onMoveDown, onDuplicate, duplicating,
 }: DayBlockProps) {
   const queryClient = useQueryClient()
   const [collapsed, setCollapsed] = useState(true)
@@ -285,6 +287,10 @@ export function DayBlock({
           <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground"
             onClick={() => { setNombre(dia.nombre); setEditingName(true) }}>
             <Pencil className="h-3.5 w-3.5" />
+          </Button>
+          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground"
+            onClick={onDuplicate} disabled={duplicating} title="Duplicar día">
+            {duplicating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Copy className="h-3.5 w-3.5" />}
           </Button>
           <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setCollapsed((v) => !v)}>
             {collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}

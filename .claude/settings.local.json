@@ -26,7 +26,16 @@
       "Bash(Select-Object -First 40)",
       "PowerShell($env:Path = \"C:\\\\Program Files\\\\nodejs;\" + $env:Path; Set-Location \"C:\\\\Users\\\\nicop\\\\OneDrive\\\\Desktop\\\\Proyectos\\\\Rm-entrenador\\\\frontend\"; npx tsc --noEmit -p tsconfig.json 2>&1 | Select-Object -First 50)",
       "PowerShell(Set-Location *)",
-      "PowerShell($env:Path = \"C:\\\\Program Files\\\\nodejs;\" + $env:Path; Set-Location \"C:\\\\Users\\\\nicop\\\\OneDrive\\\\Desktop\\\\Proyectos\\\\Rm-entrenador\\\\backend\"; node --check controllers/portalPlanController.js; if \\($?\\) { \"BACKEND SYNTAX OK\" })"
+      "PowerShell($env:Path = \"C:\\\\Program Files\\\\nodejs;\" + $env:Path; Set-Location \"C:\\\\Users\\\\nicop\\\\OneDrive\\\\Desktop\\\\Proyectos\\\\Rm-entrenador\\\\backend\"; node --check controllers/portalPlanController.js; if \\($?\\) { \"BACKEND SYNTAX OK\" })",
+      "Bash(npm run *)",
+      "Bash(Start-Sleep -Seconds 5)",
+      "Bash(Get-Content \"C:\\\\Users\\\\nicop\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-nicop-OneDrive-Desktop-Proyectos-Rm-entrenador\\\\8717dc05-3f12-4ce7-91c4-5527b0efa97c\\\\tasks\\\\b2tm8op67.output\" -Tail 20)",
+      "Bash(Start-Sleep -Seconds 3)",
+      "Bash(Get-Content \"C:\\\\Users\\\\nicop\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-nicop-OneDrive-Desktop-Proyectos-Rm-entrenador\\\\8717dc05-3f12-4ce7-91c4-5527b0efa97c\\\\tasks\\\\but9h8vlg.output\" -Tail 10)",
+      "PowerShell(Start-Process \"chrome\" \"http://localhost:3000\")",
+      "PowerShell(git *)",
+      "PowerShell(\"--- frontend ---\")",
+      "Bash(grep -iE \"plan-progreso-dialog|plan-builder|portal/page|portal\\\\\\\\\\\\\\\\page\")"
     ]
   },
   "enableAllProjectMcpServers": true,

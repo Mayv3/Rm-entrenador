@@ -27,6 +27,7 @@ import { AntroView, ParsedAntro } from "@/components/antropometrias/antro-view"
 import { AntroAnualChart } from "@/components/antropometrias/antro-anual-chart"
 import { AntroCompareDialog } from "@/components/antropometrias/antro-compare-dialog"
 import { PlanCalendarioDialog } from "@/components/training-plans/plan-calendario-dialog"
+import { PlanProgresoDialog } from "@/components/training-plans/plan-progreso-dialog"
 
 interface Student {
   id: number
@@ -172,6 +173,7 @@ export default function PortalPage() {
   const [expandedServicio, setExpandedServicio] = useState<number | null>(null)
   const [showMiPlan, setShowMiPlan] = useState(false)
   const [calendarOpen, setCalendarOpen] = useState(false)
+  const [progresoOpen, setProgresoOpen] = useState(false)
   const miPlanHistoryDepth = useRef(0)
   const didRestoreMiPlanRef = useRef(false)
 
@@ -336,10 +338,15 @@ export default function PortalPage() {
 
   if (!student) return null
 
-  // Agrupar antros de a 4
+  // Agrupar antros de a 4 (más reciente primero)
+  const sortedAntros = [...antros].sort((a, b) => {
+    const da = new Date((a.fecha || a.created_at).replace(" ", "T"))
+    const db = new Date((b.fecha || b.created_at).replace(" ", "T"))
+    return db.getTime() - da.getTime()
+  })
   const antroGroups: AntroRecord[][] = []
-  for (let i = 0; i < antros.length; i += 4) {
-    antroGroups.push(antros.slice(i, i + 4))
+  for (let i = 0; i < sortedAntros.length; i += 4) {
+    antroGroups.push(sortedAntros.slice(i, i + 4))
   }
 
   return (
@@ -547,7 +554,7 @@ export default function PortalPage() {
               {antroGroups.map((group, gi) => (
                 <div key={gi} className="grid grid-cols-4 gap-2">
                   {group.map((antro, idx) => {
-                    const ordinal = antros.length - (gi * 4 + idx)
+                    const ordinal = sortedAntros.length - (gi * 4 + idx)
                     return (
                       <button
                         key={antro.id}
@@ -705,6 +712,15 @@ export default function PortalPage() {
                 >
                   <CalendarDays className="h-4 w-4 text-muted-foreground dark:text-zinc-300" />
                 </button>
+                <button
+                  onClick={() => setProgresoOpen(true)}
+                  disabled={!appPlanResp?.planificacion?.id}
+                  className="h-8 w-8 rounded-xl bg-muted dark:bg-white/[0.05] hover:bg-accent dark:hover:bg-white/[0.08] flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  aria-label="Mi progreso"
+                  title="Mi progreso"
+                >
+                  <TrendingUp className="h-4 w-4 text-muted-foreground dark:text-zinc-300" />
+                </button>
                 <SaveStatusIndicator />
               </div>
               <div className="flex items-center gap-2 ml-auto">
@@ -735,6 +751,19 @@ export default function PortalPage() {
                 alumnoNombre={student.nombre}
                 alumnoId={student.id}
                 calendarOnly
+              />
+            )}
+            {appPlanResp?.planificacion?.id && (
+              <PlanProgresoDialog
+                open={progresoOpen}
+                onOpenChange={setProgresoOpen}
+                planId={appPlanResp.planificacion.id}
+                plan={appPlanResp.planificacion}
+                activeHoja={
+                  appPlanResp.planificacion.hojas?.find((h: any) => h.id === appPlanResp.planificacion.hoja_activa_id)
+                  ?? appPlanResp.planificacion.hojas?.[0]
+                }
+                readOnly
               />
             )}
           </div>

@@ -313,11 +313,16 @@ function ExerciseItem({
       >
         <Dumbbell className="h-3.5 w-3.5 shrink-0 text-muted-foreground group-hover:text-[var(--primary-color)]" />
         <span className="flex-1 leading-tight truncate">{ejercicio.nombre}</span>
-        {ejercicio.video_url && (
-          <Youtube className="h-3 w-3 shrink-0 text-red-500" />
-        )}
       </button>
       <div className="flex items-center gap-0.5 pr-1 opacity-100">
+        {ejercicio.video_url && (
+          <a href={ejercicio.video_url} target="_blank" rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="p-1 rounded text-red-500 hover:text-red-600 transition-colors"
+            title="Ver video">
+            <Youtube className="h-3 w-3" />
+          </a>
+        )}
         <button onClick={() => onEdit(ejercicio)}
           className="p-1 rounded text-muted-foreground hover:text-foreground transition-colors">
           <Pencil className="h-3 w-3" />

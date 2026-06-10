@@ -12,9 +12,11 @@ import { Button } from "@/components/ui/button"
 import { supabase } from "@/lib/supabase-client"
 import { queryKeys } from "@/lib/query-keys"
 import { Input } from "@/components/ui/input"
-import { Upload, FileText, Trash2, Eye, Loader2, X, Pencil, Check, BarChart2, ArrowLeft, Calendar, MoreVertical } from "lucide-react"
+import { Upload, FileText, Trash2, Eye, Loader2, X, Pencil, Check, BarChart2, ArrowLeft, Calendar, MoreVertical, GitCompareArrows, TrendingUp } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { AntroView, ParsedAntro } from "./antro-view"
+import { AntroCompareDialog } from "./antro-compare-dialog"
+import { AntroAnualChart } from "./antro-anual-chart"
 
 interface Student {
   id: number
@@ -74,6 +76,8 @@ export function AntroUploadDialog({ open, onOpenChange, alumno }: Props) {
   const [parsedData, setParsedData] = useState<ParsedAntro | null>(null)
   const [viewingAntro, setViewingAntro] = useState<AntroRecord | null>(null)
   const [parsing, setParsing] = useState(false)
+  const [showCompare, setShowCompare] = useState(false)
+  const [showAnualChart, setShowAnualChart] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const queryClient = useQueryClient()
 
@@ -84,6 +88,12 @@ export function AntroUploadDialog({ open, onOpenChange, alumno }: Props) {
       return res.data
     },
     enabled: open,
+  })
+
+  const sortedAntros = [...antros].sort((a, b) => {
+    const da = new Date((a.fecha || a.created_at).replace(" ", "T"))
+    const db = new Date((b.fecha || b.created_at).replace(" ", "T"))
+    return db.getTime() - da.getTime()
   })
 
   function handleSelectFile(file: File) {
@@ -326,6 +336,33 @@ export function AntroUploadDialog({ open, onOpenChange, alumno }: Props) {
           }}
         />
 
+        {/* Comparar / Ver evolución */}
+        {antros.length > 0 && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowCompare(true)}
+              disabled={antros.length < 2}
+              className="group flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-card border border-purple-500/40 hover:border-purple-500 hover:bg-muted/40 text-xs font-bold text-foreground shadow-sm hover:shadow active:scale-[0.97] transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <div className="h-7 w-7 rounded-full bg-purple-500/10 ring-1 ring-purple-500/30 flex items-center justify-center">
+                <GitCompareArrows className="h-3.5 w-3.5 text-purple-600" />
+              </div>
+              <span>Comparar</span>
+            </button>
+            {antros.length >= 2 && (
+              <button
+                onClick={() => setShowAnualChart(true)}
+                className="group flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-card border border-[var(--primary-color)]/40 hover:border-[var(--primary-color)] hover:bg-muted/40 text-xs font-bold text-foreground shadow-sm hover:shadow active:scale-[0.97] transition-all duration-200"
+              >
+                <div className="h-7 w-7 rounded-full bg-[var(--primary-color)]/10 ring-1 ring-[var(--primary-color)]/30 flex items-center justify-center">
+                  <TrendingUp className="h-3.5 w-3.5 text-[var(--primary-color)]" />
+                </div>
+                <span>Ver evolución</span>
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Lista de PDFs */}
         <div className="flex flex-col gap-1">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -342,7 +379,7 @@ export function AntroUploadDialog({ open, onOpenChange, alumno }: Props) {
             </p>
           ) : (
             <div className="flex flex-col gap-1 max-h-80 overflow-y-auto overflow-x-hidden pr-1">
-              {antros.map((antro) => (
+              {sortedAntros.map((antro) => (
                 <div
                   key={antro.id}
                   className="flex items-center gap-2 p-2.5 rounded-lg border bg-muted/50 w-full min-w-0 overflow-hidden"
@@ -484,6 +521,20 @@ export function AntroUploadDialog({ open, onOpenChange, alumno }: Props) {
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+
+    <AntroCompareDialog
+      open={showCompare}
+      onClose={() => setShowCompare(false)}
+      antros={antros}
+    />
+
+    <AntroAnualChart
+      open={showAnualChart}
+      onClose={() => setShowAnualChart(false)}
+      antros={antros}
+      onSelectAntro={(a) => { setShowAnualChart(false); handleAnalysis(a) }}
+      parsing={parsing}
+    />
     </>
   )
 }

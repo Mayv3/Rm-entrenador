@@ -387,6 +387,14 @@ export function StudentPlanificacionSection({
     )
   }, [planificacion])
 
+  // Hoja anterior (bloque previo) dentro del mismo plan — fuente de pesos para semana 1
+  const hojaAnterior = useMemo(() => {
+    if (!planificacion || !hojaActiva) return null
+    const ordenadas = [...(planificacion.hojas ?? [])].sort((a, b) => a.numero - b.numero)
+    const idx = ordenadas.findIndex((h) => h.id === hojaActiva.id)
+    return idx > 0 ? ordenadas[idx - 1] : null
+  }, [planificacion, hojaActiva])
+
   const dias = hojaActiva?.dias ?? []
   const totalSemanas = Math.max(1, planificacion?.semanas ?? 1)
 
@@ -396,12 +404,25 @@ export function StudentPlanificacionSection({
   )
 
   const CATEGORIA_ORDER: Record<string, number> = { ACTIVADOR: 0, A: 1, B: 2, C: 3, D: 4, E: 5 }
+  const esAccesorio = (cat: string | null | undefined) => (cat ?? "").toUpperCase() === "ACTIVADOR"
+
+  // Accesorios (activadores): solo vista, no se completan ni se guardan
+  const accesorios = useMemo(
+    () =>
+      [...(diaSeleccionado?.ejercicios ?? [])]
+        .filter((e) => esAccesorio(e.categoria))
+        .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0)),
+    [diaSeleccionado]
+  )
+
   const ejerciciosDelDia = useMemo(
     () =>
-      [...(diaSeleccionado?.ejercicios ?? [])].sort(
-        (a, b) =>
-          (CATEGORIA_ORDER[a.categoria ?? ""] ?? 99) - (CATEGORIA_ORDER[b.categoria ?? ""] ?? 99)
-      ),
+      [...(diaSeleccionado?.ejercicios ?? [])]
+        .filter((e) => !esAccesorio(e.categoria))
+        .sort(
+          (a, b) =>
+            (CATEGORIA_ORDER[a.categoria ?? ""] ?? 99) - (CATEGORIA_ORDER[b.categoria ?? ""] ?? 99)
+        ),
     [diaSeleccionado]
   )
 
@@ -483,6 +504,26 @@ export function StudentPlanificacionSection({
   const registrosAnterioresMap = useMemo(
     () => new Map((sessionDataAnterior?.registros ?? []).map((r) => [r.planificacion_ejercicio_id, r])),
     [sessionDataAnterior]
+  )
+
+  // Semana 1: pesos de la última semana de la hoja anterior, por ejercicio_id
+  const { data: hojaAnteriorData } = useQuery<{ registros: Record<string, SerieRegistro & { series?: SerieRegistro[]; _semana?: number }> }>({
+    queryKey: ["portalHojaAnteriorPesos", planificacion?.id ?? 0, studentId, hojaAnterior?.id ?? 0],
+    queryFn: async () => {
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/portal/planificaciones/${planificacion!.id}/sesiones/hoja-anterior`, {
+        params: { alumno_id: studentId, hoja_id: hojaAnterior!.id },
+      })
+      return res.data
+    },
+    enabled: !!planificacion && !!hojaAnterior && semanaSeleccionada === 1,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  })
+
+  const hojaAnteriorMap = useMemo(
+    () => new Map(Object.entries(hojaAnteriorData?.registros ?? {}).map(([k, v]) => [Number(k), v])),
+    [hojaAnteriorData]
   )
 
   useEffect(() => {
@@ -1393,71 +1434,72 @@ export function StudentPlanificacionSection({
         </div>
       ) : (!checkinMostrado && !previewPlan) ? (
         /* ── Check-in inicial ── */
-        <div className="flex-1 flex flex-col items-center justify-center min-h-[60vh] gap-6 px-4">
+        <div className="flex-1 flex flex-col items-center justify-center min-h-[70vh] gap-8 px-4 py-4 relative">
+          <div className="w-full flex flex-col items-center gap-6">
           <div className="text-center space-y-1 mb-2">
-            <p className="text-sm font-semibold text-foreground/90 dark:text-zinc-300">¿Cómo estás hoy?</p>
-            <p className="text-[11px] text-muted-foreground dark:text-zinc-500">Seleccioná lo que corresponda</p>
+            <p className="text-xl font-bold text-white">¿Cómo estás hoy?</p>
+            <p className="text-sm text-white/70">Seleccioná lo que corresponda</p>
           </div>
-
           <div className="grid grid-cols-2 gap-3 w-full max-w-sm">
             <button
               onClick={() => handleToggleEstado("durmioMal")}
-              className={`flex flex-col items-center justify-center gap-2 py-5 rounded-2xl text-xs font-semibold border transition-all ${
+              className={`flex flex-col items-center justify-center gap-3 py-7 rounded-2xl text-base font-bold border transition-all ${
                 durmioMal
                   ? "bg-indigo-500/15 border-indigo-500/30 text-indigo-400"
                   : "bg-muted/40 dark:bg-white/[0.03] border-border dark:border-white/[0.06] text-muted-foreground dark:text-zinc-500 hover:border-indigo-500/20 hover:text-foreground/90 dark:text-zinc-300"
               }`}
             >
-              <Moon className="h-6 w-6" />
+              <Moon className="h-8 w-8" />
               Dormí mal
             </button>
             <button
               onClick={() => handleToggleEstado("fatiga")}
-              className={`flex flex-col items-center justify-center gap-2 py-5 rounded-2xl text-xs font-semibold border transition-all ${
+              className={`flex flex-col items-center justify-center gap-3 py-7 rounded-2xl text-base font-bold border transition-all ${
                 fatiga
                   ? "bg-amber-500/15 border-amber-500/30 text-amber-400"
                   : "bg-muted/40 dark:bg-white/[0.03] border-border dark:border-white/[0.06] text-muted-foreground dark:text-zinc-500 hover:border-amber-500/20 hover:text-foreground/90 dark:text-zinc-300"
               }`}
             >
-              <BatteryWarning className="h-6 w-6" />
+              <BatteryWarning className="h-8 w-8" />
               Mucha fatiga
             </button>
             <button
               onClick={() => handleToggleEstado("desmotivacion")}
-              className={`flex flex-col items-center justify-center gap-2 py-5 rounded-2xl text-xs font-semibold border transition-all ${
+              className={`flex flex-col items-center justify-center gap-3 py-7 rounded-2xl text-base font-bold border transition-all ${
                 desmotivacion
                   ? "bg-cyan-500/15 border-cyan-500/30 text-cyan-400"
                   : "bg-muted/40 dark:bg-white/[0.03] border-border dark:border-white/[0.06] text-muted-foreground dark:text-zinc-500 hover:border-cyan-500/20 hover:text-foreground/90 dark:text-zinc-300"
               }`}
             >
-              <Frown className="h-6 w-6" />
+              <Frown className="h-8 w-8" />
               Poca motivación
             </button>
             <button
               onClick={() => handleToggleEstado("dolor")}
-              className={`flex flex-col items-center justify-center gap-2 py-5 rounded-2xl text-xs font-semibold border transition-all ${
+              className={`flex flex-col items-center justify-center gap-3 py-7 rounded-2xl text-base font-bold border transition-all ${
                 dolor
                   ? "bg-rose-500/15 border-rose-500/30 text-rose-400"
                   : "bg-muted/40 dark:bg-white/[0.03] border-border dark:border-white/[0.06] text-muted-foreground dark:text-zinc-500 hover:border-rose-500/20 hover:text-foreground/90 dark:text-zinc-300"
               }`}
             >
-              <Activity className="h-6 w-6" />
+              <Activity className="h-8 w-8" />
               Dolor muscular
             </button>
           </div>
 
           <button
             onClick={durmioMal || fatiga || desmotivacion || dolor ? handleConfirmar : handleEstoyPerfecto}
-            className="w-full max-w-sm py-4 rounded-2xl bg-green-500/15 border border-green-500/30 text-green-400 text-sm font-bold hover:bg-green-500/20 transition-all active:scale-[0.98]"
+            className="w-full max-w-sm py-6 rounded-2xl bg-green-500/15 border border-green-500/30 text-green-400 text-lg font-bold hover:bg-green-500/20 transition-all active:scale-[0.98]"
           >
             {durmioMal || fatiga || desmotivacion || dolor ? "Confirmar" : "¡Estoy excelente!"}
           </button>
+          </div>
 
           <button
             onClick={() => setPreviewPlan(true)}
-            className="w-full max-w-sm py-3 rounded-2xl bg-transparent border border-sky-500/30 text-sky-400 text-xs font-bold hover:bg-sky-500/10 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+            className="absolute bottom-6 left-4 right-4 mx-auto max-w-sm py-5 rounded-2xl bg-transparent border border-sky-500/30 text-sky-400 text-base font-bold hover:bg-sky-500/10 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
           >
-            <Eye className="h-3.5 w-3.5" />
+            <Eye className="h-5 w-5" />
             Ver planificación del día
           </button>
         </div>
@@ -1520,7 +1562,7 @@ export function StudentPlanificacionSection({
             const total = movilidad.length
             const mov = movilidad[movilidadIdx]
             return (
-              <div className="rounded-2xl border border-border dark:border-white/[0.07] bg-muted/30 dark:bg-white/[0.02]">
+              <div className="!mt-12 rounded-2xl border border-border dark:border-white/[0.07] bg-muted/30 dark:bg-white/[0.02]">
                 {/* Header */}
                 <div className="px-4 pt-3 pb-2 border-b border-border dark:border-white/[0.05]">
                   <div className="flex items-center justify-between gap-2">
@@ -1592,6 +1634,52 @@ export function StudentPlanificacionSection({
             )
           })()}
 
+          {/* Accesorios (activadores) — solo vista, no se completan */}
+          {accesorios.length > 0 && (
+            <div className="!mb-12 rounded-2xl border border-yellow-500/25 dark:border-yellow-500/15 bg-yellow-500/[0.05] dark:bg-yellow-500/[0.03] overflow-hidden">
+              <div className="px-4 pt-3 pb-2 border-b border-yellow-500/20 dark:border-white/[0.05]">
+                <span className="text-xs font-black uppercase tracking-widest text-yellow-600 dark:text-yellow-300">Accesorios</span>
+              </div>
+              <div className="flex flex-col divide-y divide-border dark:divide-white/[0.05]">
+                {accesorios.map((ej) => {
+                  const semPlan = ej.semanas.find((s) => s.semana === semanaSeleccionada)
+                  const semPlanPrev = semanaSeleccionada != null && semanaSeleccionada % 2 === 0
+                    ? ej.semanas.find((s) => s.semana === semanaSeleccionada - 1)
+                    : undefined
+                  const dosis = semPlan?.dosis ?? semPlanPrev?.dosis ?? null
+                  const rpe = semPlan?.rpe ?? semPlanPrev?.rpe ?? null
+                  return (
+                    <div key={ej.id} className="flex items-center gap-2.5 px-4 py-3">
+                      <p className="flex-1 min-w-0 text-base font-bold text-foreground dark:text-white leading-snug">
+                        {ej.ejercicios?.nombre ?? "Ejercicio"}
+                      </p>
+                      {dosis && (
+                        <span className="inline-flex items-center gap-1 rounded-lg bg-blue-100 dark:bg-blue-500/15 border border-blue-400/60 dark:border-blue-500/30 px-2.5 py-1 text-sm font-bold text-blue-700 dark:text-blue-300 flex-shrink-0">
+                          <Repeat className="h-4 w-4" />
+                          {dosis}
+                        </span>
+                      )}
+                      {typeof rpe === "number" && (
+                        <span className="inline-flex items-center gap-1 rounded-lg bg-orange-100 dark:bg-orange-500/15 border border-orange-400/60 dark:border-orange-500/30 px-2.5 py-1 text-sm font-bold text-orange-700 dark:text-orange-300 flex-shrink-0">
+                          <Flame className="h-4 w-4" />
+                          {rpe}
+                        </span>
+                      )}
+                      {ej.ejercicios?.video_url && (
+                        <button
+                          onClick={() => setVideoModal({ nombre: ej.ejercicios!.nombre, url: ej.ejercicios!.video_url! })}
+                          className="h-8 w-8 rounded-full bg-amber-400 text-black flex items-center justify-center flex-shrink-0 shadow-md transition-opacity hover:opacity-80"
+                        >
+                          <Play className="h-3.5 w-3.5" fill="currentColor" />
+                        </button>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Exercise cards */}
           {ejerciciosDelDia.length === 0 ? (
             <p className="text-sm text-muted-foreground dark:text-zinc-400 text-center py-8">Este día no tiene ejercicios asignados.</p>
@@ -1608,7 +1696,12 @@ export function StudentPlanificacionSection({
             const seriesCount = clampSeries(ej.series)
             const row = registrosForm[ej.id] ?? EMPTY_FORM_ROW(seriesCount)
             const isFilled = row.series.length > 0 && row.series.every((s) => !!s.peso_kg && !!s.repeticiones && !!s.rpe)
-            const regAnterior = registrosAnterioresMap.get(ej.id) ?? null
+            // Semana 1 → última semana del bloque anterior (match por ejercicio_id). Sem>1 → semana previa (match por planificacion_ejercicio_id)
+            const regAnterior = (semanaSeleccionada === 1
+              ? hojaAnteriorMap.get(ej.ejercicios?.id ?? -1)
+              : registrosAnterioresMap.get(ej.id)) ?? null
+            const mostrarAnterior = semanaSeleccionada === 1 ? !!hojaAnterior : !!semanaAnterior
+            const anteriorLabelPrefix = semanaSeleccionada === 1 ? "Bloque anterior" : `Semana ${semanaAnterior}`
             const anteriorSeries: SerieRegistro[] | null = (() => {
               if (!regAnterior) return null
               if (Array.isArray(regAnterior.series) && regAnterior.series.length > 0) return regAnterior.series
@@ -1769,10 +1862,10 @@ export function StudentPlanificacionSection({
                               </label>
                               <Input
                                 ref={(el) => { if (el) inputRefs.current.set(`${ej.id}-${serieIdx}-repeticiones`, el) }}
-                                type="number"
+                                type="text"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
                                 placeholder="0"
-                                min={1}
-                                max={30}
                                 value={serie.repeticiones}
                                 onChange={(e) => handleSerieChange(ej.id, serieIdx, "repeticiones", e.target.value)}
                                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNextInput(ej.id, serieIdx, "repeticiones") } }}
@@ -1797,13 +1890,13 @@ export function StudentPlanificacionSection({
                             </div>
                           </div>
 
-                          {/* Semana anterior para esta serie */}
-                          {semanaAnterior && (
+                          {/* Referencia anterior para esta serie (semana previa o bloque anterior en sem 1) */}
+                          {mostrarAnterior && (
                             <div className="rounded-xl overflow-hidden border border-violet-500/15 bg-gradient-to-r from-violet-500/[0.07] to-transparent">
                               <div className="flex items-center gap-1.5 px-3 pt-2 pb-1">
                                 <div className="h-1 w-1 rounded-full bg-violet-400" />
                                 <span className="text-xs font-bold uppercase tracking-widest text-violet-400">
-                                  Semana {semanaAnterior} · Serie {serieIdx + 1}
+                                  {anteriorLabelPrefix} · Serie {serieIdx + 1}
                                 </span>
                               </div>
                               {anteriorSerie && (anteriorSerie.peso_kg !== null || anteriorSerie.repeticiones !== null || anteriorSerie.rpe !== null) ? (
