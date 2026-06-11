@@ -564,7 +564,7 @@ function RpeSelect({ value, onChange, exerciseName }: { value: string; onChange:
           RPE — {exerciseName}
         </div>
         <SelectItem value="none"><span className="text-muted-foreground">—</span></SelectItem>
-        {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+        {Array.from({ length: 5 }, (_, i) => i + 6).map((n) => (
           <SelectItem key={n} value={n.toString()}>{n}</SelectItem>
         ))}
       </SelectContent>
