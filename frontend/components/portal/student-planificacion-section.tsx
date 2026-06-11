@@ -1468,8 +1468,8 @@ export function StudentPlanificacionSection({
         </div>
       ) : (!checkinMostrado && !previewPlan) ? (
         /* ── Check-in inicial ── */
-        <div className="flex-1 flex flex-col items-center justify-center min-h-[70vh] gap-8 px-4 py-4 relative">
-          <div className="w-full flex flex-col items-center gap-6">
+        <div className="flex-1 flex flex-col items-center justify-center min-h-[70vh] gap-6 px-4 py-4 pb-24 relative">
+          <div className="w-full flex flex-col items-center gap-5">
           <div className="text-center space-y-1 mb-2">
             <p className="text-xl font-bold text-white">¿Cómo estás hoy?</p>
             <p className="text-sm text-white/70">Seleccioná lo que corresponda</p>
@@ -1477,53 +1477,53 @@ export function StudentPlanificacionSection({
           <div className="grid grid-cols-2 gap-3 w-full max-w-sm">
             <button
               onClick={() => handleToggleEstado("durmioMal")}
-              className={`flex flex-col items-center justify-center gap-3 py-7 rounded-2xl text-base font-bold border transition-all ${
+              className={`flex flex-col items-center justify-center gap-2 py-5 rounded-2xl text-sm font-bold border transition-all ${
                 durmioMal
                   ? "bg-indigo-500/15 border-indigo-500/30 text-indigo-400"
                   : "bg-muted/40 dark:bg-white/[0.03] border-border dark:border-white/[0.06] text-muted-foreground dark:text-zinc-500 hover:border-indigo-500/20 hover:text-foreground/90 dark:text-zinc-300"
               }`}
             >
-              <Moon className="h-8 w-8" />
+              <Moon className="h-7 w-7" />
               Dormí mal
             </button>
             <button
               onClick={() => handleToggleEstado("fatiga")}
-              className={`flex flex-col items-center justify-center gap-3 py-7 rounded-2xl text-base font-bold border transition-all ${
+              className={`flex flex-col items-center justify-center gap-2 py-5 rounded-2xl text-sm font-bold border transition-all ${
                 fatiga
                   ? "bg-amber-500/15 border-amber-500/30 text-amber-400"
                   : "bg-muted/40 dark:bg-white/[0.03] border-border dark:border-white/[0.06] text-muted-foreground dark:text-zinc-500 hover:border-amber-500/20 hover:text-foreground/90 dark:text-zinc-300"
               }`}
             >
-              <BatteryWarning className="h-8 w-8" />
+              <BatteryWarning className="h-7 w-7" />
               Mucha fatiga
             </button>
             <button
               onClick={() => handleToggleEstado("desmotivacion")}
-              className={`flex flex-col items-center justify-center gap-3 py-7 rounded-2xl text-base font-bold border transition-all ${
+              className={`flex flex-col items-center justify-center gap-2 py-5 rounded-2xl text-sm font-bold border transition-all ${
                 desmotivacion
                   ? "bg-cyan-500/15 border-cyan-500/30 text-cyan-400"
                   : "bg-muted/40 dark:bg-white/[0.03] border-border dark:border-white/[0.06] text-muted-foreground dark:text-zinc-500 hover:border-cyan-500/20 hover:text-foreground/90 dark:text-zinc-300"
               }`}
             >
-              <Frown className="h-8 w-8" />
+              <Frown className="h-7 w-7" />
               Poca motivación
             </button>
             <button
               onClick={() => handleToggleEstado("dolor")}
-              className={`flex flex-col items-center justify-center gap-3 py-7 rounded-2xl text-base font-bold border transition-all ${
+              className={`flex flex-col items-center justify-center gap-2 py-5 rounded-2xl text-sm font-bold border transition-all ${
                 dolor
                   ? "bg-rose-500/15 border-rose-500/30 text-rose-400"
                   : "bg-muted/40 dark:bg-white/[0.03] border-border dark:border-white/[0.06] text-muted-foreground dark:text-zinc-500 hover:border-rose-500/20 hover:text-foreground/90 dark:text-zinc-300"
               }`}
             >
-              <Activity className="h-8 w-8" />
+              <Activity className="h-7 w-7" />
               Dolor muscular
             </button>
           </div>
 
           <button
             onClick={durmioMal || fatiga || desmotivacion || dolor ? handleConfirmar : handleEstoyPerfecto}
-            className="w-full max-w-sm py-6 rounded-2xl bg-green-500/15 border border-green-500/30 text-green-400 text-lg font-bold hover:bg-green-500/20 transition-all active:scale-[0.98]"
+            className="w-full max-w-sm py-4 rounded-2xl bg-green-500/15 border border-green-500/30 text-green-400 text-base font-bold hover:bg-green-500/20 transition-all active:scale-[0.98]"
           >
             {durmioMal || fatiga || desmotivacion || dolor ? "Confirmar" : "¡Estoy excelente!"}
           </button>
@@ -1531,7 +1531,7 @@ export function StudentPlanificacionSection({
 
           <button
             onClick={() => setPreviewPlan(true)}
-            className="absolute bottom-6 left-4 right-4 mx-auto max-w-sm py-5 rounded-2xl bg-transparent border border-sky-500/30 text-sky-400 text-base font-bold hover:bg-sky-500/10 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+            className="absolute bottom-4 left-4 right-4 mx-auto max-w-sm py-3.5 rounded-2xl bg-transparent border border-sky-500/30 text-sky-400 text-sm font-bold hover:bg-sky-500/10 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
           >
             <Eye className="h-5 w-5" />
             Ver planificación del día
