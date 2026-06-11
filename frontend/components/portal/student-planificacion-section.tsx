@@ -218,7 +218,7 @@ export function StudentPlanificacionSection({
     const num = parseFloat(normalized)
     if (isNaN(num)) return ""
     if (field === "peso_kg") return String(Math.min(500, Math.max(0, num)))
-    if (field === "rpe") return String(Math.min(10, Math.max(6, num)))
+    if (field === "rpe") return String(Math.min(10, Math.max(1, num)))
     return value
   }
 
