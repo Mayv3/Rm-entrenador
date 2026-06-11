@@ -126,6 +126,8 @@ const DEFAULT_SERIES = 3
 // Paso 3: el envío a red se debounce para coalescer la ráfaga de saves por-serie.
 // La persistencia local (persistFormLocal) sigue siendo inmediata en cada tecla.
 const SAVE_DEBOUNCE_MS = 1500
+// Pendiente 11: ms de inactividad en un input antes de saltar al próximo
+const FIELD_IDLE_MS = 2000
 const clampSeries = (v: unknown) => Math.min(8, Math.max(1, Number(v) || DEFAULT_SERIES))
 const EMPTY_FORM_ROW = (count: number = DEFAULT_SERIES): FormRow => ({
   series: Array.from({ length: count }, () => ({ ...EMPTY_SERIE })),
@@ -197,6 +199,8 @@ export function StudentPlanificacionSection({
   const movilidadScrollRef = useRef<HTMLDivElement | null>(null)
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map())
   const serieAdvanceDebounceRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+  // Pendiente 11: idle por-input. 3s sin escribir en un input → saltar al próximo.
+  const fieldIdleTimerRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
   const registrosFormRef = useRef<Record<number, FormRow>>({})
   const [previewPlan, setPreviewPlan] = useState(false)
   const didRestoreNavRef = useRef(false)
@@ -813,6 +817,8 @@ export function StudentPlanificacionSection({
       clearInterval(autosaveInterval)
       if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current)
       if (saveStatusResetRef.current) clearTimeout(saveStatusResetRef.current)
+      fieldIdleTimerRef.current.forEach((t) => clearTimeout(t))
+      fieldIdleTimerRef.current.clear()
       setSaveStatus("idle")
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -1166,6 +1172,28 @@ export function StudentPlanificacionSection({
     const wasNotEmpty = !!oldSerie.peso_kg || !!oldSerie.repeticiones || !!oldSerie.rpe
     const shouldSave = serieFilled || (serieEmpty && wasNotEmpty)
 
+    // Idle por-input (pendiente 11): 3s sin escribir en este input → saltar al próximo campo
+    // de la misma serie (peso→reps→rpe). El cambio de serie lo maneja el advance de serie-llena.
+    const fields: (keyof SerieRow)[] = ["peso_kg", "repeticiones", "rpe"]
+    const fieldIdx = fields.indexOf(field)
+    const idleKey = `${planEjId}-${serieIdx}-${field}`
+    const pendingIdle = fieldIdleTimerRef.current.get(idleKey)
+    if (pendingIdle) clearTimeout(pendingIdle)
+    if (clamped !== "" && fieldIdx < fields.length - 1 && !serieFilled) {
+      const idle = setTimeout(() => {
+        fieldIdleTimerRef.current.delete(idleKey)
+        const current = inputRefs.current.get(idleKey)
+        // solo saltar si el usuario sigue parado en este input (no robar foco si ya navegó)
+        if (current && document.activeElement !== current) {
+          console.log(`[idle] ${idleKey}: foco ya movido, no salto`)
+          return
+        }
+        console.log(`[idle] ${idleKey} → ${fields[fieldIdx + 1]} (${FIELD_IDLE_MS}ms sin escribir)`)
+        inputRefs.current.get(`${planEjId}-${serieIdx}-${fields[fieldIdx + 1]}`)?.focus()
+      }, FIELD_IDLE_MS)
+      fieldIdleTimerRef.current.set(idleKey, idle)
+    }
+
     const advanceKey = `${planEjId}-${serieIdx}`
     const pending = serieAdvanceDebounceRef.current.get(advanceKey)
     if (pending) clearTimeout(pending)
@@ -1174,15 +1202,21 @@ export function StudentPlanificacionSection({
       const t = setTimeout(() => {
         serieAdvanceDebounceRef.current.delete(advanceKey)
         if (serieIdx < getSeriesCount(planEjId) - 1) {
+          // serie completa → scroll + foco al peso de la próxima serie
           scrollToSerie(planEjId, serieIdx + 1)
+          console.log(`[idle] serie ${planEjId}-${serieIdx} completa → peso serie ${serieIdx + 1}`)
+          inputRefs.current.get(`${planEjId}-${serieIdx + 1}-peso_kg`)?.focus()
         } else {
+          // última serie del ejercicio → scroll + foco al peso de la 1ª serie del próximo
           const ejIdx = ejerciciosDelDia.findIndex((e) => e.id === planEjId)
           if (ejIdx !== -1 && ejIdx < ejerciciosDelDia.length - 1) {
             const nextEjId = ejerciciosDelDia[ejIdx + 1].id
             exerciseCardRefs.current.get(nextEjId)?.scrollIntoView({ behavior: "smooth", block: "start" })
+            console.log(`[idle] ejercicio ${planEjId} completo → peso serie 0 de ${nextEjId}`)
+            inputRefs.current.get(`${nextEjId}-0-peso_kg`)?.focus()
           }
         }
-      }, 700)
+      }, FIELD_IDLE_MS)
       serieAdvanceDebounceRef.current.set(advanceKey, t)
     }
 

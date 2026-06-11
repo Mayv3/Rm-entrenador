@@ -46,4 +46,6 @@
   - Causa: input REPS usaba type="number" sin inputMode → iOS muestra teclado números+símbolos (no el keypad limpio que peso/rpe tienen con inputMode="decimal")
   - Fix: REPS ahora type="text" + inputMode="numeric" + pattern="[0-9]*" (enteros). Clamp 1-30 sigue en clampSerieValue
 
-- [ ] **11. 3 seg para cambio de input** *(aclarar qué es esto)*
+- [x] **11. 3 seg para cambio de input**
+  - En los inputs de serie del alumno (peso/reps/rpe), 3s de inactividad tras escribir → salta al próximo input de la misma serie
+  - handleSerieChange: fieldIdleTimerRef (Map por `ejId-serieIdx-field`), FIELD_IDLE_MS=3000. Solo enfoca si el usuario sigue parado en ese input (no roba foco si ya navegó). No corre si la serie quedó completa (lo maneja el advance de serie-llena 700ms). Timers limpiados en unmount
