@@ -609,7 +609,7 @@ function StudentMobileCard({
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
-export function StudentsTable({ onOpenPlan }: { onOpenPlan?: (planId: number) => void }) {
+export function StudentsTable({ onOpenPlan }: { onOpenPlan?: (alumnoNombre: string) => void }) {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
   const [isAddStudentOpen, setIsAddStudentOpen] = useState(false)
@@ -696,8 +696,8 @@ export function StudentsTable({ onOpenPlan }: { onOpenPlan?: (planId: number) =>
   const handleDelete = (student: Student) => { setSelectedStudent(student); setIsDeleteStudentOpen(true) }
   const handleProgreso = (student: Student) => { setSelectedStudent(student); setIsProgresoOpen(true) }
   const handleOpenPlanApp = (student: Student) => {
-    const planId = alumnosConPlan.get(student.id)
-    if (planId != null) onOpenPlan?.(planId)
+    // Llevar a la lista de planificaciones filtrada por el alumno (no abrir el builder directo)
+    if (alumnosConPlan.has(student.id)) onOpenPlan?.(student.nombre)
   }
 
   // Ocultar columnas menos importantes en pantallas más chicas

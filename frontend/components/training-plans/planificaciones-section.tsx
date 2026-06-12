@@ -41,19 +41,23 @@ const ESTADO_CONFIG: Record<string, { label: string; icon: React.ReactNode; badg
   },
 }
 
-export function PlanificacionesSection({ initialPlanId }: { initialPlanId?: number | null }) {
+export function PlanificacionesSection({ initialSearch }: { initialSearch?: string | null }) {
   const queryClient = useQueryClient()
-  const [activePlanId, setActivePlanId] = useState<number | null>(initialPlanId ?? null)
+  const [activePlanId, setActivePlanId] = useState<number | null>(null)
 
   useEffect(() => {
-    if (initialPlanId != null) setActivePlanId(initialPlanId)
-  }, [initialPlanId])
+    if (initialSearch != null) {
+      setSearch(initialSearch)
+      setActivePlanId(null)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialSearch])
   const [createOpen, setCreateOpen] = useState(false)
   const [newAlumnoId, setNewAlumnoId] = useState<string>("")
   const [creating, setCreating] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [planToDelete, setPlanToDelete] = useState<{ id: number; nombre: string } | null>(null)
-  const [search, setSearch] = useState("")
+  const [search, setSearch] = useState(initialSearch ?? "")
   const [plantillasOpen, setPlantillasOpen] = useState(false)
   const [editingPlantillaId, setEditingPlantillaId] = useState<number | null>(null)
 

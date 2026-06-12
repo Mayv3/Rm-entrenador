@@ -85,10 +85,12 @@ export default function Dashboard() {
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<"students" | "payments" | "planes" | "servicios" | "portal" | "antropometrias" | "nutricion" | "estadisticas" | "planificaciones">("students");
   const [copied, setCopied] = useState(false);
-  const [planToOpen, setPlanToOpen] = useState<number | null>(null);
+  const [alumnoFilter, setAlumnoFilter] = useState<string | null>(null);
 
-  const handleOpenPlan = (planId: number) => {
-    setPlanToOpen(planId);
+  // "Plan App" desde Alumnos: aterriza en la lista de planificaciones filtrada por el alumno,
+  // sin abrir el builder automáticamente.
+  const handleOpenPlan = (alumnoNombre: string) => {
+    setAlumnoFilter(alumnoNombre);
     setActiveTab("planificaciones");
   };
 
@@ -199,7 +201,7 @@ export default function Dashboard() {
                   : activeTab === "antropometrias" ? <AntropometriasSection />
                     : activeTab === "nutricion" ? <NutricionSection />
                       : activeTab === "estadisticas" ? <EstadisticasSection />
-                        : activeTab === "planificaciones" ? <PlanificacionesSection initialPlanId={planToOpen} />
+                        : activeTab === "planificaciones" ? <PlanificacionesSection initialSearch={alumnoFilter} />
                           : <PortalSection copied={copied} setCopied={setCopied} />
           }
         </div>
