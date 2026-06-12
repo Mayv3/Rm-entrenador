@@ -742,6 +742,52 @@ export function StudentPlanificacionSection({
 
   const allCompleted = allCompletedAuto
 
+  // Ejercicios sin ningún dato (ni series ni notas, no salteados): candidatos al prompt "¿lo salteaste?"
+  const untouchedEjIds = useMemo(
+    () =>
+      ejerciciosDelDia
+        .filter((ej) => {
+          if (saltadoEjIds.has(ej.id)) return false
+          const row = registrosForm[ej.id]
+          if (!row) return false
+          return row.notas === "" && row.series.every((s) => !s.peso_kg && !s.repeticiones && !s.rpe)
+        })
+        .map((ej) => ej.id),
+    [ejerciciosDelDia, registrosForm, saltadoEjIds]
+  )
+
+  // True cuando lo único que separa al día de "completado" son ejercicios sin tocar,
+  // y el último ejercicio de la lista (no salteado) ya está completo — señal de que el
+  // alumno terminó su recorrido del día y los sin-tocar quedaron olvidados en el medio.
+  const readyExceptUntouched = useMemo(() => {
+    if (ejerciciosDelDia.length === 0 || untouchedEjIds.length === 0) return false
+    const untouched = new Set(untouchedEjIds)
+    const isComplete = (id: number) => {
+      const row = registrosForm[id]
+      return !!row && row.series.every((s) => !!s.peso_kg && !!s.repeticiones && !!s.rpe)
+    }
+    const todosResueltos = ejerciciosDelDia.every(
+      (ej) => saltadoEjIds.has(ej.id) || untouched.has(ej.id) || isComplete(ej.id)
+    )
+    if (!todosResueltos) return false
+    const lastEj = [...ejerciciosDelDia].reverse().find((ej) => !saltadoEjIds.has(ej.id))
+    return !!lastEj && isComplete(lastEj.id)
+  }, [ejerciciosDelDia, untouchedEjIds, registrosForm, saltadoEjIds])
+
+  // Prompt "¿lo salteaste?": una vez por visita al día, y solo si el alumno editó algo en esta visita
+  // (no al abrir un día que ya estaba en este estado).
+  const [skipPromptOpen, setSkipPromptOpen] = useState(false)
+  const skipPromptShownRef = useRef<string | null>(null)
+  const userEditedDayRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!readyExceptUntouched) return
+    const key = `${diaSeleccionado?.id}-${semanaSeleccionada}`
+    if (userEditedDayRef.current !== key) return
+    if (skipPromptShownRef.current === key) return
+    skipPromptShownRef.current = key
+    setSkipPromptOpen(true)
+  }, [readyExceptUntouched, diaSeleccionado?.id, semanaSeleccionada])
+
   const { data: sesionesSemana, refetch: _refetchSesionesSemana } = useQuery<{ sesiones: { id: number; dia_id: number; estado: string }[] }>({
     queryKey: ["portalSesionesSemana", planificacion?.id, studentId, hojaActiva?.id, semanaSeleccionada],
     queryFn: async () => {
@@ -1169,6 +1215,7 @@ export function StudentPlanificacionSection({
 
   const handleSerieChange = (planEjId: number, serieIdx: number, field: keyof SerieRow, value: string) => {
     const clamped = clampSerieValue(field, value)
+    userEditedDayRef.current = `${diaSeleccionado?.id}-${semanaSeleccionada}`
     isDirty.current = true
     dirtyEjIds.current.add(planEjId)
     if (saveIsPendingRef.current) dirtyDuringSaveRef.current.add(planEjId)
@@ -1312,6 +1359,33 @@ export function StudentPlanificacionSection({
     dirtyEjIds.current.add(planEjId)
     silentSaveRef.current = true
     if (saveIsPendingRef.current) dirtyDuringSaveRef.current.add(planEjId)
+    flushSave()
+  }
+
+  // Versión batch de handleToggleSkip para el prompt "¿lo salteaste?": marca varios ejercicios
+  // salteados en un solo update + un solo save (llamar handleToggleSkip en loop pisaría el Set).
+  const marcarSaltados = (ids: number[]) => {
+    if (ids.length === 0) return
+    isDirty.current = true
+    setSaveMessage("")
+    setSavedSuccess(false)
+    const newSaltados = new Set(saltadoEjIds)
+    ids.forEach((id) => newSaltados.add(id))
+    setSaltadoEjIds(newSaltados)
+    const updated = { ...registrosFormRef.current }
+    ids.forEach((id) => {
+      updated[id] = EMPTY_FORM_ROW(getSeriesCount(id))
+    })
+    registrosFormRef.current = updated
+    setRegistrosForm(updated)
+    persistFormLocal(updated, newSaltados)
+    ids.forEach((id) => {
+      dirtyEjIds.current.add(id)
+      if (saveIsPendingRef.current) dirtyDuringSaveRef.current.add(id)
+    })
+    // Permitir que el self-heal re-dispare si este save quedara con estado viejo.
+    selfHealKeyRef.current = null
+    silentSaveRef.current = true
     flushSave()
   }
 
@@ -2040,6 +2114,58 @@ export function StudentPlanificacionSection({
       )}
 
       {/* Video modal */}
+      {skipPromptOpen && untouchedEjIds.length > 0 && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl border border-border dark:border-white/[0.08] bg-background dark:bg-zinc-950 overflow-hidden shadow-2xl">
+            <div className="p-5 space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 rounded-xl bg-yellow-500/15 flex items-center justify-center flex-shrink-0">
+                  <SkipForward className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-bold text-foreground dark:text-white">
+                    {untouchedEjIds.length === 1 ? "Te quedó un ejercicio sin datos" : "Te quedaron ejercicios sin datos"}
+                  </p>
+                  <p className="text-xs text-muted-foreground dark:text-zinc-400">¿Lo{untouchedEjIds.length > 1 ? "s" : ""} salteaste?</p>
+                </div>
+              </div>
+              <ul className="space-y-1.5">
+                {untouchedEjIds.map((id) => {
+                  const ej = ejerciciosDelDia.find((e) => e.id === id)
+                  return (
+                    <li key={id} className="flex items-center gap-2 text-sm text-foreground dark:text-zinc-200">
+                      <Dumbbell className="h-3.5 w-3.5 text-muted-foreground dark:text-zinc-500 flex-shrink-0" />
+                      <span className="truncate">{ej?.ejercicios?.nombre ?? "Ejercicio"}</span>
+                    </li>
+                  )
+                })}
+              </ul>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setSkipPromptOpen(false)
+                    const firstId = untouchedEjIds[0]
+                    exerciseCardRefs.current.get(firstId)?.scrollIntoView({ behavior: "smooth", block: "start" })
+                  }}
+                  className="flex-1 h-10 rounded-xl border border-border dark:border-white/[0.1] text-sm font-semibold text-foreground dark:text-zinc-200 hover:bg-muted/60 dark:hover:bg-white/[0.05] transition-colors"
+                >
+                  Lo hago ahora
+                </button>
+                <button
+                  onClick={() => {
+                    marcarSaltados(untouchedEjIds)
+                    setSkipPromptOpen(false)
+                  }}
+                  className="flex-1 h-10 rounded-xl bg-yellow-500/90 hover:bg-yellow-500 text-sm font-bold text-black transition-colors"
+                >
+                  Sí, salteado
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {videoModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
