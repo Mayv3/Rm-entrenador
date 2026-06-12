@@ -697,34 +697,22 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
     const hoja = plan?.hojas?.find((h) => h.id === activeHojaId)
     if (!hoja) return [] as { grupo: string; series: number }[]
     const map = new Map<string, number>()
-    const parseSeries = (dosis: string): number => {
-      const m = (dosis ?? "").match(/(\d+)/)
-      return m ? parseInt(m[1], 10) : 0
-    }
+    // Fuente: la columna `series` del ejercicio (es la cantidad de series que el alumno ve y
+    // entrena en el portal). Parsear la dosis era frágil: "12-10" sin prefijo "3 x" sumaba 12.
+    // Los activadores (accesorios solo-vista) no cuentan como volumen efectivo.
+    const esActivador = (cat: string | null | undefined) => (cat ?? "").toUpperCase() === "ACTIVADOR"
     for (const dia of hoja.dias) {
       for (const ej of dia.ejercicios) {
+        const local = localData[ej.id]
+        if (esActivador(local?.categoria ?? ej.categoria)) continue
         const grupo = ej.ejercicios?.grupo_muscular ?? "Sin grupo"
-        const localSems = localData[ej.id]?.semanas ?? {}
-        let series = 0
-        for (const semKey of Object.keys(localSems)) {
-          const s = parseSeries(localSems[Number(semKey)]?.dosis ?? "")
-          if (s > 0) { series = s; break }
-        }
-        if (series === 0) {
-          for (const s of ej.semanas) {
-            const parsed = parseSeries(s.dosis ?? "")
-            if (parsed > 0) { series = parsed; break }
-          }
-        }
+        const series = local?.series ?? ej.series ?? 3
         if (series > 0) map.set(grupo, (map.get(grupo) ?? 0) + series)
       }
       for (const p of pendingByDay[dia.id] ?? []) {
+        if (esActivador(p.categoria)) continue
         const grupo = p.ejercicio.grupo_muscular ?? "Sin grupo"
-        let series = 0
-        for (const semKey of Object.keys(p.dosis)) {
-          const parsed = parseSeries(p.dosis[Number(semKey)] ?? "")
-          if (parsed > 0) { series = parsed; break }
-        }
+        const series = p.series ?? 3
         if (series > 0) map.set(grupo, (map.get(grupo) ?? 0) + series)
       }
     }
