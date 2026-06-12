@@ -734,7 +734,9 @@ export function StudentPlanificacionSection({
     return ejerciciosDelDia.every((ej) => {
       if (saltadoEjIds.has(ej.id)) return true
       const row = registrosForm[ej.id]
-      return (row?.series ?? []).every((s) => !!s.peso_kg && !!s.repeticiones && !!s.rpe)
+      // Sin fila en el form (aún no cargó) ≠ completo: evita falsos "completado".
+      if (!row) return false
+      return row.series.every((s) => !!s.peso_kg && !!s.repeticiones && !!s.rpe)
     })
   }, [ejerciciosDelDia, registrosForm, saltadoEjIds])
 
@@ -1146,6 +1148,23 @@ export function StudentPlanificacionSection({
       flushSaveRef.current()
     }, SAVE_DEBOUNCE_MS)
   }
+
+  // Self-heal: sesiones que quedaron "abierta" en DB pese a tener todos los ejercicios
+  // completos (p.ej. guardadas por un bundle viejo que contaba los accesorios/activadores
+  // como completables). Al abrir el día con todo completo y sin ediciones pendientes,
+  // re-envía el estado en un save silencioso (sin registros dirty, el RPC solo avanza estado).
+  const selfHealKeyRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!sessionData?.sesion || sessionData.sesion.estado === "completado") return
+    if (!allCompletedAuto) return
+    if (isDirty.current || saveIsPendingRef.current) return
+    const key = `${diaSeleccionado?.id}-${semanaSeleccionada}`
+    if (selfHealKeyRef.current === key) return
+    selfHealKeyRef.current = key
+    silentSaveRef.current = true
+    saveMutateRef.current()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionData, allCompletedAuto, diaSeleccionado?.id, semanaSeleccionada])
 
 
   const handleSerieChange = (planEjId: number, serieIdx: number, field: keyof SerieRow, value: string) => {

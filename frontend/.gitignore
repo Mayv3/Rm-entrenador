@@ -31,4 +31,8 @@ next-env.d.ts
 /public/worker-*.js
 /public/workbox-*.js.map
 
+# playwright
+/test-results/
+/playwright-report/
+
 
