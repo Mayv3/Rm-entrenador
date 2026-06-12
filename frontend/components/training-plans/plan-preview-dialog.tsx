@@ -15,7 +15,7 @@ const SEMANAS = [1, 2, 3, 4, 5, 6]
 export function PlanPreviewDialog({ open, onOpenChange, plan }: PlanPreviewDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] w-full max-h-[90vh] overflow-hidden flex flex-col p-0">
+      <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-hidden flex flex-col p-0">
         {/* Header */}
         <div className="px-5 py-4 border-b shrink-0">
           <h2 className="font-semibold text-base">{plan.nombre}</h2>

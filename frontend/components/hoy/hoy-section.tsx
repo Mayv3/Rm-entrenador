@@ -245,7 +245,7 @@ export function HoySection() {
 
       {/* Modal de detalle: qué hizo el alumno */}
       <Dialog open={selected !== null} onOpenChange={(open) => !open && setSelected(null)}>
-        <DialogContent className="max-w-2xl w-full p-0 flex flex-col max-h-[85vh]">
+        <DialogContent className="max-w-2xl p-0 flex flex-col max-h-[85vh]">
           {selected && (
             <>
               <DialogHeader className="px-5 pt-5 pb-4 border-b shrink-0 space-y-2">

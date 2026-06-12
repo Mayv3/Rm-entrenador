@@ -213,7 +213,7 @@ function StudentProgresoDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[98vw] md:max-w-[1500px] w-full flex flex-col p-0 max-h-[92vh]">
+      <DialogContent className="max-w-[98vw] md:max-w-[1500px] flex flex-col p-0 max-h-[92vh]">
         <DialogHeader className="px-6 pt-5 pb-4 border-b shrink-0">
           <DialogTitle className="text-base flex items-center gap-2">
             <TrendingUp className="h-4 w-4 text-emerald-500" />
