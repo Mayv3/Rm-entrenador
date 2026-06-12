@@ -37,7 +37,10 @@
       "PowerShell(\"--- frontend ---\")",
       "Bash(grep -iE \"plan-progreso-dialog|plan-builder|portal/page|portal\\\\\\\\\\\\\\\\page\")",
       "PowerShell(Set-Location \"C:\\\\Users\\\\nicop\\\\OneDrive\\\\Desktop\\\\Proyectos\\\\Rm-entrenador\\\\frontend\"; $out = npx tsc --noEmit 2>$null; $out | Select-String \"student-planificacion\"; \"TOTAL_ERRORS: $\\(\\($out | Measure-Object -Line\\).Lines\\)\")",
-      "PowerShell(Set-Location \"C:\\\\Users\\\\nicop\\\\OneDrive\\\\Desktop\\\\Proyectos\\\\Rm-entrenador\\\\frontend\"; npx playwright test tests/e2e/portal-planificaciones.spec.ts --reporter=line 2>$null; \"EXIT=$LASTEXITCODE\")"
+      "PowerShell(Set-Location \"C:\\\\Users\\\\nicop\\\\OneDrive\\\\Desktop\\\\Proyectos\\\\Rm-entrenador\\\\frontend\"; npx playwright test tests/e2e/portal-planificaciones.spec.ts --reporter=line 2>$null; \"EXIT=$LASTEXITCODE\")",
+      "PowerShell(try { $r = Invoke-RestMethod -Uri \"http://localhost:3002/entrenamientos/dia?fecha=2026-06-11\" -TimeoutSec 10; $r | ConvertTo-Json -Depth 4 -Compress | ForEach-Object { $_.Substring\\(0, [Math]::Min\\(1500, $_.Length\\)\\) } } catch { \"ERROR: $\\($_.Exception.Message\\)\" })",
+      "PowerShell($raw = \\(Invoke-WebRequest -Uri \"http://localhost:3002/entrenamientos/dia?fecha=2026-06-11\" -TimeoutSec 10\\).Content; $idx = $raw.IndexOf\\('\"series\"'\\); $raw.Substring\\($idx, 220\\))",
+      "PowerShell($raw = \\(Invoke-WebRequest -Uri \"http://localhost:3002/entrenamientos/dia?fecha=2026-06-11\" -UseBasicParsing -TimeoutSec 10\\).Content; $idx = $raw.IndexOf\\('\"series\"'\\); $raw.Substring\\($idx, 260\\))"
     ]
   },
   "enableAllProjectMcpServers": true,

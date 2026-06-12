@@ -1313,6 +1313,64 @@ export async function updateDosisBulk(req, res) {
   res.json({ ok: true });
 }
 
+// Entrenamientos de un día dado (default hoy) entre TODOS los alumnos, con el detalle
+// de lo que hizo cada uno (registros + estado diario). Para el apartado "Hoy" del dashboard.
+// El front manda ?fecha=YYYY-MM-DD calculada en su zona horaria (el server puede estar en UTC).
+export async function getEntrenamientosDia(req, res) {
+  const fecha = typeof req.query.fecha === "string" && /^\d{4}-\d{2}-\d{2}$/.test(req.query.fecha)
+    ? req.query.fecha
+    : new Date().toISOString().slice(0, 10);
+
+  const { data: asistencias, error: asisError } = await supabase
+    .from("asistencias_alumnos")
+    .select("id, fecha, alumno_id, sesion_id, planificacion_id, created_at, alumnos(id, nombre)")
+    .eq("fecha", fecha)
+    .order("created_at", { ascending: false });
+
+  if (asisError) return res.status(500).json({ error: asisError.message });
+  if (!asistencias || asistencias.length === 0) return res.json({ fecha, entrenamientos: [] });
+
+  const sesionIds = asistencias.map((a) => a.sesion_id).filter(Boolean);
+  const idsForQuery = sesionIds.length ? sesionIds : [-1];
+
+  const [{ data: sesiones }, { data: estados }, { data: registros }] = await Promise.all([
+    supabase
+      .from("entrenamiento_sesiones")
+      .select("id, dia_id, semana, estado, hoja_id, planificacion_dias(numero_dia, nombre), planificacion_hojas(nombre)")
+      .in("id", idsForQuery),
+    supabase
+      .from("entrenamiento_estado_diario")
+      .select("*")
+      .in("sesion_id", idsForQuery),
+    supabase
+      .from("entrenamiento_registros")
+      .select("id, sesion_id, planificacion_ejercicio_id, series, notas, ejercicio_nombre_snapshot, categoria_snapshot, prescripcion_dosis, prescripcion_rpe")
+      .in("sesion_id", idsForQuery)
+      .order("id", { ascending: true }),
+  ]);
+
+  const sesionMap = new Map((sesiones ?? []).map((s) => [s.id, s]));
+  const estadoMap = new Map((estados ?? []).map((e) => [e.sesion_id, e]));
+  const registrosBySesion = new Map();
+  (registros ?? []).forEach((r) => {
+    if (!registrosBySesion.has(r.sesion_id)) registrosBySesion.set(r.sesion_id, []);
+    registrosBySesion.get(r.sesion_id).push(r);
+  });
+
+  const entrenamientos = asistencias.map((a) => ({
+    asistencia_id: a.id,
+    fecha: a.fecha,
+    hora: a.created_at,
+    alumno: a.alumnos ?? { id: a.alumno_id, nombre: "Alumno" },
+    sesion_id: a.sesion_id,
+    sesion: sesionMap.get(a.sesion_id) ?? null,
+    estado_diario: estadoMap.get(a.sesion_id) ?? null,
+    registros: registrosBySesion.get(a.sesion_id) ?? [],
+  }));
+
+  res.json({ fecha, entrenamientos });
+}
+
 export async function getAsistenciasPlanificacion(req, res) {
   const planId = Number(req.params.id);
   if (!Number.isFinite(planId)) return res.status(400).json({ error: "planId inválido" });

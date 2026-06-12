@@ -11,7 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Image from "next/image";
 import logoRodrigoEntrenador from "../../assets/LOGO-RODRIGO-VERDE.png";
-import { Users, CreditCard, Tag, LogOut, Moon, Sun, Globe, Copy, Check, Ruler, Salad, BarChart2, ClipboardList, HeartPulse } from "lucide-react";
+import { Users, CreditCard, Tag, LogOut, Moon, Sun, Globe, Copy, Check, Ruler, Salad, BarChart2, ClipboardList, HeartPulse, CalendarDays } from "lucide-react";
+import { HoySection } from "@/components/hoy/hoy-section";
 import { AntropometriasSection } from "@/components/antropometrias/antropometrias-section";
 import { NutricionSection } from "@/components/nutricion/nutricion-section";
 import { EstadisticasSection } from "@/components/estadisticas/estadisticas-section";
@@ -83,7 +84,7 @@ export default function Dashboard() {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  const [activeTab, setActiveTab] = useState<"students" | "payments" | "planes" | "servicios" | "portal" | "antropometrias" | "nutricion" | "estadisticas" | "planificaciones">("students");
+  const [activeTab, setActiveTab] = useState<"students" | "payments" | "planes" | "servicios" | "portal" | "antropometrias" | "nutricion" | "estadisticas" | "planificaciones" | "hoy">("students");
   const [copied, setCopied] = useState(false);
   const [alumnoFilter, setAlumnoFilter] = useState<string | null>(null);
 
@@ -109,6 +110,7 @@ export default function Dashboard() {
   };
 
   const navItems = [
+    { value: "hoy", label: "Hoy", icon: CalendarDays },
     { value: "estadisticas", label: "Estadísticas", icon: BarChart2 },
     { value: "students", label: "Alumnos", icon: Users },
     { value: "payments", label: "Pagos", icon: CreditCard },
@@ -195,6 +197,7 @@ export default function Dashboard() {
         {/* Contenido */}
         <div className={`w-full md:mx-auto ${activeTab === "planificaciones" ? "md:h-full md:max-w-[78vw]" : "md:max-w-[95vw] space-y-4"}`}>
           {activeTab === "students" ? <StudentsTable onOpenPlan={handleOpenPlan} />
+            : activeTab === "hoy" ? <HoySection />
             : activeTab === "payments" ? <PaymentsTable />
               : activeTab === "planes" ? <PlanesTable />
                 : activeTab === "servicios" ? <ServiciosTable />
