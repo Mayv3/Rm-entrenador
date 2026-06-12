@@ -30,7 +30,7 @@ function ServicioMobileCard({
   onDelete: (s: Servicio) => void;
 }) {
   return (
-    <Card className="p-3 py-3 max-w-[90vw] mx-auto">
+    <Card className="p-3 py-3">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
