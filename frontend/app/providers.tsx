@@ -10,10 +10,19 @@ import { SessionProvider } from "next-auth/react"
 function MuiSyncProvider({ children }: { children: React.ReactNode }) {
   const { resolvedTheme } = useTheme()
 
+  const isDark = resolvedTheme === "dark"
+
   const muiTheme = createTheme({
     palette: {
-      mode: resolvedTheme === "dark" ? "dark" : "light",
+      mode: isDark ? "dark" : "light",
+      primary: { main: "#22b567", dark: "#059669", light: "#6ee7b7", contrastText: "#ffffff" },
+      success: { main: "#22b567", contrastText: "#ffffff" },
+      ...(isDark
+        ? { background: { default: "#0c1210", paper: "#141d18" }, divider: "#26322c" }
+        : { background: { default: "#f7f8f7", paper: "#ffffff" }, divider: "#e3e9e5" }),
     },
+    shape: { borderRadius: 12 },
+    typography: { fontFamily: "Comfortaa, ui-sans-serif, system-ui, sans-serif" },
   })
 
   return <MuiThemeProvider theme={muiTheme}>{children}</MuiThemeProvider>

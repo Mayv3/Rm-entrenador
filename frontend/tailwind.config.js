@@ -24,7 +24,6 @@ module.exports = {
         xs: "480px",
       },
       colors: {
-         primary: '#22b567',
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -66,11 +65,34 @@ module.exports = {
           DEFAULT: "hsl(38, 92%, 50%)",
           foreground: "hsl(0, 0%, 100%)",
         },
+        brand: {
+          DEFAULT: "#22b567",
+          50: "#ecfdf3",
+          100: "#d1fae4",
+          200: "#a7f3cd",
+          300: "#6ee7b7",
+          400: "#34d399",
+          500: "#22b567",
+          600: "#059669",
+          700: "#047857",
+          800: "#065f46",
+          900: "#064e3b",
+        },
       },
       borderRadius: {
+        xl: "calc(var(--radius) + 4px)",
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+      boxShadow: {
+        premium: "0 4px 24px -8px rgba(16, 24, 40, 0.06)",
+        "premium-hover": "0 12px 32px -12px rgba(16, 24, 40, 0.12)",
+        "brand-glow": "0 8px 20px -6px rgba(34, 181, 103, 0.40)",
+      },
+      transitionTimingFunction: {
+        spring: "cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+        smooth: "cubic-bezier(0.4, 0, 0.2, 1)",
       },
       keyframes: {
         "accordion-down": {

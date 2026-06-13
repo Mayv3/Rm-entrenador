@@ -1,0 +1,34 @@
+{
+  "id": "2026-06-13T03-34-45-254Z-modern-elegant-rm-entrenador-trainer",
+  "createdAt": "2026-06-13T03:35:01.679Z",
+  "repoRoot": "C:\\Users\\nicop\\OneDrive\\Desktop\\Proyectos\\Rm-entrenador",
+  "prompt": "Modern elegant RM Entrenador trainer dashboard: emerald #22b567 primary, Comfortaa, varied distinct icons, KPI stat cards, status pills, row-grid student table, premium soft shadows, generous radius",
+  "targetRouteHint": null,
+  "targetFileHint": null,
+  "detectedFrameworks": [],
+  "componentLibraries": [],
+  "stylingSystems": [],
+  "routeCandidates": [],
+  "tokenSources": [],
+  "componentDirectories": [],
+  "htmlStructure": {
+    "title": "RM Entrenador | Workspace",
+    "primaryHeading": "Directorio de Estudiantes",
+    "sectionCount": 2,
+    "buttonCount": 24,
+    "formCount": 0,
+    "cardLikeCount": 1,
+    "hasNavigation": true,
+    "hasFooter": false,
+    "hasPricingSignals": true,
+    "hasDashboardSignals": true
+  },
+  "recommendations": [
+    "Use the generated preview as the visual truth source while porting the layout."
+  ],
+  "warnings": [
+    "No frontend framework was detected. Validate the target surface manually before porting.",
+    "No obvious route targets were detected. Choose a target file deliberately before editing.",
+    "The artifact looks dashboard-like, but no dashboard route was detected automatically."
+  ]
+}

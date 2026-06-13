@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RM Entrenador | Workspace</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Tailwind Config & Custom CSS -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Comfortaa', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            DEFAULT: '#22b567',
+                            50: '#ecfdf3',
+                            100: '#d1fae4',
+                            200: '#a7f3cd',
+                            300: '#6ee7b7',
+                            400: '#34d399',
+                            500: '#22b567', // Core
+                            600: '#059669',
+                            700: '#047857',
+                            800: '#065f46',
+                            900: '#064e3b',
+                        },
+                        ui: {
+                            bg: '#F7F8F7',
+                            surface: '#FFFFFF',
+                            border: '#E8EAE9',
+                            hover: '#F1F3F2'
+                        }
+                    },
+                    boxShadow: {
+                        'premium': '0 4px 24px -8px rgba(0, 0, 0, 0.04)',
+                        'premium-hover': '0 12px 32px -12px rgba(0, 0, 0, 0.08)',
+                        'inner-border': 'inset 0 0 0 1px rgba(0,0,0,0.05)',
+                    },
+                    transitionTimingFunction: {
+                        'spring': 'cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                        'smooth': 'cubic-bezier(0.4, 0, 0.2, 1)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* CSS Variables for Dynamic Orchestration */
+        :root {
+            --sidebar-collapsed: 5rem;
+            --sidebar-expanded: 16rem;
+        }
+
+        /* Core Overrides */
+        body {
+            background-color: theme('colors.ui.bg');
+            color: theme('colors.stone.900');
+            /* Smoother font rendering on mac */
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            overflow: hidden; /* App-like rigid structure */
+        }
+
+        /* Sidebar Expansion Logic (CSS Only) */
+        #lateral-nav {
+            width: var(--sidebar-collapsed);
+            transition: width 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        #lateral-nav:hover {
+            width: var(--sidebar-expanded);
+        }
+
+        .nav-label {
+            opacity: 0;
+            transform: translateX(10px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            white-space: nowrap;
+        }
+
+        #lateral-nav:hover .nav-label {
+            opacity: 1;
+            transform: translateX(0);
+            transition-delay: 0.1s;
+        }
+
+        /* Custom Scrollbar for Main Canvas */
+        .workspace-scroll {
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .workspace-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .workspace-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .workspace-scroll::-webkit-scrollbar-thumb {
+            background: theme('colors.stone.300');
+            border-radius: 10px;
+        }
+        .workspace-scroll::-webkit-scrollbar-thumb:hover {
+            background: theme('colors.stone.400');
+        }
+
+        /* Staggered Entrance Animations */
+        @keyframes slideUpFade {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-stagger > * {
+            opacity: 0;
+            animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        /* Automate the calculation of delays based on nth-child */
+        .animate-stagger > :nth-child(1) { animation-delay: 0.1s; }
+        .animate-stagger > :nth-child(2) { animation-delay: 0.15s; }
+        .animate-stagger > :nth-child(3) { animation-delay: 0.2s; }
+        .animate-stagger > :nth-child(4) { animation-delay: 0.25s; }
+        .animate-stagger > :nth-child(5) { animation-delay: 0.3s; }
+        .animate-stagger > :nth-child(6) { animation-delay: 0.35s; }
+        .animate-stagger > :nth-child(7) { animation-delay: 0.4s; }
+
+        /* Micro-interactions */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid theme('colors.ui.border');
+        }
+
+        .btn-press {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .btn-press:active {
+            transform: scale(0.96) translateY(1px);
+        }
+
+        /* Hide scrollbar on table container but keep functional */
+        .hide-scroll::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scroll {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="h-[100dvh] flex selection:bg-brand-200 selection:text-brand-900">
+
+    <!-- OVERLAYS (Mobile Fix) -->
+    <div class="fixed inset-0 bg-stone-900/40 backdrop-blur-sm z-40 hidden md:hidden" id="mobile-overlay"></div>
+
+    <!-- MACRO ARCHITECTURE: LATERAL SIDEBAR -->
+    <nav id="lateral-nav" class="fixed md:static inset-y-0 left-0 z-50 bg-ui-surface border-r border-ui-border flex flex-col justify-between py-6 rounded-r-3xl md:rounded-r-none shadow-premium md:shadow-none transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out isolate group">
+
+        <div class="flex flex-col gap-8 w-full px-5 overflow-hidden">
+            <!-- Brand / Logo Area -->
+            <div class="flex items-center gap-4 pl-1 h-10 w-full shrink-0 relative z-10">
+                <div class="w-8 h-8 rounded-xl bg-brand flex items-center justify-center text-white shrink-0 shadow-[0_0_15px_-3px_var(--tw-shadow-color)] shadow-brand/40">
+                    <i class="ph-bold ph-barbell text-xl"></i>
+                </div>
+                <!-- Wordmark (Hidden when collapsed) -->
+                <span class="nav-label font-bold text-lg tracking-tight text-stone-900">RM Entrenador</span>
+            </div>
+
+            <!-- Primary Navigation Data -->
+            <ul class="flex flex-col gap-2 w-full relative z-10">
+                <!-- Nav Item: Active State -->
+                <li class="relative">
+                    <!-- Active Indicator Line -->
+                    <div class="absolute -left-5 top-1/2 -translate-y-1/2 h-8 w-1 bg-brand rounded-r-md"></div>
+
+                    <a href="#" class="flex items-center gap-4 w-full p-2 rounded-xl bg-brand-50 text-brand-700 transition-colors">
+                        <i class="ph-fill ph-users-three text-2xl shrink-0"></i>
+                        <span class="nav-label font-semibold text-sm">Estudiantes</span>
+                    </a>
+                </li>
+
+                <!-- Nav Items: Inactive States -->
+                <li>
+                    <a href="#" class="flex items-center gap-4 w-full p-2 rounded-xl text-stone-500 hover:bg-ui-hover hover:text-stone-900 transition-colors">
+                        <i class="ph ph-house text-2xl shrink-0"></i>
+                        <span class="nav-label font-medium text-sm">Inicio</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="flex items-center gap-4 w-full p-2 rounded-xl text-stone-500 hover:bg-ui-hover hover:text-stone-900 transition-colors">
+                        <i class="ph ph-chart-line-up text-2xl shrink-0"></i>
+                        <span class="nav-label font-medium text-sm">Rendimiento</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="flex items-center gap-4 w-full p-2 rounded-xl text-stone-500 hover:bg-ui-hover hover:text-stone-900 transition-colors">
+                        <i class="ph ph-credit-card text-2xl shrink-0"></i>
+                        <span class="nav-label font-medium text-sm">Pagos</span>
+                    </a>
+                </li>
+
+                <!-- Section Divider Line -->
+                <div class="h-px bg-stone-100 w-full my-2"></div>
+
+                <li>
+                    <a href="#" class="flex items-center gap-4 w-full p-2 rounded-xl text-stone-500 hover:bg-ui-hover hover:text-stone-900 transition-colors">
+                        <i class="ph ph-notepad text-2xl shrink-0"></i>
+                        <span class="nav-label font-medium text-sm">Rutinas</span>
+                    </a>
+                </li>
+                 <li>
+                    <a href="#" class="flex items-center gap-4 w-full p-2 rounded-xl text-stone-500 hover:bg-ui-hover hover:text-stone-900 transition-colors">
+                        <i class="ph ph-apple-logo text-2xl shrink-0"></i>
+                        <span class="nav-label font-medium text-sm">Nutrición</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="flex items-center gap-4 w-full p-2 rounded-xl text-stone-500 hover:bg-ui-hover hover:text-stone-900 transition-colors">
+                        <i class="ph ph-ruler text-2xl shrink-0"></i>
+                        <span class="nav-label font-medium text-sm">Antropometría</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="flex items-center gap-4 w-full p-2 rounded-xl text-stone-500 hover:bg-ui-hover hover:text-stone-900 transition-colors">
+                        <i class="ph ph-tag text-2xl shrink-0"></i>
+                        <span class="nav-label font-medium text-sm">Servicios</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Utility Nav (Bottom) -->
+        <div class="flex flex-col gap-2 w-full px-5 overflow-hidden">
+            <a href="#" class="flex items-center gap-4 w-full p-2 rounded-xl text-stone-500 hover:bg-ui-hover hover:text-stone-900 transition-colors">
+                <i class="ph ph-globe text-2xl shrink-0"></i>
+                <span class="nav-label font-medium text-sm">Portal del Cliente</span>
+            </a>
+            <a href="#" class="flex items-center gap-4 w-full p-2 rounded-xl text-stone-500 hover:bg-red-50 hover:text-red-600 transition-colors mt-2">
+                <i class="ph ph-sign-out text-2xl shrink-0"></i>
+                <span class="nav-label font-medium text-sm">Cerrar Sesión</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- MACRO ARCHITECTURE: MAIN CANVAS -->
+    <main class="flex-1 flex flex-col relative min-w-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-stone-100 via-ui-bg to-ui-bg">
+
+        <!-- Mobile Header override to toggle sidebar -->
+        <div class="md:hidden flex items-center justify-between p-4 border-b border-ui-border bg-white z-30">
+            <div class="w-8 h-8 rounded-lg bg-brand flex items-center justify-center text-white">
+                <i class="ph-bold ph-barbell text-lg"></i>
+            </div>
+            <button class="p-2 text-stone-500" onclick="document.getElementById('lateral-nav').classList.toggle('-translate-x-full'); document.getElementById('mobile-overlay').classList.toggle('hidden');">
+                <i class="ph ph-list text-2xl"></i>
+            </button>
+        </div>
+
+        <!-- Scrollable Workspace Layer -->
+        <div class="flex-1 workspace-scroll w-full pb-20">
+            <!-- Constrained Content Container for ultra-wide monitors -->
+            <div class="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-12 pt-8 lg:pt-12 flex flex-col gap-10">
+
+                <!-- HEADER SECTION -->
+                <header class="flex flex-col md:flex-row md:items-end justify-between gap-6 animate-stagger">
+                    <div>
+                        <h1 class="text-3xl md:text-4xl font-bold text-stone-900 tracking-tight leading-none mb-2">Directorio de Estudiantes</h1>
+                        <p class="text-stone-500 text-sm md:text-base font-medium max-w-lg leading-relaxed">Gestiona integralmente rutinas, progresos y pautas nutricionales de tus clientes activos.</p>
+                    </div>
+
+                    <div class="flex items-center gap-3 shrink-0">
+                        <button class="btn-press flex items-center justify-center w-12 h-12 rounded-2xl bg-white border border-stone-200 text-stone-600 hover:text-stone-900 hover:bg-stone-50 shadow-premium transition-all focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 focus:ring-offset-ui-bg">
+                            <i class="ph ph-faders text-xl"></i>
+                        </button>
+                        <button class="btn-press flex items-center gap-2 px-6 h-12 rounded-2xl bg-brand text-white font-semibold shadow-[0_8px_20px_-6px_var(--tw-shadow-color)] shadow-brand/40 hover:bg-brand-600 transition-all focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 focus:ring-offset-ui-bg">
+                            <i class="ph-bold ph-plus text-lg"></i>
+                            <span>Nuevo Cliente</span>
+                        </button>
+                    </div>
+                </header>
+
+                <!-- TOOLBAR (Search & Filters) -->
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 animate-stagger relative z-10">
+
+                    <!-- Search Input Wrapper -->
+                    <div class="relative w-full lg:max-w-md group">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-stone-400 group-focus-within:text-brand transition-colors">
+                            <i class="ph ph-magnifying-glass text-xl"></i>
+                        </div>
+                        <input type="text" class="w-full h-12 pl-12 pr-4 bg-white border border-stone-200 rounded-2xl text-sm font-medium text-stone-900 placeholder-stone-400 focus:outline-none focus:border-brand focus:ring-4 focus:ring-brand-50 transition-all shadow-sm" placeholder="Buscar por nombre, email o plan...">
+                    </div>
+
+                    <!-- Filter Chips Strip -->
+                    <div class="flex items-center gap-2 overflow-x-auto hide-scroll pb-2 lg:pb-0">
+                        <button class="shrink-0 px-4 py-2 rounded-xl bg-stone-900 text-white text-sm font-semibold shadow-sm transition-transform active:scale-95">Todos</button>
+                        <button class="shrink-0 px-4 py-2 rounded-xl bg-white border border-stone-200 text-stone-600 text-sm font-medium hover:bg-stone-50 transition-all active:scale-95">Activos <span class="ml-1 text-xs text-stone-400 bg-stone-100 px-1.5 py-0.5 rounded-md">24</span></button>
+                        <button class="shrink-0 px-4 py-2 rounded-xl bg-white border border-stone-200 text-stone-600 text-sm font-medium hover:bg-stone-50 transition-all active:scale-95">Por Vencer <span class="ml-1 text-xs text-amber-500 bg-amber-50 px-1.5 py-0.5 rounded-md">3</span></button>
+                        <button class="shrink-0 px-4 py-2 rounded-xl bg-white border border-stone-200 text-stone-600 text-sm font-medium hover:bg-stone-50 transition-all active:scale-95">Inactivos</button>
+                    </div>
+                </div>
+
+                <!-- MESO ARCHITECTURE: KPI CARDS ARRAY -->
+                <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-stagger">
+
+                    <!-- KPI Card 1: Active -->
+                    <div class="bg-white rounded-[1.5rem] p-6 border border-stone-200 shadow-premium hover:shadow-premium-hover transition-shadow duration-300 relative overflow-hidden group">
+                        <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-emerald-50 to-transparent opacity-50 rounded-bl-[4rem] -z-0"></div>
+                        <div class="flex justify-between items-start mb-4 relative z-10">
+                            <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center ring-1 ring-emerald-100">
+                                <i class="ph-fill ph-users text-2xl"></i>
+                            </div>
+                            <span class="flex items-center gap-1 text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">
+                                <i class="ph-bold ph-trend-up"></i> +12%
+                            </span>
+                        </div>
+                        <div class="relative z-10">
+                            <h3 class="text-stone-500 text-sm font-semibold mb-1">Clientes Activos</h3>
+                            <p class="text-4xl font-bold text-stone-900 tracking-tighter">42</p>
+                        </div>
+                    </div>
+
+                    <!-- KPI Card 2: Revenue -->
+                    <div class="bg-white rounded-[1.5rem] p-6 border border-stone-200 shadow-premium hover:shadow-premium-hover transition-shadow duration-300 relative overflow-hidden group">
+                        <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-blue-50 to-transparent opacity-50 rounded-bl-[4rem] -z-0"></div>
+                        <div class="flex justify-between items-start mb-4 relative z-10">
+                            <div class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center ring-1 ring-blue-100">
+                                <i class="ph-fill ph-coin text-2xl"></i>
+                            </div>
+                            <span class="flex items-center gap-1 text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">
+                                <i class="ph-bold ph-trend-up"></i> +5.2%
+                            </span>
+                        </div>
+                        <div class="relative z-10">
+                            <h3 class="text-stone-500 text-sm font-semibold mb-1">Ingresos Mensuales</h3>
+                            <p class="text-4xl font-bold text-stone-900 tracking-tighter">$3,450</p>
+                        </div>
+                    </div>
+
+                    <!-- KPI Card 3: Sessions -->
+                    <div class="bg-white rounded-[1.5rem] p-6 border border-stone-200 shadow-premium hover:shadow-premium-hover transition-shadow duration-300 relative overflow-hidden group">
+                        <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-purple-50 to-transparent opacity-50 rounded-bl-[4rem] -z-0"></div>
+                        <div class="flex justify-between items-start mb-4 relative z-10">
+                            <div class="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center ring-1 ring-purple-100">
+                                <i class="ph-fill ph-calendar-check text-2xl"></i>
+                            </div>
+                        </div>
+                        <div class="relative z-10">
+                            <h3 class="text-stone-500 text-sm font-semibold mb-1">Check-ins Hoy</h3>
+                            <div class="flex items-baseline gap-2">
+                                <p class="text-4xl font-bold text-stone-900 tracking-tighter">8</p>
+                                <span class="text-sm font-medium text-stone-400">/ 12 agendados</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- KPI Card 4: Alerts -->
+                    <div class="bg-white rounded-[1.5rem] p-6 border border-stone-200 shadow-premium hover:shadow-premium-hover transition-shadow duration-300 relative overflow-hidden group">
+                        <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-amber-50 to-transparent opacity-50 rounded-bl-[4rem] -z-0"></div>
+                        <div class="flex justify-between items-start mb-4 relative z-10">
+                            <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center ring-1 ring-amber-100">
+                                <i class="ph-fill ph-warning-circle text-2xl"></i>
+                            </div>
+                        </div>
+                        <div class="relative z-10">
+                            <h3 class="text-stone-500 text-sm font-semibold mb-1">Planes por Vencer</h3>
+                            <div class="flex items-center gap-3">
+                                <p class="text-4xl font-bold text-stone-900 tracking-tighter">3</p>
+                                <div class="flex -space-x-2">
+                                    <img class="w-8 h-8 rounded-full border-2 border-white object-cover" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80" alt="Avatar">
+                                    <img class="w-8 h-8 rounded-full border-2 border-white object-cover" src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=100&q=80" alt="Avatar">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- MESO ARCHITECTURE: PRIMARY DATA TABLE -->
+                <section class="bg-white overflow-hidden rounded-[2rem] border border-stone-200 shadow-sm animate-stagger mb-12">
+
+                    <!-- Table Header Layout (CSS Grid) -->
+                    <div class="grid grid-cols-12 gap-4 p-6 border-b border-stone-100 bg-stone-50/50 items-center">
+                        <div class="col-span-12 md:col-span-4 text-xs font-bold text-stone-400 uppercase tracking-wider">Estudiante / Perfil</div>
+                        <div class="hidden md:block col-span-3 text-xs font-bold text-stone-400 uppercase tracking-wider">Enfoque del Plan</div>
+                        <div class="hidden lg:block col-span-2 text-xs font-bold text-stone-400 uppercase tracking-wider text-center">Frecuencia</div>
+                        <div class="hidden md:block col-span-1 text-xs font-bold text-stone-400 uppercase tracking-wider text-center">Estado</div>
+                        <div class="hidden md:block col-span-12 md:col-span-2 lg:col-span-2 text-xs font-bold text-stone-400 uppercase tracking-wider text-right">Acciones Rápidas</div>
+                    </div>
+
+                    <!-- Table Body Layout (List of rows) -->
+                    <div class="flex flex-col divide-y divide-stone-100">
+
+                        <!-- ROW 1 -->
+                        <div class="grid grid-cols-12 gap-4 p-4 md:p-6 items-center hover:bg-stone-50 transition-colors group cursor-default">
+                            <!-- Col 1: Identity -->
+                            <div class="col-span-12 md:col-span-4 flex items-center gap-4">
+                                <div class="relative">
+                                    <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&q=80" alt="Sofia Ramirez" class="w-12 h-12 rounded-full object-cover shadow-[inset_0_0_0_1px_rgba(0,0,0,0.1)]">
+                                    <div class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-brand border-2 border-white rounded-full"></div>
+                                </div>
+                                <div class="flex flex-col">
+                                    <span class="text-sm font-bold text-stone-900 leading-tight">Sofía Ramírez</span>
+                                    <span class="text-xs font-medium text-stone-500">sofia.ramirez@email.com</span>
+                                </div>
+                            </div>
+
+                            <!-- Col 2: Plan Type -->
+                            <div class="col-span-6 md:col-span-3 flex items-center gap-2 mt-2 md:mt-0">
+                                <div class="w-2 h-2 rounded-full bg-blue-500 shrink-0"></div>
+                                <div class="flex flex-col">
+                                    <span class="text-sm font-semibold text-stone-700">Composición Corporal</span>
+                                    <span class="text-xs text-stone-400">Ciclo 2 • Semana 3</span>
+                                </div>
+                            </div>
+
+                            <!-- Col 3: Frequency -->
+                            <div class="hidden lg:flex col-span-2 justify-center">
+                                <div class="flex gap-1">
+                                    <div class="w-6 h-6 rounded bg-stone-900 text-white flex items-center justify-center text-xs font-bold">L</div>
+                                    <div class="w-6 h-6 rounded bg-stone-100 text-stone-400 flex items-center justify-center text-xs font-bold">M</div>
+                                    <div class="w-6 h-6 rounded bg-stone-900 text-white flex items-center justify-center text-xs font-bold">X</div>
+                                    <div class="w-6 h-6 rounded bg-stone-100 text-stone-400 flex items-center justify-center text-xs font-bold">J</div>
+                                    <div class="w-6 h-6 rounded bg-stone-900 text-white flex items-center justify-center text-xs font-bold">V</div>
+                                </div>
+                            </div>
+
+                            <!-- Col 4: Status Component -->
+                            <div class="col-span-6 md:col-span-1 flex justify-end md:justify-center mt-2 md:mt-0">
+                                <!-- Elegant Status Pill -->
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-xs font-bold text-emerald-700">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    Activo
+                                </span>
+                            </div>
+
+                            <!-- Col 5: Actions Array -->
+                            <div class="col-span-12 md:col-span-2 flex justify-end items-center gap-1.5 mt-4 md:mt-0">
+                                <button class="btn-press w-9 h-9 rounded-full flex items-center justify-center text-emerald-600 hover:bg-emerald-50 transition-colors" title="WhatsApp">
+                                    <i class="ph ph-whatsapp-logo text-lg"></i>
+                                </button>
+                                <button class="btn-press w-9 h-9 rounded-full flex items-center justify-center text-stone-500 hover:bg-stone-200 hover:text-stone-900 transition-colors" title="Ver Plan (PDF)">
+                                    <i class="ph ph-file-pdf text-lg"></i>
+                                </button>
+                                <button class="btn-press w-9 h-9 rounded-full flex items-center justify-center text-stone-500 hover:bg-stone-200 hover:text-stone-900 transition-colors" title="Cargar a App">
+                                    <i class="ph ph-device-mobile text-lg"></i>
+                                </button>
+                                <button class="btn-press w-9 h-9 rounded-full flex items-center justify-center text-stone-500 hover:bg-stone-200 hover:text-stone-900 transition-colors" title="Ver Progreso">
+                                    <i class="ph ph-trend-up text-lg"></i>
+                                </button>
+                                <div class="w-px h-5 bg-stone-200 mx-1"></div>
+                                <button class="btn-press w-9 h-9 rounded-full flex items-center justify-center text-stone-400 hover:bg-stone-100 hover:text-stone-700 transition-colors">
+                                    <i class="ph-bold ph-dots-three-vertical text-lg"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- ROW 2 (Expiring Alert State) -->
+                        <div class="grid grid-cols-12 gap-4 p-4 md:p-6 items-center hover:bg-stone-50 transition-colors group cursor-default">
+                            <!-- Col 1: Identity -->
+                            <div class="col-span-12 md:col-span-4 flex items-center gap-4">
+                                <div class="relative">
+                                    <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80" alt="Carlos Mendoza" class="w-12 h-12 rounded-full object-cover shadow-[inset_0_0_0_1px_rgba(0,0,0,0.1)] grayscale-[20%]">
+                                </div>
+                                <div class="flex flex-col">
+                                    <span class="text-sm font-bold text-stone-900 leading-tight">Carlos Mendoza</span>
+                                    <span class="text-xs font-medium text-stone-500">c.mendoza92@email.com</span>
+                                </div>
+                            </div>
+
+                            <!-- Col 2: Plan Type -->
+                            <div class="col-span-6 md:col-span-3 flex items-center gap-2 mt-2 md:mt-0">
+                                <div class="w-2 h-2 rounded-full bg-purple-500 shrink-0"></div>
+                                <div class="flex flex-col">
+                                    <span class="text-sm font-semibold text-stone-700">Fuerza & Potencia</span>
+                                    <span class="text-xs text-amber-500 font-bold">Vence en 2 días</span>
+                                </div>
+                            </div>
+
+                            <!-- Col 3: Frequency -->
+                            <div class="hidden lg:flex col-span-2 justify-center">
+                                <div class="flex gap-1">
+                                    <div class="w-6 h-6 rounded bg-stone-900 text-white flex items-center justify-center text-xs font-bold">L</div>
+                                    <div class="w-6 h-6 rounded bg-stone-900 text-white flex items-center justify-center text-xs font-bold">M</div>
+                                    <div class="w-6 h-6 rounded bg-stone-100 text-stone-400 flex items-center justify-center text-xs font-bold">X</div>
+                                    <div class="w-6 h-6 rounded bg-stone-900 text-white flex items-center justify-center text-xs font-bold">J</div>
+                                    <div class="w-6 h-6 rounded bg-stone-900 text-white flex items-center justify-center text-xs font-bold">V</div>
+                                </div>
+                            </div>
+
+                            <!-- Col 4: Status Component -->
+                            <div class="col-span-6 md:col-span-1 flex justify-end md:justify-center mt-2 md:mt-0">
+                                <!-- Warning Status Pill -->
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-100 text-xs font-bold text-amber-700">
+                                    <i class="ph-fill ph-clock text-sm"></i>
+                                    Renovar
+                                </span>
+                            </div>
+
+                            <!-- Col 5: Actions Array -->
+                            <div class="col-span-12 md:col-span-2 flex justify-end items-center gap-1.5 mt-4 md:mt-0">
+                                <button class="btn-press w-9 h-9 rounded-full flex items-center justify-center text-amber-600 hover:bg-amber-50 transition-colors" title="Recordatorio de Pago">
+                                    <i class="ph ph-bell-ringing text-lg"></i>
+                                </button>
+                                <button class="btn-press w-9 h-9 rounded-full flex items-center justify-center text-stone-500 hover:bg-stone-200 hover:text-stone-900 transition-colors">
+                                    <i class="ph ph-file-pdf text-lg"></i>
+                                </button>
+                                <button class="btn-press w-9 h-9 rounded-full flex items-center justify-center text-stone-500 hover:bg-stone-200 hover:text-stone-900 transition-colors">
+                                    <i class="ph ph-device-mobile text-lg"></i>
+                                </button>
+                                <button class="btn-press w-9 h-9 rounded-full flex items-center justify-center text-stone-500 hover:bg-stone-200 hover:text-stone-900 transition-colors">
+                                    <i class="ph ph-trend-up text-lg"></i>
+                                </button>
+                                <div class="w-px h-5 bg-stone-200 mx-1"></div>
+                                <button class="btn-press w-9 h-9 rounded-full flex items-center justify-center text-stone-400 hover:bg-stone-100 hover:text-stone-700 transition-colors">
+                                    <i class="ph-bold ph-dots-three-vertical text-lg"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                         <!-- ROW 3 -->
+                        <div class="grid grid-cols-12 gap-4 p-4 md:p-6 items-center hover:bg-stone-50 transition-colors group cursor-default">
+                            <!-- Col 1: Identity -->
+                            <div class="col-span-12 md:col-span-4 flex items-center gap-4">
+                                <div class="relative">
+                                    <div class="w-12 h-12 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center text-lg font-bold border border-rose-200">AR</div>
+                                    <div class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-brand border-2 border-white rounded-full"></div>
+                                </div>
+                                <div class="flex flex-col">
+                                    <span class="text-sm font-bold text-stone-900 leading-tight">Ana Rodríguez</span>
+                                    <span class="text-xs font-medium text-stone-500">ana.rod.fit@email.com</span>
+                                </div>
+                            </div>
+
+                            <!-- Col 2: Plan Type -->
+                            <div class="col-span-6 md:col-span-3 flex items-center gap-2 mt-2 md:mt-0">
+                                <div class="w-2 h-2 rounded-full bg-rose-500 shrink-0"></div>
+                                <div class="flex flex-col">
+                                    <span class="text-sm font-semibold text-stone-700">Pérdida de Grasa</span>
+                                    <span class="text-xs text-stone-400">Fase Inicial • Alta en 3 días</span>
+                                </div>
+                            </div>
+
+                            <!-- Col 3: Frequency -->
+                            <div class="hidden lg:flex col-span-2 justify-center">
+                                <div class="flex gap-1">
+                                    <div class="w-6 h-6 rounded bg-stone-900 text-white flex items-center justify-center text-xs font-bold">L</div>
+                                    <div class="w-6 h-6 rounded bg-stone-100 text-stone-400 flex items-center justify-center text-xs font-bold">M</div>
+                                    <div class="w-6 h-6 rounded bg-stone-900 text-white flex items-center justify-center text-xs font-bold">X</div>
+                                    <div class="w-6 h-6 rounded bg-stone-100 text-stone-400 flex items-center justify-center text-xs font-bold">J</div>
+                                    <div class="w-6 h-6 rounded bg-stone-100 text-stone-400 flex items-center justify-center text-xs font-bold">V</div>
+                                </div>
+                            </div>
+
+                            <!-- Col 4: Status Component -->
+                            <div class="col-span-6 md:col-span-1 flex justify-end md:justify-center mt-2 md:mt-0">
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-stone-100 border border-stone-200 text-xs font-bold text-stone-600">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-stone-400"></span>
+                                    Onboarding
+                                </span>
+                            </div>
+
+                            <!-- Col 5: Actions Array -->
+                            <div class="col-span-12 md:col-span-2 flex justify-end items-center gap-1.5 mt-4 md:mt-0">
+                                <button class="btn-press w-9 h-9 rounded-full flex items-center justify-center text-emerald-600 hover:bg-emerald-50 transition-colors" title="WhatsApp">
+                                    <i class="ph ph-whatsapp-logo text-lg"></i>
+                                </button>
+                                <button class="btn-press w-9 h-9 rounded-full flex items-center justify-center text-stone-500 hover:bg-stone-200 hover:text-stone-900 transition-colors">
+                                    <i class="ph ph-file-pdf text-lg"></i>
+                                </button>
+                                <button class="btn-press w-9 h-9 rounded-full flex items-center justify-center text-brand bg-brand-50 hover:bg-brand-100 transition-colors relative" title="Cargar a App">
+                                    <i class="ph-fill ph-device-mobile text-lg"></i>
+                                    <span class="absolute top-0 right-0 w-2 h-2 bg-rose-500 rounded-full border border-white"></span>
+                                </button>
+                                <button class="btn-press w-9 h-9 rounded-full flex items-center justify-center text-stone-300 cursor-not-allowed" title="Sin datos progreso">
+                                    <i class="ph ph-trend-up text-lg"></i>
+                                </button>
+                                <div class="w-px h-5 bg-stone-200 mx-1"></div>
+                                <button class="btn-press w-9 h-9 rounded-full flex items-center justify-center text-stone-400 hover:bg-stone-100 hover:text-stone-700 transition-colors">
+                                    <i class="ph-bold ph-dots-three-vertical text-lg"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Table Footer / Pagination placeholder -->
+                    <div class="px-6 py-4 border-t border-stone-100 bg-stone-50/30 flex items-center justify-between">
+                        <span class="text-xs font-medium text-stone-500">Mostrando 3 de 42 estudiantes</span>
+                        <div class="flex gap-2">
+                            <button class="px-3 py-1.5 rounded-lg border border-stone-200 text-stone-400 text-xs font-bold opacity-50 cursor-not-allowed">Anterior</button>
+                            <button class="px-3 py-1.5 rounded-lg border border-stone-200 bg-white text-stone-700 text-xs font-bold shadow-sm hover:bg-stone-50 transition-colors">Siguiente</button>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+    </main>
+</body>
+</html>

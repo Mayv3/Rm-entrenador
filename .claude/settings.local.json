@@ -40,7 +40,12 @@
       "PowerShell(Set-Location \"C:\\\\Users\\\\nicop\\\\OneDrive\\\\Desktop\\\\Proyectos\\\\Rm-entrenador\\\\frontend\"; npx playwright test tests/e2e/portal-planificaciones.spec.ts --reporter=line 2>$null; \"EXIT=$LASTEXITCODE\")",
       "PowerShell(try { $r = Invoke-RestMethod -Uri \"http://localhost:3002/entrenamientos/dia?fecha=2026-06-11\" -TimeoutSec 10; $r | ConvertTo-Json -Depth 4 -Compress | ForEach-Object { $_.Substring\\(0, [Math]::Min\\(1500, $_.Length\\)\\) } } catch { \"ERROR: $\\($_.Exception.Message\\)\" })",
       "PowerShell($raw = \\(Invoke-WebRequest -Uri \"http://localhost:3002/entrenamientos/dia?fecha=2026-06-11\" -TimeoutSec 10\\).Content; $idx = $raw.IndexOf\\('\"series\"'\\); $raw.Substring\\($idx, 220\\))",
-      "PowerShell($raw = \\(Invoke-WebRequest -Uri \"http://localhost:3002/entrenamientos/dia?fecha=2026-06-11\" -UseBasicParsing -TimeoutSec 10\\).Content; $idx = $raw.IndexOf\\('\"series\"'\\); $raw.Substring\\($idx, 260\\))"
+      "PowerShell($raw = \\(Invoke-WebRequest -Uri \"http://localhost:3002/entrenamientos/dia?fecha=2026-06-11\" -UseBasicParsing -TimeoutSec 10\\).Content; $idx = $raw.IndexOf\\('\"series\"'\\); $raw.Substring\\($idx, 260\\))",
+      "mcp__aidesigner__whoami",
+      "mcp__aidesigner__get_credit_status",
+      "mcp__aidesigner__generate_design",
+      "PowerShell(Invoke-Item *)",
+      "PowerShell(Start-Process \"http://localhost:3000/dashboard\")"
     ]
   },
   "enableAllProjectMcpServers": true,

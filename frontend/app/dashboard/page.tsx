@@ -126,64 +126,64 @@ export default function Dashboard() {
     <div className="flex min-h-screen">
 
       {/* ── Sidebar desktop ── */}
-      <aside className="hidden md:flex w-14 hover:w-52 flex-col fixed left-0 top-0 h-full border-r bg-background z-30 transition-[width] duration-200 overflow-hidden group/sidebar">
+      <aside className="hidden md:flex w-16 hover:w-60 flex-col fixed left-0 top-0 h-full border-r bg-card/80 backdrop-blur-xl z-30 transition-[width] duration-300 ease-smooth overflow-hidden group/sidebar shadow-premium">
         {/* Logo */}
         <div className="flex items-center border-b h-16 shrink-0 overflow-hidden">
-          <span className="flex items-center justify-center w-14 shrink-0 font-bold text-[var(--primary-color)] text-sm group-hover/sidebar:opacity-0 group-hover/sidebar:w-0 transition-all duration-150">
-            RM
+          <span className="flex items-center justify-center w-16 shrink-0 group-hover/sidebar:opacity-0 group-hover/sidebar:w-0 transition-all duration-150">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-brand-glow font-bold text-sm">RM</span>
           </span>
           <div className="opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-150 delay-75 flex items-center justify-center flex-1 px-4">
-            <Image src={logoRodrigoEntrenador} alt="Logo" width={110} />
+            <Image src={logoRodrigoEntrenador} alt="Logo" width={120} />
           </div>
         </div>
 
-        <nav className="flex-1 p-2 space-y-0.5 overflow-hidden">
-          {navItems.map(({ value, label, icon: Icon }) => (
-            <button
-              key={value}
-              onClick={() => setActiveTab(value)}
-              className={`w-full flex items-center py-2 rounded-md font-medium transition-colors ${activeTab === value
-                ? "bg-[var(--primary-color)] text-white"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                }`}
-            >
-              <span className="flex items-center justify-center w-10 shrink-0">
-                <Icon className="h-4 w-4" />
-              </span>
-              <span className="flex-1 text-left text-sm whitespace-nowrap opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-150 delay-75">
-                {label}
-              </span>
-            </button>
-          ))}
+        <nav className="flex-1 p-3 space-y-1 overflow-hidden">
+          {navItems.map(({ value, label, icon: Icon }) => {
+            const active = activeTab === value
+            return (
+              <button
+                key={value}
+                onClick={() => setActiveTab(value)}
+                className={`relative w-full flex items-center py-2.5 rounded-xl font-medium transition-all duration-200 ${active
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+              >
+                {active && <span className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full bg-primary" />}
+                <span className="flex items-center justify-center w-10 shrink-0">
+                  <Icon className="h-[18px] w-[18px]" />
+                </span>
+                <span className="flex-1 text-left text-sm whitespace-nowrap opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-150 delay-75">
+                  {label}
+                </span>
+              </button>
+            )
+          })}
         </nav>
 
-        <div className="p-2 border-t space-y-0.5 shrink-0">
-          <Button
-            variant="ghost"
-            size="sm"
+        <div className="p-3 border-t space-y-1 shrink-0">
+          <button
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="w-full flex items-center px-0 text-muted-foreground hover:text-foreground"
+            className="w-full flex items-center py-2.5 rounded-xl font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-all duration-200"
           >
             <span className="flex items-center justify-center w-10 shrink-0">
-              {mounted && theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              {mounted && theme === "dark" ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
             </span>
             <span className="flex-1 text-left text-sm whitespace-nowrap opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-150 delay-75">
               {mounted && theme === "dark" ? "Modo claro" : "Modo oscuro"}
             </span>
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
+          </button>
+          <button
             onClick={handleLogout}
-            className="w-full flex items-center px-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+            className="w-full flex items-center py-2.5 rounded-xl font-medium text-red-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 transition-all duration-200"
           >
             <span className="flex items-center justify-center w-10 shrink-0">
-              <LogOut className="h-4 w-4" />
+              <LogOut className="h-[18px] w-[18px]" />
             </span>
             <span className="flex-1 text-left text-sm whitespace-nowrap opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-150 delay-75">
               Cerrar Sesión
             </span>
-          </Button>
+          </button>
         </div>
       </aside>
 
@@ -193,7 +193,7 @@ export default function Dashboard() {
       </div>
 
       {/* ── Contenido principal ── */}
-      <main className={`flex-1 md:ml-14 mt-16 md:mt-0 pb-20 md:pb-0 overflow-x-hidden ${activeTab === "planificaciones" ? "p-2 sm:p-3 md:overflow-y-hidden md:h-screen" : "p-4 sm:p-6"}`}>
+      <main className={`flex-1 md:ml-16 mt-16 md:mt-0 pb-20 md:pb-0 overflow-x-hidden ${activeTab === "planificaciones" ? "p-2 sm:p-3 md:overflow-y-hidden md:h-screen" : "p-4 sm:p-6"}`}>
         {/* Contenido */}
         <div className={`w-full md:mx-auto ${activeTab === "planificaciones" ? "md:h-full md:max-w-[78vw]" : "md:max-w-[95vw] space-y-4"}`}>
           {activeTab === "students" ? <StudentsTable onOpenPlan={handleOpenPlan} />
@@ -216,11 +216,12 @@ export default function Dashboard() {
           <button
             key={value}
             onClick={() => setActiveTab(value)}
-            className={`flex-none flex flex-col items-center justify-center py-3 gap-1 px-4 min-w-[72px] transition-colors ${activeTab === value
-              ? "text-[var(--primary-color)]"
+            className={`relative flex-none flex flex-col items-center justify-center py-3 gap-1 px-4 min-w-[72px] transition-colors ${activeTab === value
+              ? "text-primary"
               : "text-muted-foreground"
               }`}
           >
+            {activeTab === value && <span className="absolute top-0 left-1/2 -translate-x-1/2 h-0.5 w-8 rounded-full bg-primary" />}
             <Icon className="h-5 w-5 shrink-0" />
             <span className="text-[9px] font-medium whitespace-nowrap">{label}</span>
           </button>

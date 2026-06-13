@@ -31,7 +31,9 @@ export function PaymentStats({
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Total Pagado</CardTitle>
-          <DollarSign className="h-4 w-4 text-[var(--primary-color)]" />
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
+            <DollarSign className="h-[18px] w-[18px]" />
+          </span>
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">${totalPaid.toLocaleString("es-AR")}</div>
@@ -45,7 +47,9 @@ export function PaymentStats({
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Pagos Vencidos</CardTitle>
-          <AlertTriangle className="h-4 w-4 text-[var(--primary-color)]" />
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400">
+            <AlertTriangle className="h-[18px] w-[18px]" />
+          </span>
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">${totalOverdue.toLocaleString("es-AR")}</div>
@@ -59,11 +63,13 @@ export function PaymentStats({
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Fidelidad</CardTitle>
-          <TrendingUp className="h-4 w-4 text-[var(--primary-color)]" />
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <TrendingUp className="h-[18px] w-[18px]" />
+          </span>
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{loyaltyPercentage}%</div>
-          <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+          <div className="w-full bg-muted rounded-full h-2 mt-2">
             <div
               className="bg-[var(--primary-color)] h-2 rounded-full"
               style={{ width: `${loyaltyPercentage}%` }}
@@ -78,7 +84,9 @@ export function PaymentStats({
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Distribución de Planes</CardTitle>
-          <Users className="h-4 w-4 text-[var(--primary-color)]" />
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-50 text-violet-600 dark:bg-violet-950/40 dark:text-violet-400">
+            <Users className="h-[18px] w-[18px]" />
+          </span>
         </CardHeader>
         <CardContent>
           {(() => {
@@ -101,7 +109,7 @@ export function PaymentStats({
                   {topPlan.label}: {topPlan.pct}%
                 </div>
 
-                <div className="w-full bg-gray-200 rounded-full h-2 mt-2 flex overflow-hidden">
+                <div className="w-full bg-muted rounded-full h-2 mt-2 flex overflow-hidden">
                   {sortedPlans.map(plan => (
                     <div
                       key={plan.label}

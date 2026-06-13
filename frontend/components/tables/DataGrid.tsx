@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Box, Card, CardContent, Stack, Typography, IconButton, CircularProgress, Divider, useTheme } from '@mui/material';
+import { Box, Card, CardContent, Stack, Typography, IconButton, CircularProgress, Divider, useTheme, alpha } from '@mui/material';
 import { DataGrid, GridColDef, GridPaginationModel } from '@mui/x-data-grid';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
@@ -91,33 +91,43 @@ export function GenericDataGrid<T extends { id: string | number }>({
     <>
       {/* Vista Desktop - Tabla */}
       <Box sx={{ display: { xs: 'none', md: 'block' }, overflowX: 'auto', minHeight: 400 }}>
-        <Box sx={{ width: '100%', height: '100%' }}>
+        <Box sx={{ width: '100%', height: '100%', borderRadius: '14px', border: `1px solid ${theme.palette.divider}`, backgroundColor: theme.palette.background.paper, overflow: 'hidden', boxShadow: '0 4px 24px -8px rgba(16,24,40,0.06)' }}>
           <DataGrid
             density="standard"
             sx={{
-              backgroundColor: theme.palette.background.paper,
+              border: 'none',
+              backgroundColor: 'transparent',
               height: '100%',
               minHeight: 400,
               fontSize: '0.8rem',
-              '& .MuiDataGrid-main': { backgroundColor: theme.palette.background.paper },
-              '& .MuiDataGrid-columnHeaders': { backgroundColor: theme.palette.background.paper },
-              '& .MuiDataGrid-columnHeader': { backgroundColor: theme.palette.background.paper },
-              '& .MuiDataGrid-columnHeadersInner': { backgroundColor: theme.palette.background.paper },
-              '& .MuiDataGrid-virtualScroller': { backgroundColor: theme.palette.background.paper },
-              '& .MuiDataGrid-footerContainer': { backgroundColor: theme.palette.background.paper },
+              '& .MuiDataGrid-main': { backgroundColor: 'transparent' },
+              '& .MuiDataGrid-columnHeaders': { backgroundColor: 'transparent', borderBottom: `1px solid ${theme.palette.divider}` },
+              '& .MuiDataGrid-columnHeader': { backgroundColor: 'transparent' },
+              '& .MuiDataGrid-columnHeadersInner': { backgroundColor: 'transparent' },
+              '& .MuiDataGrid-virtualScroller': { backgroundColor: 'transparent' },
+              '& .MuiDataGrid-footerContainer': { backgroundColor: 'transparent', borderTop: `1px solid ${theme.palette.divider}` },
+              '& .MuiDataGrid-columnSeparator': { display: 'none' },
               '& .MuiDataGrid-cell': {
                 color: theme.palette.text.primary,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                borderBottom: `1px solid ${theme.palette.divider}`,
               },
-              ...(onRowClick && {
-                '& .MuiDataGrid-row': { cursor: 'pointer' },
-                '& .MuiDataGrid-row:hover': { backgroundColor: theme.palette.action.hover },
-              }),
-              '& .MuiDataGrid-columnHeaderTitle': { color: theme.palette.text.primary, fontWeight: 600 },
-              '& .MuiDataGrid-columnHeader': { backgroundColor: theme.palette.background.paper },
+              '& .MuiDataGrid-row': {
+                transition: 'background-color 0.15s ease',
+                ...(onRowClick && { cursor: 'pointer' }),
+              },
+              '& .MuiDataGrid-row:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.06) },
+              '& .MuiDataGrid-columnHeaderTitle': {
+                color: theme.palette.text.secondary,
+                fontWeight: 700,
+                fontSize: '0.68rem',
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+              },
               '& .MuiDataGrid-columnHeader .MuiDataGrid-columnHeaderTitleContainer': { justifyContent: 'center' },
+              '& .MuiDataGrid-cell:focus, & .MuiDataGrid-cell:focus-within, & .MuiDataGrid-columnHeader:focus, & .MuiDataGrid-columnHeader:focus-within': { outline: 'none' },
             }}
             localeText={esES.components.MuiDataGrid.defaultProps.localeText}
             autoHeight={false}

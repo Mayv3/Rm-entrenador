@@ -40,14 +40,14 @@ const MONTHS_LONG  = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","
 const YEARS        = [2026, 2027, 2028, 2029, 2030]
 
 const C = {
-  activos:   "#22c55e",
+  activos:   "#22b567",
   inactivos: "#f59e0b",
   altas:     "#a78bfa",
   bajas:     "#f87171",
-  primary:   "#22c55e",
-  secondary: "#4ade80",
-  axis:      "#71717a",
-  grid:      "#27272a",
+  primary:   "#22b567",
+  secondary: "#6ee7b7",
+  axis:      "hsl(var(--muted-foreground))",
+  grid:      "hsl(var(--border))",
 }
 
 // MUI chart shared sx — dark themed axes + custom tooltip
@@ -59,10 +59,10 @@ const chartSx = {
   "& .MuiChartsLegend-root":          { display: "none" },
   // Tooltip
   "& .MuiChartsTooltip-root":         {
-    background:   "#18181b !important",
-    border:       "1px solid #3f3f46 !important",
-    borderRadius: "10px !important",
-    boxShadow:    "0 8px 32px rgba(0,0,0,.5) !important",
+    background:   "hsl(var(--popover)) !important",
+    border:       "1px solid hsl(var(--border)) !important",
+    borderRadius: "12px !important",
+    boxShadow:    "0 12px 32px -12px rgba(16,24,40,0.18) !important",
     padding:      "0 !important",
   },
   "& .MuiChartsTooltip-paper":        {
@@ -70,8 +70,8 @@ const chartSx = {
     boxShadow:    "none !important",
   },
   "& .MuiChartsTooltip-table":        { padding: "8px 12px !important" },
-  "& .MuiChartsTooltip-cell":         { color: "#f4f4f5 !important", fontSize: "12px !important", padding: "3px 6px !important" },
-  "& .MuiChartsTooltip-labelCell":    { color: "#a1a1aa !important" },
+  "& .MuiChartsTooltip-cell":         { color: "hsl(var(--popover-foreground)) !important", fontSize: "12px !important", padding: "3px 6px !important" },
+  "& .MuiChartsTooltip-labelCell":    { color: "hsl(var(--muted-foreground)) !important" },
   "& .MuiChartsTooltip-markCell svg": { width: "8px !important", height: "8px !important" },
 }
 
@@ -102,7 +102,7 @@ function StyledSelect({ value, onChange, children }: {
     <select
       value={value}
       onChange={e => onChange(Number(e.target.value))}
-      className="text-xs font-medium bg-zinc-800 border border-zinc-700 text-zinc-200 rounded-lg px-2.5 py-1.5 cursor-pointer focus:outline-none focus:ring-1 focus:ring-green-600 hover:border-zinc-500 transition-colors"
+      className="text-xs font-medium bg-muted border border-border text-foreground rounded-lg px-2.5 py-1.5 cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary hover:border-muted-foreground/40 transition-colors"
     >
       {children}
     </select>
@@ -122,12 +122,12 @@ function StatCard({ label, icon, accentColor = C.primary, onClick, children }: {
   return (
     <Wrapper
       onClick={onClick}
-      className={`relative rounded-2xl bg-zinc-900 border border-zinc-800 p-5 flex flex-col gap-3 overflow-hidden text-left w-full ${onClick ? "hover:border-zinc-600 hover:bg-zinc-800/80 transition-colors cursor-pointer active:scale-[.99]" : ""}`}
+      className={`relative rounded-2xl bg-card border border-border shadow-premium p-5 flex flex-col gap-3 overflow-hidden text-left w-full ${onClick ? "hover:shadow-premium-hover hover:-translate-y-0.5 transition-all cursor-pointer active:scale-[.99]" : ""}`}
     >
       {/* accent bar */}
       <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: accentColor }} />
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-zinc-400 uppercase tracking-widest">{label}</span>
+        <span className="text-xs font-medium text-muted-foreground uppercase tracking-widest">{label}</span>
         {icon && (
           <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `${accentColor}18` }}>
             <span style={{ color: accentColor }}>{icon}</span>
@@ -148,9 +148,9 @@ function ChartCard({ title, action, children, className = "" }: {
   className?: string
 }) {
   return (
-    <div className={`rounded-2xl bg-zinc-900 border border-zinc-800 p-5 flex flex-col gap-4 h-full ${className}`}>
+    <div className={`rounded-2xl bg-card border border-border shadow-premium p-5 flex flex-col gap-4 h-full ${className}`}>
       <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-0 min-h-[28px]">
-        <span className="text-sm font-semibold text-zinc-100">{title}</span>
+        <span className="text-sm font-semibold text-foreground">{title}</span>
         {action}
       </div>
       {children}
@@ -162,7 +162,7 @@ function ChartCard({ title, action, children, className = "" }: {
 
 function ProgressBar({ value, color = C.primary }: { value: number; color?: string }) {
   return (
-    <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+    <div className="h-1.5 rounded-full bg-muted overflow-hidden">
       <div
         className="h-full rounded-full transition-all duration-700"
         style={{ width: `${Math.min(value, 100)}%`, background: color }}
@@ -204,7 +204,7 @@ function DonutChart({ segments, size = 200, onSelect }: {
 
   if (total === 0) return (
     <div style={{ width: size, height: size }} className="flex items-center justify-center">
-      <span className="text-sm text-zinc-500">Sin datos</span>
+      <span className="text-sm text-muted-foreground">Sin datos</span>
     </div>
   )
 
@@ -253,20 +253,20 @@ function DonutChart({ segments, size = 200, onSelect }: {
       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
         {hovered ? (
           <>
-            <span className="text-2xl font-bold text-zinc-100 leading-none">
+            <span className="text-2xl font-bold text-foreground leading-none">
               {segments.find(s => s.label === hovered)?.value ?? 0}
             </span>
-            <span className="text-[10px] text-zinc-400 mt-1">{hovered}</span>
+            <span className="text-[10px] text-muted-foreground mt-1">{hovered}</span>
             {segments.find(s => s.label === hovered)?.subLabel && (
-              <span className="text-[10px] text-zinc-500 mt-0.5 text-center px-2">
+              <span className="text-[10px] text-muted-foreground mt-0.5 text-center px-2">
                 {segments.find(s => s.label === hovered)?.subLabel}
               </span>
             )}
           </>
         ) : (
           <>
-            <span className="text-3xl font-bold text-zinc-100 leading-none">{total}</span>
-            <span className="text-[10px] text-zinc-500 mt-1 uppercase tracking-wider">total</span>
+            <span className="text-3xl font-bold text-foreground leading-none">{total}</span>
+            <span className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider">total</span>
           </>
         )}
       </div>
@@ -290,13 +290,13 @@ function StudentsDrillDialog({ category, students, color, getColor, onClose, det
     return (
       <div key={s.id} className="flex items-center justify-between py-3 gap-3">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-7 h-7 rounded-full bg-zinc-800 flex items-center justify-center shrink-0 text-xs font-bold text-zinc-300">
+          <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center shrink-0 text-xs font-bold text-foreground">
             {s.nombre.charAt(0).toUpperCase()}
           </div>
           <div className="flex flex-col min-w-0">
             <span className="text-sm font-medium truncate">{s.nombre}</span>
             {detail && (
-              <span className="text-sm font-medium text-zinc-300 leading-tight">{detail}</span>
+              <span className="text-sm font-medium text-foreground leading-tight">{detail}</span>
             )}
           </div>
         </div>
@@ -315,26 +315,26 @@ function StudentsDrillDialog({ category, students, color, getColor, onClose, det
 
   return (
     <Dialog open onOpenChange={v => !v && onClose()}>
-      <DialogContent className={`w-[90vw] ${useGroups ? "max-w-2xl" : "max-w-md"} bg-zinc-900 border-zinc-800 text-zinc-100 max-h-[80vh] flex flex-col pr-14`}>
+      <DialogContent className={`w-[90vw] ${useGroups ? "max-w-2xl" : "max-w-md"} bg-card border-border text-foreground max-h-[80vh] flex flex-col pr-14`}>
         <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2 text-base">
             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: color }} />
             {category}
-            <span className="ml-auto text-sm font-normal text-zinc-400">{totalCount} alumnos</span>
+            <span className="ml-auto text-sm font-normal text-muted-foreground">{totalCount} alumnos</span>
           </DialogTitle>
         </DialogHeader>
         {totalCount === 0 ? (
-          <p className="text-sm text-zinc-500 text-center py-8">Sin alumnos en esta categoría</p>
+          <p className="text-sm text-muted-foreground text-center py-8">Sin alumnos en esta categoría</p>
         ) : useGroups ? (
           <div className="overflow-y-auto -mx-6 px-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-1">
               {groups!.filter(g => g.students.length > 0).map(g => (
                 <div key={g.title} className="flex flex-col">
-                  <div className="flex items-center gap-2 py-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-500 border-b border-zinc-800">
+                  <div className="flex items-center gap-2 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground border-b border-border">
                     {g.title}
-                    <span className="text-zinc-600">({g.students.length})</span>
+                    <span className="text-muted-foreground/70">({g.students.length})</span>
                   </div>
-                  <div className="flex flex-col divide-y divide-zinc-800">
+                  <div className="flex flex-col divide-y divide-border">
                     {g.students.map(s => renderRow(s, g.details))}
                   </div>
                 </div>
@@ -342,7 +342,7 @@ function StudentsDrillDialog({ category, students, color, getColor, onClose, det
             </div>
           </div>
         ) : (
-          <div className="overflow-y-auto flex flex-col divide-y divide-zinc-800 -mx-6 px-6">
+          <div className="overflow-y-auto flex flex-col divide-y divide-border -mx-6 px-6">
             {students.map(s => renderRow(s, details))}
           </div>
         )}
@@ -363,36 +363,36 @@ function PaymentsDrillDialog({ title, payments, getColor, onClose }: {
   const showName = payments.some(p => p.alumno_nombre)
   return (
     <Dialog open onOpenChange={v => !v && onClose()}>
-      <DialogContent className="w-[90vw] max-w-md bg-zinc-900 border-zinc-800 text-zinc-100 max-h-[80vh] flex flex-col pr-14">
+      <DialogContent className="w-[90vw] max-w-md bg-card border-border text-foreground max-h-[80vh] flex flex-col pr-14">
         <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2 text-base">
             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: C.primary }} />
             {title}
-            <span className="ml-auto text-sm font-normal text-zinc-400">{payments.length} pagos</span>
+            <span className="ml-auto text-sm font-normal text-muted-foreground">{payments.length} pagos</span>
           </DialogTitle>
         </DialogHeader>
-        <div className="shrink-0 flex items-center justify-between px-1 pb-2 border-b border-zinc-800">
-          <span className="text-xs text-zinc-500">Total del período</span>
-          <span className="text-sm font-semibold text-green-400">{formatARSFull(total)}</span>
+        <div className="shrink-0 flex items-center justify-between px-1 pb-2 border-b border-border">
+          <span className="text-xs text-muted-foreground">Total del período</span>
+          <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">{formatARSFull(total)}</span>
         </div>
         {payments.length === 0 ? (
-          <p className="text-sm text-zinc-500 text-center py-8">Sin pagos en este período</p>
+          <p className="text-sm text-muted-foreground text-center py-8">Sin pagos en este período</p>
         ) : (
-          <div className="overflow-y-auto flex flex-col divide-y divide-zinc-800 -mx-6 px-6">
+          <div className="overflow-y-auto flex flex-col divide-y divide-border -mx-6 px-6">
             {payments.map(p => (
               <div key={p.id} className="flex items-center justify-between py-3 gap-3">
                 <div className="flex items-center gap-2.5 min-w-0">
                   {showName && (
-                    <div className="w-7 h-7 rounded-full bg-zinc-800 flex items-center justify-center shrink-0 text-xs font-bold text-zinc-300">
+                    <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center shrink-0 text-xs font-bold text-foreground">
                       {(p.alumno_nombre ?? "?").charAt(0).toUpperCase()}
                     </div>
                   )}
                   <div className="flex flex-col min-w-0">
                     {showName && <span className="text-sm font-medium truncate">{p.alumno_nombre}</span>}
-                    <span className={showName ? "text-[11px] text-zinc-400" : "text-sm font-medium text-zinc-100"}>
+                    <span className={showName ? "text-[11px] text-muted-foreground" : "text-sm font-medium text-foreground"}>
                       {formatARSFull(Number(p.monto))}
                     </span>
-                    <span className="text-[11px] text-zinc-500">
+                    <span className="text-[11px] text-muted-foreground">
                       {p.fecha_de_pago ? p.fecha_de_pago.split("-").reverse().join("/") : "—"}
                     </span>
                   </div>
@@ -444,15 +444,15 @@ function DonutLegend({ segments, onSelect, descriptions = SEGMENT_DESCRIPTIONS }
           <div className="mt-1 w-2.5 h-2.5 rounded-full shrink-0" style={{ background: s.color }} />
           <div className="flex flex-col">
             <div className="flex items-center gap-1">
-              <span className="text-[11px] text-zinc-400 leading-none group-hover:text-zinc-200 transition-colors">{s.label}</span>
-              <span className="w-3.5 h-3.5 rounded-full bg-zinc-700 text-zinc-400 text-[9px] flex items-center justify-center cursor-default leading-none shrink-0">?</span>
+              <span className="text-[11px] text-muted-foreground leading-none group-hover:text-foreground transition-colors">{s.label}</span>
+              <span className="w-3.5 h-3.5 rounded-full bg-muted text-muted-foreground text-[9px] flex items-center justify-center cursor-default leading-none shrink-0">?</span>
             </div>
-            <span className="text-xl font-bold text-zinc-100 leading-none mt-1">{s.value}</span>
-            <span className="text-[10px] text-zinc-600 mt-0.5">{pct(s.value, total)}%</span>
+            <span className="text-xl font-bold text-foreground leading-none mt-1">{s.value}</span>
+            <span className="text-[10px] text-muted-foreground/70 mt-0.5">{pct(s.value, total)}%</span>
           </div>
           {/* description tooltip */}
           <div className="pointer-events-none absolute bottom-full left-0 mb-2 z-20 hidden group-hover:block">
-            <div className="bg-zinc-800 border border-zinc-700 text-zinc-200 text-[11px] rounded-lg px-3 py-2 whitespace-nowrap shadow-xl">
+            <div className="bg-muted border border-border text-foreground text-[11px] rounded-lg px-3 py-2 whitespace-nowrap shadow-xl">
               {descriptions[s.label] ?? s.label}
             </div>
           </div>
@@ -737,8 +737,8 @@ export function EstadisticasSection() {
       {/* ── Page header ── */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-zinc-100">Estadísticas</h2>
-          <p className="text-xs text-zinc-500 mt-0.5">Resumen general del negocio</p>
+          <h2 className="text-xl font-bold text-foreground">Estadísticas</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">Resumen general del negocio</p>
         </div>
         {/* Global filters (year + month) apply to Facturación KPI, Altas, Plan comparison */}
         <div className="flex items-center gap-2">
@@ -759,17 +759,17 @@ export function EstadisticasSection() {
           onClick={() => setDrillPayments({ title: `Pagos — ${MONTHS_LONG[selectedMonth]} ${selectedYear}`, list: currentMonthPayments })}
         >
           <div>
-            <p className="text-3xl font-bold text-zinc-100 leading-none tracking-tight">
+            <p className="text-3xl font-bold text-foreground leading-none tracking-tight">
               {formatARSFull(currentBilling)}
             </p>
           </div>
           <div className="flex items-center gap-2 text-xs">
-            <span className="text-zinc-500">Mes ant.: {formatARSFull(prevBilling)}</span>
+            <span className="text-muted-foreground">Mes ant.: {formatARSFull(prevBilling)}</span>
             {billingDiff !== 0 && (
               <span className={`flex items-center gap-0.5 font-semibold px-1.5 py-0.5 rounded-md text-[11px] ${
                 billingDiff > 0
-                  ? "text-green-400 bg-green-400/10"
-                  : "text-red-400 bg-red-400/10"
+                  ? "text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-400/10"
+                  : "text-rose-600 bg-rose-50 dark:text-red-400 dark:bg-red-400/10"
               }`}>
                 {billingDiff > 0
                   ? <TrendingUp className="h-3 w-3"/>
@@ -785,10 +785,10 @@ export function EstadisticasSection() {
           onClick={() => setDrillStudents({ title: "Alumnos Activos", list: activosUnionList })}
         >
           <div className="flex items-end justify-between">
-            <p className="text-3xl font-bold text-zinc-100 leading-none tracking-tight">
-              {pct(activosTotal, total)}<span className="text-lg text-zinc-400 ml-0.5">%</span>
+            <p className="text-3xl font-bold text-foreground leading-none tracking-tight">
+              {pct(activosTotal, total)}<span className="text-lg text-muted-foreground ml-0.5">%</span>
             </p>
-            <span className="text-xs text-zinc-500 mb-0.5">{activosTotal} / {total}</span>
+            <span className="text-xs text-muted-foreground mb-0.5">{activosTotal} / {total}</span>
           </div>
           <ProgressBar value={pct(activosTotal, total)} color={C.activos} />
         </StatCard>
@@ -800,7 +800,7 @@ export function EstadisticasSection() {
           <p className="text-2xl font-bold leading-tight truncate" style={{ color: planColor(topPlanEntry[0]) }}>{topPlanEntry[0]}</p>
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-zinc-500">{topPlanEntry[1]} alumnos</span>
+              <span className="text-muted-foreground">{topPlanEntry[1]} alumnos</span>
               <span className="font-semibold" style={{ color: planColor(topPlanEntry[0]) }}>{topPlanPct}%</span>
             </div>
             <ProgressBar value={topPlanPct} color={planColor(topPlanEntry[0])} />
@@ -822,31 +822,31 @@ export function EstadisticasSection() {
                   <button
                     type="button"
                     onClick={() => stepMonth(-1)}
-                    className="flex items-center justify-center w-6 h-6 rounded-md border border-zinc-700 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700 transition-colors"
+                    className="flex items-center justify-center w-6 h-6 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                     aria-label="Mes anterior"
                   >
                     <ChevronLeft className="w-3.5 h-3.5" />
                   </button>
-                  <span className="text-[11px] font-medium text-zinc-300 min-w-[88px] text-center tabular-nums">
+                  <span className="text-[11px] font-medium text-foreground min-w-[88px] text-center tabular-nums">
                     {MONTHS_LONG[selectedMonth]} {selectedYear}
                   </span>
                   <button
                     type="button"
                     onClick={() => stepMonth(1)}
-                    className="flex items-center justify-center w-6 h-6 rounded-md border border-zinc-700 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700 transition-colors"
+                    className="flex items-center justify-center w-6 h-6 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                     aria-label="Mes siguiente"
                   >
                     <ChevronRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
               )}
-              <div className="flex items-center rounded-md border border-zinc-700 overflow-hidden text-[11px] font-medium">
+              <div className="flex items-center rounded-md border border-border overflow-hidden text-[11px] font-medium">
                 {(["general", "mensual"] as const).map(m => (
                   <button
                     key={m}
                     type="button"
                     onClick={() => setEstadoMode(m)}
-                    className={`px-2.5 py-1 transition-colors ${estadoMode === m ? "bg-zinc-700 text-zinc-100" : "text-zinc-400 hover:text-zinc-200"}`}
+                    className={`px-2.5 py-1 transition-colors ${estadoMode === m ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"}`}
                   >
                     {m === "general" ? "General" : "Mensual"}
                   </button>
@@ -857,7 +857,7 @@ export function EstadisticasSection() {
         >
           <div className="flex flex-col items-center justify-center gap-6 flex-1 py-2">
             {estadoMode === "mensual" && (
-              <span className="text-[11px] text-zinc-500 -mb-3 text-center">
+              <span className="text-[11px] text-muted-foreground -mb-3 text-center">
                 Activos: pago + altas del mes · Altas: inicio · Bajas: vencimiento sin renovar
               </span>
             )}
@@ -952,14 +952,14 @@ export function EstadisticasSection() {
           title="Facturación por plan"
           className="lg:col-span-2"
           action={
-            <span className="text-[11px] text-zinc-500 font-medium">
+            <span className="text-[11px] text-muted-foreground font-medium">
               {MONTHS_SHORT[selectedMonth]} vs {MONTHS_SHORT[prevMonth]}
             </span>
           }
         >
           {planNames.length === 0 ? (
             <div className="flex items-center justify-center flex-1 py-16">
-              <span className="text-sm text-zinc-600">Sin datos para este período</span>
+              <span className="text-sm text-muted-foreground/70">Sin datos para este período</span>
             </div>
           ) : (
             <BarChart
@@ -1009,11 +1009,11 @@ export function EstadisticasSection() {
           <div className="flex items-center gap-5 pt-1">
             <div className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-sm" style={{ background: C.primary }} />
-              <span className="text-[11px] text-zinc-400">{MONTHS_LONG[selectedMonth]}</span>
+              <span className="text-[11px] text-muted-foreground">{MONTHS_LONG[selectedMonth]}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-sm" style={{ background: C.secondary }} />
-              <span className="text-[11px] text-zinc-400">{MONTHS_LONG[prevMonth]}</span>
+              <span className="text-[11px] text-muted-foreground">{MONTHS_LONG[prevMonth]}</span>
             </div>
           </div>
         </ChartCard>

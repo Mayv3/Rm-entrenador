@@ -4,7 +4,7 @@ import { Comfortaa } from "next/font/google";
 import { Providers } from "./providers";
 import { Toaster } from "@/components/ui/sonner";
 
-const comfortaa = Comfortaa({ subsets: ["latin"], weight: "400" });
+const comfortaa = Comfortaa({ subsets: ["latin"], weight: ["300", "400", "500", "600", "700"] });
 
 export const metadata: Metadata = {
   title: "RM ENTRENADOR",

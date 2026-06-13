@@ -1,0 +1,19 @@
+{
+  "repoRoot": "C:\\Users\\nicop\\OneDrive\\Desktop\\Proyectos\\Rm-entrenador",
+  "cwd": "C:\\Users\\nicop\\OneDrive\\Desktop\\Proyectos\\Rm-entrenador",
+  "stack": {
+    "frameworks": [],
+    "componentLibraries": [],
+    "styling": [],
+    "componentDirectories": [],
+    "packageFiles": [
+      "package.json"
+    ]
+  },
+  "routes": [],
+  "tokens": {
+    "sources": [],
+    "tokens": []
+  },
+  "summary": "Repo root: C:\\Users\\nicop\\OneDrive\\Desktop\\Proyectos\\Rm-entrenador\nWorking directory: C:\\Users\\nicop\\OneDrive\\Desktop\\Proyectos\\Rm-entrenador\nFrameworks: none detected\nStyling: none detected\nComponent libraries: none detected\nRoute roots: none detected\nRoute candidates: none detected\nComponent directories: none detected\nToken sources: none detected\nVisible design language hints: no strong hints detected"
+}
