@@ -45,7 +45,7 @@ function ServicioMobileCard({
       </CardHeader>
       <CardContent className="space-y-3">
         {servicio.descripcion && (
-          <p className="text-sm text-muted-foreground text-start truncate">
+          <p className="text-sm text-muted-foreground text-start line-clamp-2 break-words">
             {firstSentence(servicio.descripcion)}
           </p>
         )}
