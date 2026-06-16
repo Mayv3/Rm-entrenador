@@ -108,8 +108,18 @@ export function PlanProgresoDialog({
     sesionMap.set(`${s.dia_id}-${s.semana}`, s)
   })
 
+  // Activadores = solo-vista: sus registros (si quedó alguno viejo en DB) NUNCA entran al progreso,
+  // así no aparece "completado" de activadores en ninguna vista (alumno ni profesor).
+  const activadorEjIds = new Set<number>(
+    dias
+      .flatMap((d) => d.ejercicios)
+      .filter((e) => esActivador(localData[e.id]?.categoria ?? e.categoria))
+      .map((e) => e.id)
+  )
+
   const registroMap = new Map<string, any>()
   data?.registros?.forEach((r: any) => {
+    if (activadorEjIds.has(r.planificacion_ejercicio_id)) return
     registroMap.set(`${r.sesion_id}-${r.planificacion_ejercicio_id}`, r)
   })
 
