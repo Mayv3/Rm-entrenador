@@ -1357,16 +1357,27 @@ export async function getEntrenamientosDia(req, res) {
     registrosBySesion.get(r.sesion_id).push(r);
   });
 
-  const entrenamientos = asistencias.map((a) => ({
-    asistencia_id: a.id,
-    fecha: a.fecha,
-    hora: a.created_at,
-    alumno: a.alumnos ?? { id: a.alumno_id, nombre: "Alumno" },
-    sesion_id: a.sesion_id,
-    sesion: sesionMap.get(a.sesion_id) ?? null,
-    estado_diario: estadoMap.get(a.sesion_id) ?? null,
-    registros: registrosBySesion.get(a.sesion_id) ?? [],
-  }));
+  // Una sesión cuenta como entreno "real" si tiene alguna serie NO salteada con repeticiones > 0.
+  // (Peso corporal cuenta: reps > 0 aunque peso sea 0. Un skip lleva _saltado=true y series en 0,
+  // y una serie vacía va con reps null/0 — ninguno cuenta.)
+  // Ocultamos las sesiones solo-skip / vacías: en "Hoy" solo se ven entrenos reales.
+  const tieneDatosReales = (regs) =>
+    (regs ?? []).some((r) =>
+      (r.series ?? []).some((s) => s && s._saltado !== true && Number(s.repeticiones) > 0)
+    );
+
+  const entrenamientos = asistencias
+    .map((a) => ({
+      asistencia_id: a.id,
+      fecha: a.fecha,
+      hora: a.created_at,
+      alumno: a.alumnos ?? { id: a.alumno_id, nombre: "Alumno" },
+      sesion_id: a.sesion_id,
+      sesion: sesionMap.get(a.sesion_id) ?? null,
+      estado_diario: estadoMap.get(a.sesion_id) ?? null,
+      registros: registrosBySesion.get(a.sesion_id) ?? [],
+    }))
+    .filter((e) => tieneDatosReales(e.registros));
 
   res.json({ fecha, entrenamientos });
 }

@@ -306,7 +306,7 @@ export function HoySection() {
                           const categoria = (reg.categoria_snapshot ?? "").toUpperCase()
                           const series = reg.series ?? []
                           const esSaltado = series.length > 0
-                            ? series[0]?._saltado === true || series.every((s) => (s.peso_kg ?? 0) === 0)
+                            ? series[0]?._saltado === true || series.every((s) => !s.peso_kg && !s.repeticiones && !s.rpe)
                             : false
                           const conDatos = series.filter((s) => s.peso_kg != null || s.repeticiones != null || s.rpe != null)
                           return (

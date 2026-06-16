@@ -45,7 +45,8 @@
       "mcp__aidesigner__get_credit_status",
       "mcp__aidesigner__generate_design",
       "PowerShell(Invoke-Item *)",
-      "PowerShell(Start-Process \"http://localhost:3000/dashboard\")"
+      "PowerShell(Start-Process \"http://localhost:3000/dashboard\")",
+      "mcp__supabase-rm__get_logs"
     ]
   },
   "enableAllProjectMcpServers": true,
