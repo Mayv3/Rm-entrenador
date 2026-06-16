@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
   CheckCircle2,
+  AlertTriangle,
   Loader2,
   Dumbbell,
   Moon,
@@ -97,12 +98,39 @@ const ESTADO_FLAGS: { key: keyof NonNullable<EntrenamientoHoy["estado_diario"]>;
   { key: "dolor", label: "Dolor", icon: Activity, cls: "text-red-500" },
 ]
 
-function EstadoBadge({ completado }: { completado: boolean }) {
-  return completado ? (
-    <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-green-600 dark:text-green-400 bg-green-500/10 px-1.5 py-0.5 rounded">
-      <CheckCircle2 className="h-3 w-3" /> Completado
-    </span>
-  ) : (
+type EstadoVista = "completado" | "incompleto" | "en_curso"
+
+// "Incompleto" = el día ya pasó y la sesión no quedó completada (no terminó todos los ejercicios).
+// Se deriva en vista (no se guarda): un día abierto hoy es "En curso" y pasa a "Incompleto" recién
+// cuando la fecha queda atrás, sin depender de ningún job nocturno.
+function estadoVista(estado: string | null | undefined, fecha: string, hoy: string): EstadoVista {
+  if (estado === "completado") return "completado"
+  if (fecha < hoy) return "incompleto"
+  return "en_curso"
+}
+
+const AVATAR_CLS: Record<EstadoVista, string> = {
+  completado: "bg-green-500/15 text-green-600 dark:text-green-400",
+  incompleto: "bg-red-500/15 text-red-600 dark:text-red-400",
+  en_curso: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+}
+
+function EstadoBadge({ estado }: { estado: EstadoVista }) {
+  if (estado === "completado") {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-green-600 dark:text-green-400 bg-green-500/10 px-1.5 py-0.5 rounded">
+        <CheckCircle2 className="h-3 w-3" /> Completado
+      </span>
+    )
+  }
+  if (estado === "incompleto") {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-red-600 dark:text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded">
+        <AlertTriangle className="h-3 w-3" /> Incompleto
+      </span>
+    )
+  }
+  return (
     <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded">
       En curso
     </span>
@@ -127,6 +155,7 @@ export function HoySection() {
   const entrenamientos = useMemo(() => data?.entrenamientos ?? [], [data])
   const selectedFlags = ESTADO_FLAGS.filter((f) => selected?.estado_diario?.[f.key])
   const selectedDia = selected?.sesion?.planificacion_dias
+  const selectedEv: EstadoVista = selected ? estadoVista(selected.sesion?.estado, selected.fecha, hoy) : "en_curso"
   // Activadores (accesorios solo-vista): fuera del detalle, el alumno no los carga.
   // Orden por categoría A → E (mismo orden en que el alumno ve el día).
   const CATEGORIA_ORDER: Record<string, number> = { A: 1, B: 2, C: 3, D: 4, E: 5 }
@@ -189,7 +218,7 @@ export function HoySection() {
             {entrenamientos.length} {entrenamientos.length === 1 ? "alumno entrenó" : "alumnos entrenaron"}
           </p>
           {entrenamientos.map((ent) => {
-            const completado = ent.sesion?.estado === "completado"
+            const ev = estadoVista(ent.sesion?.estado, fecha, hoy)
             const dia = ent.sesion?.planificacion_dias
             const hora = formatHora(ent.hora)
             const flags = ESTADO_FLAGS.filter((f) => ent.estado_diario?.[f.key])
@@ -204,7 +233,7 @@ export function HoySection() {
               >
                 {/* Alumno + día + estado */}
                 <span className="flex items-center gap-3">
-                  <span className={`h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${completado ? "bg-green-500/15 text-green-600 dark:text-green-400" : "bg-amber-500/15 text-amber-600 dark:text-amber-400"}`}>
+                  <span className={`h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${AVATAR_CLS[ev]}`}>
                     {ent.alumno.nombre.trim().charAt(0).toUpperCase()}
                   </span>
                   <span className="flex-1 min-w-0">
@@ -217,7 +246,7 @@ export function HoySection() {
                       {dia?.nombre ? ` · ${dia.nombre}` : ""}
                     </span>
                   </span>
-                  <EstadoBadge completado={completado} />
+                  <EstadoBadge estado={ev} />
                 </span>
 
                 {/* Datos distribuidos parejo */}
@@ -250,7 +279,7 @@ export function HoySection() {
             <>
               <DialogHeader className="px-5 pt-5 pb-4 border-b shrink-0 space-y-2">
                 <div className="flex items-center gap-3">
-                  <span className={`h-10 w-10 rounded-full flex items-center justify-center text-base font-bold shrink-0 ${selected.sesion?.estado === "completado" ? "bg-green-500/15 text-green-600 dark:text-green-400" : "bg-amber-500/15 text-amber-600 dark:text-amber-400"}`}>
+                  <span className={`h-10 w-10 rounded-full flex items-center justify-center text-base font-bold shrink-0 ${AVATAR_CLS[selectedEv]}`}>
                     {selected.alumno.nombre.trim().charAt(0).toUpperCase()}
                   </span>
                   <div className="flex-1 min-w-0">
@@ -261,7 +290,7 @@ export function HoySection() {
                       {selected.sesion?.planificacion_hojas?.nombre ? ` · ${selected.sesion.planificacion_hojas.nombre}` : ""}
                     </p>
                   </div>
-                  <EstadoBadge completado={selected.sesion?.estado === "completado"} />
+                  <EstadoBadge estado={selectedEv} />
                 </div>
                 {(formatHora(selected.hora) || selectedFlags.length > 0) && (
                   <div className="flex items-center gap-3 flex-wrap">
