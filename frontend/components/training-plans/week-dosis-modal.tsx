@@ -76,7 +76,7 @@ export function WeekDosisModal({ open, onOpenChange, planEjercicio, onSaved }: W
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-md max-h-[calc(100dvh-5rem)] overflow-y-auto">
         <div className="space-y-1 mb-2">
           <h2 className="text-base font-semibold">{planEjercicio.ejercicios.nombre}</h2>
           <p className="text-xs text-muted-foreground">Configurá dosis y notas para cada semana</p>

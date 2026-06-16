@@ -214,7 +214,7 @@ export function EditPaymentDialog({ open, onOpenChange, payment, onPaymentUpdate
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="w-[90vw] !max-w-[560px] p-0 gap-0 overflow-x-hidden h-auto max-h-[80vh] flex flex-col rounded-2xl">
+      <DialogContent className="w-[90vw] !max-w-[560px] p-0 gap-0 overflow-x-hidden h-auto max-h-[calc(100dvh-5rem)] flex flex-col rounded-2xl">
         <DialogTitle className="sr-only">Editar Pago</DialogTitle>
         <div className="flex items-center gap-3 px-5 py-4 border-b bg-muted/40">
           <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[var(--primary-color)]/10">

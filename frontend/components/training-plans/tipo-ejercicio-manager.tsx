@@ -107,7 +107,7 @@ export function TipoEjercicioManager({ open, onOpenChange }: TipoEjercicioManage
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-md flex flex-col p-0 max-h-[85vh]">
+        <DialogContent className="max-w-md flex flex-col p-0 max-h-[calc(100dvh-5rem)]">
           <DialogHeader className="px-5 pt-5 pb-3 border-b shrink-0">
             <DialogTitle className="text-base flex items-center gap-2">
               <Tag className="h-4 w-4 text-[var(--primary-color)]" />

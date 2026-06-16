@@ -126,7 +126,7 @@ export function ExerciseListDialog({ open, onOpenChange, planId }: ExerciseListD
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-lg flex flex-col p-0 max-h-[88vh]">
+        <DialogContent className="max-w-lg flex flex-col p-0 max-h-[calc(100dvh-5rem)]">
           <DialogHeader className="px-5 pt-5 pb-3 border-b shrink-0">
             <DialogTitle className="text-base flex items-center gap-2">
               <Dumbbell className="h-4 w-4 text-[var(--primary-color)]" />

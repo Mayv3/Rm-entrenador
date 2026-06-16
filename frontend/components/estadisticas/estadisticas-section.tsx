@@ -315,7 +315,7 @@ function StudentsDrillDialog({ category, students, color, getColor, onClose, det
 
   return (
     <Dialog open onOpenChange={v => !v && onClose()}>
-      <DialogContent className={`w-[90vw] ${useGroups ? "max-w-2xl" : "max-w-md"} bg-card border-border text-foreground max-h-[80vh] flex flex-col pr-14`}>
+      <DialogContent className={`w-[90vw] ${useGroups ? "max-w-2xl" : "max-w-md"} bg-card border-border text-foreground max-h-[calc(100dvh-5rem)] flex flex-col pr-14`}>
         <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2 text-base">
             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: color }} />
@@ -363,7 +363,7 @@ function PaymentsDrillDialog({ title, payments, getColor, onClose }: {
   const showName = payments.some(p => p.alumno_nombre)
   return (
     <Dialog open onOpenChange={v => !v && onClose()}>
-      <DialogContent className="w-[90vw] max-w-md bg-card border-border text-foreground max-h-[80vh] flex flex-col pr-14">
+      <DialogContent className="w-[90vw] max-w-md bg-card border-border text-foreground max-h-[calc(100dvh-5rem)] flex flex-col pr-14">
         <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2 text-base">
             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: C.primary }} />

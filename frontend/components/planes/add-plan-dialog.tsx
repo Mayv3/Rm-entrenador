@@ -60,7 +60,7 @@ export function AddPlanDialog({ open, onOpenChange }: AddPlanDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[90vw] !max-w-[480px] p-0 gap-0 overflow-x-hidden h-auto max-h-[90vh] flex flex-col rounded-2xl">
+      <DialogContent className="w-[90vw] !max-w-[480px] p-0 gap-0 overflow-x-hidden h-auto max-h-[calc(100dvh-5rem)] flex flex-col rounded-2xl">
         <DialogTitle className="sr-only">Nuevo Plan</DialogTitle>
 
         {/* Header */}

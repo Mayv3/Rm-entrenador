@@ -223,7 +223,7 @@ export function AntroUploadDialog({ open, onOpenChange, alumno }: Props) {
   return (
     <>
     <Dialog open={open} onOpenChange={(v) => { if (!v) { setPendingFile(null); setParsedData(null) }; onOpenChange(v) }}>
-      <DialogContent className={parsedData ? "w-[calc(100vw-2rem)] max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden" : "w-[calc(100vw-2rem)] max-w-2xl overflow-hidden"}>
+      <DialogContent className={parsedData ? "w-[calc(100vw-2rem)] max-w-2xl max-h-[calc(100dvh-5rem)] overflow-y-auto overflow-x-hidden" : "w-[calc(100vw-2rem)] max-w-2xl overflow-hidden"}>
         <DialogHeader>
           <DialogTitle className="text-base flex items-center gap-2">
             {parsedData && (

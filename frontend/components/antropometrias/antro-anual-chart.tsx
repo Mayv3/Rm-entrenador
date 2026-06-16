@@ -195,7 +195,7 @@ export function AntroAnualChart({ open, onClose, antros, onSelectAntro, parsing 
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[calc(100dvh-5rem)] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
             <TrendingUp className="h-4 w-4 text-green-600" />

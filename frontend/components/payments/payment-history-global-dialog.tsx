@@ -141,7 +141,7 @@ export function PaymentHistoryGlobalDialog({ open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[96vw] !max-w-4xl p-0 gap-0 h-[92vh] flex flex-col rounded-2xl overflow-hidden">
+      <DialogContent className="w-[96vw] !max-w-4xl p-0 gap-0 max-h-[calc(100dvh-5rem)] flex flex-col rounded-2xl overflow-hidden">
         <DialogTitle className="sr-only">Historial global de pagos</DialogTitle>
 
         {/* ── Header ──────────────────────────────────────────────── */}

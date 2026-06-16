@@ -115,7 +115,7 @@ export function PlanCalendarioDialog({ open, onOpenChange, planId, alumnoNombre,
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={`${calendarOnly ? "max-w-md w-[95vw]" : "max-w-6xl w-[95vw]"} flex flex-col p-0 max-h-[90vh] overflow-hidden`}>
+      <DialogContent className={`${calendarOnly ? "max-w-md w-[95vw]" : "max-w-6xl w-[95vw]"} flex flex-col p-0 max-h-[calc(100dvh-5rem)] overflow-hidden`}>
         <DialogHeader className="px-6 pt-5 pb-4 border-b shrink-0">
           <DialogTitle className="text-base flex items-center gap-2">
             <CalendarIcon className="h-4 w-4 text-[var(--primary-color)]" />

@@ -159,7 +159,7 @@ export function PlanCreator({ open, onOpenChange }: PlanCreatorProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[800px] max-h-[90vh] flex flex-col">
+      <DialogContent className="sm:max-w-[800px] max-h-[calc(100dvh-5rem)] flex flex-col">
         <DialogHeader>
           <DialogTitle>Crear Nuevo Plan de Entrenamiento</DialogTitle>
           <DialogDescription>Diseña un plan de entrenamiento personalizado dividido en 3 días.</DialogDescription>

@@ -1223,7 +1223,7 @@ function PlanPreviewDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl flex flex-col p-0 max-h-[88vh]">
+      <DialogContent className="max-w-5xl flex flex-col p-0 max-h-[calc(100dvh-5rem)]">
         <DialogHeader className="px-6 pt-5 pb-4 border-b shrink-0">
           <DialogTitle className="text-base">
             Preview — {activeHoja?.nombre ?? ""}
