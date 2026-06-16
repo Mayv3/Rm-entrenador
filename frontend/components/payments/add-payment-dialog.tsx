@@ -15,7 +15,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, CreditCard } from "lucide-react"
 import axios from "axios"
 import { calculateDueDate, isoToDisplayDate, displayDateToIso } from "@/lib/utils"
-import { useDialogBackButton } from "@/hooks/use-dialog-back-button"
 import { useQueryClient } from "@tanstack/react-query"
 import { queryKeys } from "@/lib/query-keys"
 import { usePlanes, type Plan } from "@/hooks/use-planes"
@@ -209,7 +208,6 @@ export function AddPaymentDialog({ open, onOpenChange, onPaymentUpdated }: AddPa
     }
   }
 
-  useDialogBackButton(open, onOpenChange)
 
   const handleOpenChange = (val: boolean) => {
     if (!val) setShowConfirm(false)

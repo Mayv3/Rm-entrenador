@@ -5,8 +5,23 @@ import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
 
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
+import { useDialogBackButton } from "@/hooks/use-dialog-back-button"
 
-const AlertDialog = AlertDialogPrimitive.Root
+const AlertDialog = ({
+  open,
+  onOpenChange,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Root>) => {
+  useDialogBackButton(!!open, onOpenChange)
+  return (
+    <AlertDialogPrimitive.Root
+      open={open}
+      onOpenChange={onOpenChange}
+      {...props}
+    />
+  )
+}
+AlertDialog.displayName = "AlertDialog"
 
 const AlertDialogTrigger = AlertDialogPrimitive.Trigger
 

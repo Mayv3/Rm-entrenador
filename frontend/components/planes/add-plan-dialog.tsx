@@ -10,7 +10,6 @@ import { Loader2, Tag } from "lucide-react"
 import axios from "axios"
 import { useQueryClient } from "@tanstack/react-query"
 import { queryKeys } from "@/lib/query-keys"
-import { useDialogBackButton } from "@/hooks/use-dialog-back-button"
 import { ColorPickerPopover } from "@/components/ui/colorSelector"
 import { RichTextEditor } from "@/components/ui/rich-text-editor"
 
@@ -26,7 +25,6 @@ export function AddPlanDialog({ open, onOpenChange }: AddPlanDialogProps) {
   const [formData, setFormData] = useState(EMPTY_FORM)
   const [isLoading, setIsLoading] = useState(false)
 
-  useDialogBackButton(open, onOpenChange)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target

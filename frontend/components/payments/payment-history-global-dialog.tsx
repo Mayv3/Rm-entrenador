@@ -10,7 +10,6 @@ import { Loader } from "@/components/ui/loader"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { queryKeys } from "@/lib/query-keys"
 import { formatDate } from "@/lib/payment-utils"
-import { useDialogBackButton } from "@/hooks/use-dialog-back-button"
 import { usePlanes } from "@/hooks/use-planes"
 import axios from "axios"
 
@@ -53,7 +52,6 @@ interface Props {
 }
 
 export function PaymentHistoryGlobalDialog({ open, onOpenChange }: Props) {
-  useDialogBackButton(open, onOpenChange)
   const queryClient = useQueryClient()
   const { data: planes = [] } = usePlanes()
   const [search, setSearch] = useState("")

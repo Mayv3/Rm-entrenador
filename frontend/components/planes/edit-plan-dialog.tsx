@@ -10,7 +10,6 @@ import { Loader2, Pencil } from "lucide-react"
 import axios from "axios"
 import { useQueryClient } from "@tanstack/react-query"
 import { queryKeys } from "@/lib/query-keys"
-import { useDialogBackButton } from "@/hooks/use-dialog-back-button"
 import type { Plan } from "@/hooks/use-planes"
 import { usePlanes } from "@/hooks/use-planes"
 import { ColorPickerPopover } from "@/components/ui/colorSelector"
@@ -48,7 +47,6 @@ export function EditPlanDialog({ open, onOpenChange, plan }: EditPlanDialogProps
     }
   }, [plan, planes])
 
-  useDialogBackButton(open, onOpenChange)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target

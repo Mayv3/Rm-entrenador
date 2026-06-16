@@ -10,7 +10,6 @@ import { Loader2, Pencil } from "lucide-react"
 import axios from "axios"
 import { useQueryClient } from "@tanstack/react-query"
 import { queryKeys } from "@/lib/query-keys"
-import { useDialogBackButton } from "@/hooks/use-dialog-back-button"
 import type { Servicio } from "@/hooks/use-servicios"
 import { RichTextEditor } from "@/components/ui/rich-text-editor"
 import { ColorPickerPopover } from "@/components/ui/colorSelector"
@@ -37,7 +36,6 @@ export function EditServicioDialog({ open, onOpenChange, servicio }: EditServici
     }
   }, [servicio])
 
-  useDialogBackButton(open, onOpenChange)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target

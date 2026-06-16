@@ -5,7 +5,6 @@ import { useState, useEffect, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Loader2, Pencil } from "lucide-react"
 import { calculateDueDate, isoToDisplayDate, displayDateToIso } from "@/lib/utils"
-import { useDialogBackButton } from "@/hooks/use-dialog-back-button"
 import { useQueryClient } from "@tanstack/react-query"
 import { queryKeys } from "@/lib/query-keys"
 import { usePlanes, type Plan } from "@/hooks/use-planes"
@@ -115,7 +114,6 @@ export function EditPaymentDialog({ open, onOpenChange, payment, onPaymentUpdate
     }
   }, [payment?.id, planes.length])
 
-  useDialogBackButton(open, onOpenChange)
 
   const handleOpenChange = (val: boolean) => {
     if (!val) setShowConfirm(false)

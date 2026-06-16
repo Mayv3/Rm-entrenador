@@ -13,7 +13,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Loader2, Pencil } from "lucide-react"
-import { useDialogBackButton } from "@/hooks/use-dialog-back-button"
 import { useQueryClient } from "@tanstack/react-query"
 import { queryKeys } from "@/lib/query-keys"
 import { usePlanes } from "@/hooks/use-planes"
@@ -135,7 +134,6 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
     }
   }
 
-  useDialogBackButton(open, onOpenChange)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
