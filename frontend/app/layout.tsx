@@ -3,7 +3,6 @@ import "@/styles/globals.css";
 import { Comfortaa } from "next/font/google";
 import { Providers } from "./providers";
 import { Toaster } from "@/components/ui/sonner";
-import { BackGuard } from "@/components/back-guard";
 
 const comfortaa = Comfortaa({ subsets: ["latin"], weight: ["300", "400", "500", "600", "700"] });
 
@@ -42,7 +41,6 @@ export default function RootLayout({
         <Providers>
           {children}
         </Providers>
-        <BackGuard />
         <Toaster richColors position="top-right" />
         <script
           dangerouslySetInnerHTML={{

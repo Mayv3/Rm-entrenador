@@ -333,7 +333,7 @@ export function PaymentHistoryGlobalDialog({ open, onOpenChange }: Props) {
                           <p className="font-semibold text-sm">${Number(entry.monto).toLocaleString("es-AR")}</p>
                           <p className="text-xs text-muted-foreground">hasta {formatDate(entry.fecha_de_vencimiento)}</p>
                         </div>
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex gap-1 transition-opacity">
                           <button onClick={() => startEdit(entry)} className="p-1.5 rounded hover:bg-muted text-muted-foreground"><Pencil className="h-3.5 w-3.5" /></button>
                           <button onClick={() => { setEditingId(null); setDeletingId(entry.id) }} className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
                         </div>

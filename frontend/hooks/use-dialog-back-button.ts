@@ -1,9 +1,12 @@
 import { useEffect, useRef } from "react"
+import { modalStack } from "@/lib/modal-stack"
 
 /**
  * Mientras el modal está abierto, empuja una entrada al history para que el
  * gesto/botón "atrás" del celular cierre el modal en vez de navegar.
- * Si el modal se cierra por UI (no por atrás), limpia la entrada dummy.
+ *
+ * También registra el modal en `modalStack` para que BackGuard (dashboard)
+ * sepa que hay un modal abierto y no interfiera con el cierre.
  */
 export function useDialogBackButton(
   open: boolean,
@@ -14,26 +17,20 @@ export function useDialogBackButton(
   const cbRef = useRef(onOpenChange)
   cbRef.current = onOpenChange
 
-  const poppedRef = useRef(false)
-
   useEffect(() => {
     if (!open || typeof window === "undefined") return
 
-    poppedRef.current = false
+    modalStack.open()
     window.history.pushState({ __dialog: true }, "", window.location.href)
 
     const handlePopState = () => {
-      poppedRef.current = true
       cbRef.current?.(false)
     }
 
     window.addEventListener("popstate", handlePopState)
     return () => {
       window.removeEventListener("popstate", handlePopState)
-      // Cerrado por UI (no por atrás): saca la entrada dummy que metimos.
-      if (!poppedRef.current) {
-        window.history.back()
-      }
+      modalStack.close()
     }
   }, [open])
 }

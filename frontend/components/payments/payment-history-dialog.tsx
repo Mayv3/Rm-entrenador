@@ -205,7 +205,7 @@ export function PaymentHistoryDialog({ open, onOpenChange, payment }: PaymentHis
                         <p className="text-sm font-semibold">${Number(entry.monto).toLocaleString("es-AR")}</p>
                         <p className="text-xs text-muted-foreground">hasta {formatDate(entry.fecha_de_vencimiento)}</p>
                       </div>
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                         <button onClick={() => startEdit(entry)} className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground">
                           <Pencil className="h-3.5 w-3.5" />
                         </button>

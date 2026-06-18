@@ -17,6 +17,7 @@ import { AntropometriasSection } from "@/components/antropometrias/antropometria
 import { NutricionSection } from "@/components/nutricion/nutricion-section";
 import { EstadisticasSection } from "@/components/estadisticas/estadisticas-section";
 import { PlanificacionesSection } from "@/components/training-plans/planificaciones-section";
+import { BackGuard } from "@/components/back-guard";
 import { useTheme } from "next-themes";
 
 function PortalSection({ copied, setCopied }: { copied: boolean; setCopied: (v: boolean) => void }) {
@@ -124,6 +125,7 @@ export default function Dashboard() {
 
   return (
     <div className="flex min-h-screen">
+      <BackGuard />
 
       {/* ── Sidebar desktop ── */}
       <aside className="hidden md:flex w-16 hover:w-60 flex-col fixed left-0 top-0 h-full border-r bg-card/80 backdrop-blur-xl z-30 transition-[width] duration-300 ease-smooth overflow-hidden group/sidebar shadow-premium">
