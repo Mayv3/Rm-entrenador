@@ -38,6 +38,11 @@ function parseVal(val: string | null): number | null {
   return isNaN(n) ? null : n
 }
 
+function fmtNum(n: number): string {
+  const r = Math.round(n * 10) / 10
+  return Number.isInteger(r) ? String(r) : r.toFixed(1)
+}
+
 function CompareBarChart({
   title,
   rows,
@@ -83,6 +88,38 @@ function CompareBarChart({
         borderRadius={8}
         sx={{ width: "100%" }}
       />
+
+      {/* Diferencias A → B */}
+      <div className="flex flex-col divide-y divide-border bg-muted/30">
+        {filtered.map(([label, a, b]) => {
+          const hasBoth = a !== null && b !== null
+          const diff = hasBoth ? (b as number) - (a as number) : null
+          const up = diff !== null && diff > 0
+          const down = diff !== null && diff < 0
+          return (
+            <div key={label} className="flex items-center justify-between gap-2 px-3 py-1.5 text-xs">
+              <span className="text-muted-foreground">{label}</span>
+              <span className="flex items-center gap-1.5 font-medium tabular-nums">
+                <span className="text-foreground">
+                  {a !== null ? fmtNum(a) : "—"} → {b !== null ? fmtNum(b) : "—"}{unit ? ` ${unit}` : ""}
+                </span>
+                {diff !== null && (
+                  <span
+                    className={`font-bold ${
+                      up ? "text-green-600" : down ? "text-red-500" : "text-muted-foreground"
+                    }`}
+                  >
+                    {up ? "↑" : down ? "↓" : ""}
+                    {diff > 0 ? "+" : ""}
+                    {fmtNum(diff)}
+                    {unit ? ` ${unit}` : ""}
+                  </span>
+                )}
+              </span>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

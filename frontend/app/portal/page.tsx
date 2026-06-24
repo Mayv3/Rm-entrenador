@@ -148,6 +148,28 @@ function AntroViewDialog({ parsedData, antro, onClose }: { parsedData: ParsedAnt
   )
 }
 
+// Valida que el link de hábitos sea uno real/específico: no la homepage o búsqueda
+// genérica de Google, ni un link de ejemplo/placeholder. Links profundos (docs.google.com,
+// drive, notion, etc.) sí pasan porque apuntan a un documento concreto.
+function isRealHabitsLink(link?: string | null): boolean {
+  if (!link) return false
+  let url: URL
+  try {
+    url = new URL(link.trim())
+  } catch {
+    return false
+  }
+  if (!/^https?:$/.test(url.protocol)) return false
+  const host = url.hostname.replace(/^www\./, "").toLowerCase()
+  const path = url.pathname.replace(/\/+$/, "")
+  // Placeholders / ejemplos
+  if (/(^|\.)example\.(com|org|net)$/.test(host)) return false
+  if (host.startsWith("ejemplo.")) return false
+  // Google genérico (homepage o búsqueda) sin documento específico
+  if (host === "google.com" && (path === "" || path === "/search")) return false
+  return true
+}
+
 export default function PortalPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -349,6 +371,12 @@ export default function PortalPage() {
     antroGroups.push(sortedAntros.slice(i, i + 4))
   }
 
+  // Secciones de "Salud y seguimiento": cada una se oculta si no tiene datos.
+  const hasAntros = antros.length > 0
+  const hasNutricion = nutricionPdfs.length > 0
+  const hasHabitos = isRealHabitsLink(student.habitos_link)
+  const hasSaludSection = hasAntros || hasNutricion || hasHabitos
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -522,11 +550,14 @@ export default function PortalPage() {
         </div>
 
         {/* Separador grupo salud/datos */}
-        <div className="pt-10 mt-8 border-t-2 border-border/80 dark:border-white/[0.08]">
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground dark:text-zinc-500">Salud y seguimiento</p>
-        </div>
+        {hasSaludSection && (
+          <div className="pt-10 mt-8 border-t-2 border-border/80 dark:border-white/[0.08]">
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground dark:text-zinc-500">Salud y seguimiento</p>
+          </div>
+        )}
 
         {/* Antropometrías */}
+        {hasAntros && (
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <div className="flex flex-col gap-0.5">
@@ -539,18 +570,7 @@ export default function PortalPage() {
             </div>
           </div>
 
-          {antros.length === 0 ? (
-            <div
-              aria-disabled="true"
-              className="flex flex-col items-center justify-center gap-2 py-6 rounded-xl bg-muted/40 border border-border opacity-60 select-none"
-            >
-              <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
-                <FileText className="h-5 w-5 text-muted-foreground" />
-              </div>
-              <span className="text-sm font-bold text-muted-foreground">Sin antropometrías cargadas</span>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2">
               {antroGroups.map((group, gi) => (
                 <div key={gi} className="grid grid-cols-4 gap-2">
                   {group.map((antro, idx) => {
@@ -610,28 +630,18 @@ export default function PortalPage() {
                   </button>
                 )}
               </div>
-            </div>
-          )}
+          </div>
         </div>
+        )}
 
         {/* Nutrición */}
+        {hasNutricion && (
         <div className="flex flex-col gap-2">
           <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
             Nutrición {nutricionPdfs.length > 0 && `(${nutricionPdfs.length})`}
           </span>
 
-          {nutricionPdfs.length === 0 ? (
-            <div
-              aria-disabled="true"
-              className="flex flex-col items-center justify-center gap-2 py-6 rounded-xl bg-muted/40 border border-border opacity-60 select-none"
-            >
-              <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
-                <FileText className="h-5 w-5 text-muted-foreground" />
-              </div>
-              <span className="text-sm font-bold text-muted-foreground">Sin PDFs de nutrición cargados</span>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2">
               {(() => {
                 const groups: AntroRecord[][] = []
                 for (let i = 0; i < nutricionPdfs.length; i += 4) groups.push(nutricionPdfs.slice(i, i + 4))
@@ -658,15 +668,15 @@ export default function PortalPage() {
                 ))
               })()}
             </div>
-          )}
         </div>
+        )}
 
         {/* Hábitos */}
+        {hasHabitos && (
         <div className="flex flex-col gap-2">
           <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Hábitos</span>
-          {student.habitos_link && /^https?:\/\//i.test(student.habitos_link.trim()) ? (
-            <a
-              href={student.habitos_link}
+          <a
+              href={student.habitos_link!}
               target="_blank"
               rel="noopener noreferrer"
               className="group flex flex-col items-center justify-center gap-2 py-5 rounded-xl bg-card border border-emerald-500/40 hover:border-emerald-500 hover:bg-muted/40 shadow-sm hover:shadow active:scale-[0.97] transition-all duration-200 w-full"
@@ -677,18 +687,8 @@ export default function PortalPage() {
               <span className="text-sm font-bold tracking-tight text-foreground">Ver mis hábitos</span>
               <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Abrir</span>
             </a>
-          ) : (
-            <div
-              aria-disabled="true"
-              className="flex flex-col items-center justify-center gap-2 py-5 rounded-xl bg-muted/40 border border-border opacity-60 cursor-not-allowed select-none w-full"
-            >
-              <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
-                <Salad className="h-5 w-5 text-muted-foreground" />
-              </div>
-              <span className="text-sm font-bold text-muted-foreground">Sin hábitos cargados</span>
-            </div>
-          )}
         </div>
+        )}
 
       </main>
 
