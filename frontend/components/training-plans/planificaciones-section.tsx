@@ -12,13 +12,57 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader } from "@/components/ui/loader"
 import {
   Plus, Loader2, ClipboardList, Pencil, Trash2,
-  CheckCircle2, Circle, AlertCircle, Search, X, Eye, FileText
+  CheckCircle2, Circle, AlertCircle, Search, X, Eye, FileText, MessageCircle
 } from "lucide-react"
 import { PlanBuilder } from "./plan-builder"
 import { PlantillasDialog } from "./plantillas-dialog"
 import type { PlanificacionListItem } from "@/types/planificaciones"
 
-interface Student { id: number; nombre: string }
+interface Student { id: number; nombre: string; telefono?: string | null }
+
+// Mensaje de la encuesta de cierre que se manda por WhatsApp al alumno.
+const ENCUESTA_CIERRE = `*ENCUESTA DE CIERRE DEL PLAN*
+
+*SOBRE EL PLAN*
+- En relación a tu objetivo sentís que esta plani te ayudo?
+
+- Cómo sentiste el plan? (Demasiado fácil, bien ajustado o muy difícil)
+
+- Cuáles ejercicios te gustaron más y cuáles menos?
+
+*SOBRE VOS*
+- Cómo calificarías tu compromiso con este plan? (Del 1 al 10)
+
+- Qué creés que podrías cambiar o mejorar en tu desempeño para el siguiente plan?
+
+- Notaste algún cambio en tu disciplina o motivación por este plan?
+
+*SOBRE MI SERVICIO*
+- ¿Cómo calificarías mi servicio? (Del 1 al 10)
+
+- ¿Cómo sentiste mí seguimiento con vos? (Comunicación, correcciones, interacción en la planilla)
+
+- ¿Algo que pueda mejorar? (Sin pelos en la lengua)`
+
+// Normaliza un teléfono argentino al formato que espera wa.me: 549 + área + número.
+// Acepta variantes: +54 9..., 54..., 0351..., 15..., "3516671026", con espacios/guiones.
+function normalizarTelefonoAR(raw?: string | null): string | null {
+  if (!raw) return null
+  let d = raw.replace(/\D/g, "")
+  if (!d) return null
+  if (d.startsWith("0054")) d = d.slice(2)   // 00 + 54
+  if (d.startsWith("54")) d = d.slice(2)      // código país
+  if (d.startsWith("9")) d = d.slice(1)       // 9 de móvil (lo re-agregamos al final)
+  if (d.startsWith("0")) d = d.slice(1)       // prefijo nacional 0
+  if (d.length < 8) return null               // demasiado corto, inválido
+  return `549${d}`
+}
+
+function abrirWhatsapp(telefono?: string | null) {
+  const num = normalizarTelefonoAR(telefono)
+  if (!num) return
+  window.open(`https://wa.me/${num}?text=${encodeURIComponent(ENCUESTA_CIERRE)}`, "_blank", "noopener,noreferrer")
+}
 
 const ESTADO_CONFIG: Record<string, { label: string; icon: React.ReactNode; badgeClass: string; accentClass: string }> = {
   borrador: {
@@ -448,6 +492,17 @@ function PlanCard({
         className="flex items-center shrink-0 opacity-60 group-hover:opacity-100 transition-opacity"
         onClick={(e) => e.stopPropagation()}
       >
+        {normalizarTelefonoAR(alumno?.telefono) && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 w-7 p-0 text-muted-foreground hover:text-green-600 hover:bg-green-600/10"
+            onClick={() => abrirWhatsapp(alumno?.telefono)}
+            title="Enviar encuesta de cierre por WhatsApp"
+          >
+            <MessageCircle className="h-3.5 w-3.5" />
+          </Button>
+        )}
         <Button
           size="sm"
           variant="ghost"

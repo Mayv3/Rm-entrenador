@@ -224,9 +224,15 @@ export async function getPlanificaciones(req, res) {
   res.json(cleaned);
 }
 
+// Umbrales fijos por semana (no dependen de p.semanas):
+//   - semana 4 completa → casi_completo (se pinta verde).
+//   - semana 5 completa → necesita_nueva (se separa + titila).
+const SEMANA_VERDE = 4
+const SEMANA_SEPARA = 5
+
 // Para cada plan (con alumno + hoja activa) marca, según la hoja activa:
-//   - necesita_nueva = true → la ÚLTIMA semana (semana === p.semanas) tiene todos los días completados.
-//   - casi_completo  = true → la PENÚLTIMA semana (p.semanas - 1) tiene todos los días completados.
+//   - necesita_nueva = true → la semana SEMANA_SEPARA tiene todos los días completados.
+//   - casi_completo  = true → la semana SEMANA_VERDE tiene todos los días completados (y no la de separar).
 // Ambos comparan días completados (estado "completado") contra el total de días de la hoja.
 async function marcarNecesitaNueva(planes) {
   // Hoja activa por plan: hoja_activa_id o, en su defecto, la de mayor número.
@@ -241,9 +247,7 @@ async function marcarNecesitaNueva(planes) {
       hojas.find((h) => h.id === p.hoja_activa_id) ??
       [...hojas].sort((a, b) => (b.numero ?? 0) - (a.numero ?? 0))[0]
     if (!hojaActiva) continue
-    const ultimaSemana = Number(p.semanas)
-    if (!Number.isFinite(ultimaSemana) || ultimaSemana < 1) continue
-    conHoja.push({ plan: p, hojaId: hojaActiva.id, ultimaSemana })
+    conHoja.push({ plan: p, hojaId: hojaActiva.id })
   }
   if (conHoja.length === 0) return
 
@@ -274,13 +278,13 @@ async function marcarNecesitaNueva(planes) {
     completadosPorClave.get(key).add(s.dia_id)
   }
 
-  for (const { plan, hojaId, ultimaSemana } of conHoja) {
+  for (const { plan, hojaId } of conHoja) {
     const totalDias = diasPorHoja.get(hojaId) ?? 0
     if (totalDias === 0) continue
     const diasDe = (semana) => completadosPorClave.get(`${plan.id}:${hojaId}:${semana}`)?.size ?? 0
-    plan.necesita_nueva = diasDe(ultimaSemana) >= totalDias
-    // Penúltima semana completa (y aún no terminó la última) → "casi", se pinta verde.
-    plan.casi_completo = !plan.necesita_nueva && ultimaSemana > 1 && diasDe(ultimaSemana - 1) >= totalDias
+    plan.necesita_nueva = diasDe(SEMANA_SEPARA) >= totalDias
+    // Semana 4 completa (y aún no terminó la 5) → "casi", se pinta verde.
+    plan.casi_completo = !plan.necesita_nueva && diasDe(SEMANA_VERDE) >= totalDias
   }
 }
 
