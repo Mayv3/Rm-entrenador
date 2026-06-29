@@ -35,8 +35,8 @@ function PlanMobileCard({
   const sub6 = children.find((c) => c.duracion_meses === 6)
 
   return (
-    <Card className="p-3 py-3">
-      <CardHeader className="pb-3">
+    <Card className="p-3 py-3 min-w-0 overflow-hidden">
+      <CardHeader className="pb-3 min-w-0">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <span
@@ -48,15 +48,15 @@ function PlanMobileCard({
           <span className="font-semibold text-sm">${plan.precio?.toLocaleString("es-AR")}/mes</span>
         </div>
         {(sub3 || sub6) && (
-          <div className="flex gap-3 text-xs text-emerald-600 font-semibold mt-1">
+          <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-emerald-600 font-semibold mt-1">
             {sub3 && <span>3m (-{sub3.descuento}%): ${sub3.precio.toLocaleString("es-AR")}</span>}
             {sub6 && <span>6m (-{sub6.descuento}%): ${sub6.precio.toLocaleString("es-AR")}</span>}
           </div>
         )}
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-3 min-w-0">
         {plan.descripcion && (
-          <p className="text-sm text-muted-foreground text-start truncate">
+          <p className="text-sm text-muted-foreground text-start truncate min-w-0">
             {firstSentence(plan.descripcion)}
           </p>
         )}

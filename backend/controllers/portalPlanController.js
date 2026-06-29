@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabase.js";
+import { cache } from "../lib/cache.js";
 
 function pickPlan(planificaciones) {
   if (!Array.isArray(planificaciones) || planificaciones.length === 0) return null;
@@ -336,6 +337,10 @@ export async function upsertPortalSesion(req, res) {
     }
     return res.status(500).json({ error: error.message });
   }
+
+  // El estado de las sesiones cambió → la lista del entrenador (que deriva necesita_nueva
+  // de las sesiones completadas) quedó desactualizada. Invalidar su cache.
+  cache.del("planificaciones");
 
   return res.json(data);
 }

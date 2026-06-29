@@ -215,8 +215,73 @@ export async function getPlanificaciones(req, res) {
     ...p,
     planificacion_hojas: (p.planificacion_hojas ?? []).filter((h) => !h.deleted_at),
   }))
+
+  // Marca necesita_nueva: el alumno completó todos los días de la última semana del
+  // bloque activo → terminó el plan, hay que armarle uno nuevo. Se calcula en batch.
+  await marcarNecesitaNueva(cleaned)
+
   cache.set(KEYS.planificaciones, cleaned)
   res.json(cleaned);
+}
+
+// Para cada plan (con alumno + hoja activa) marca, según la hoja activa:
+//   - necesita_nueva = true → la ÚLTIMA semana (semana === p.semanas) tiene todos los días completados.
+//   - casi_completo  = true → la PENÚLTIMA semana (p.semanas - 1) tiene todos los días completados.
+// Ambos comparan días completados (estado "completado") contra el total de días de la hoja.
+async function marcarNecesitaNueva(planes) {
+  // Hoja activa por plan: hoja_activa_id o, en su defecto, la de mayor número.
+  const conHoja = []
+  for (const p of planes) {
+    p.necesita_nueva = false
+    p.casi_completo = false
+    if (!p.alumno_id) continue
+    const hojas = p.planificacion_hojas ?? []
+    if (hojas.length === 0) continue
+    const hojaActiva =
+      hojas.find((h) => h.id === p.hoja_activa_id) ??
+      [...hojas].sort((a, b) => (b.numero ?? 0) - (a.numero ?? 0))[0]
+    if (!hojaActiva) continue
+    const ultimaSemana = Number(p.semanas)
+    if (!Number.isFinite(ultimaSemana) || ultimaSemana < 1) continue
+    conHoja.push({ plan: p, hojaId: hojaActiva.id, ultimaSemana })
+  }
+  if (conHoja.length === 0) return
+
+  const hojaIds = [...new Set(conHoja.map((c) => c.hojaId))]
+  const planIds = conHoja.map((c) => c.plan.id)
+
+  // Días por hoja activa + sesiones completadas de esas hojas, en paralelo.
+  const [{ data: dias }, { data: sesiones }] = await Promise.all([
+    supabase.from("planificacion_dias").select("id, hoja_id").in("hoja_id", hojaIds),
+    supabase
+      .from("entrenamiento_sesiones")
+      .select("planificacion_id, hoja_id, dia_id, semana, estado")
+      .in("planificacion_id", planIds)
+      .eq("estado", "completado"),
+  ])
+
+  // Cantidad de días por hoja
+  const diasPorHoja = new Map()
+  for (const d of dias ?? []) {
+    diasPorHoja.set(d.hoja_id, (diasPorHoja.get(d.hoja_id) ?? 0) + 1)
+  }
+
+  // Días completados (distintos) por plan en su última semana / hoja activa
+  const completadosPorClave = new Map() // `${planId}:${hojaId}:${semana}` -> Set(dia_id)
+  for (const s of sesiones ?? []) {
+    const key = `${s.planificacion_id}:${s.hoja_id}:${s.semana}`
+    if (!completadosPorClave.has(key)) completadosPorClave.set(key, new Set())
+    completadosPorClave.get(key).add(s.dia_id)
+  }
+
+  for (const { plan, hojaId, ultimaSemana } of conHoja) {
+    const totalDias = diasPorHoja.get(hojaId) ?? 0
+    if (totalDias === 0) continue
+    const diasDe = (semana) => completadosPorClave.get(`${plan.id}:${hojaId}:${semana}`)?.size ?? 0
+    plan.necesita_nueva = diasDe(ultimaSemana) >= totalDias
+    // Penúltima semana completa (y aún no terminó la última) → "casi", se pinta verde.
+    plan.casi_completo = !plan.necesita_nueva && ultimaSemana > 1 && diasDe(ultimaSemana - 1) >= totalDias
+  }
 }
 
 export async function getPlanificacionesByAlumno(req, res) {

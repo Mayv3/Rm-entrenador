@@ -83,6 +83,8 @@ export interface PlanificacionListItem {
   created_at: string
   alumnos?: { id: number; nombre: string } | null
   planificacion_hojas?: { id: number; nombre: string; numero: number; estado: string }[]
+  necesita_nueva?: boolean
+  casi_completo?: boolean
 }
 
 export const CATEGORIAS = ["ACTIVADOR", "A", "B", "C", "D", "E"] as const
