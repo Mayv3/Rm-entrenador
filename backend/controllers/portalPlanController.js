@@ -24,6 +24,7 @@ async function getPlanificacionCompleta(planId) {
     .from("planificacion_hojas")
     .select("*")
     .eq("planificacion_id", planId)
+    .is("deleted_at", null)
     .order("numero", { ascending: true });
 
   if (hojasError) throw new Error(hojasError.message);

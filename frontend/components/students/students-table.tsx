@@ -193,9 +193,12 @@ function StudentProgresoDialog({
   }, [open, student])
 
   const dias = useMemo(() => {
-    if (!plan) return []
-    return plan.hojas
-      .flatMap((h) => h.dias)
+    if (!plan || plan.hojas.length === 0) return []
+    // Solo la hoja activa (bloque vigente): hoja_activa_id o, en su defecto, la de mayor número.
+    const activeHoja =
+      plan.hojas.find((h) => h.id === plan.hoja_activa_id) ??
+      [...plan.hojas].sort((a, b) => (b.numero ?? 0) - (a.numero ?? 0))[0]
+    return (activeHoja?.dias ?? [])
       .filter((d, i, arr) => arr.findIndex((x) => x.id === d.id) === i)
   }, [plan])
 
