@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { History, Search, X, Pencil, Trash2, Check } from "lucide-react"
+import { History, Search, X, Trash2 } from "lucide-react"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -10,7 +10,6 @@ import { Loader } from "@/components/ui/loader"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { queryKeys } from "@/lib/query-keys"
 import { formatDate } from "@/lib/payment-utils"
-import { usePlanes } from "@/hooks/use-planes"
 import axios from "axios"
 
 interface HistorialEntry {
@@ -53,42 +52,15 @@ interface Props {
 
 export function PaymentHistoryGlobalDialog({ open, onOpenChange }: Props) {
   const queryClient = useQueryClient()
-  const { data: planes = [] } = usePlanes()
   const [search, setSearch] = useState("")
   const [sortKey, setSortKey] = useState<SortKey>("changed_at_desc")
-  const [editingId, setEditingId] = useState<number | null>(null)
   const [deletingId, setDeletingId] = useState<number | null>(null)
-  const [editForm, setEditForm] = useState({ monto: "", fecha_de_pago: "", fecha_de_vencimiento: "", modalidad: "" })
   const [saving, setSaving] = useState(false)
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: queryKeys.allPaymentHistory })
     queryClient.invalidateQueries({ queryKey: ["paymentHistory"] })
     queryClient.invalidateQueries({ queryKey: queryKeys.payments })
-  }
-
-  const handlePlanChange = (nombre: string) => {
-    const plan = planes.find((p) => p.nombre === nombre)
-    setEditForm((prev) => ({
-      ...prev,
-      modalidad: nombre,
-      monto: plan?.precio != null ? String(plan.precio) : prev.monto,
-    }))
-  }
-
-  const startEdit = (entry: HistorialEntry) => {
-    setDeletingId(null)
-    setEditingId(entry.id)
-    setEditForm({ monto: String(entry.monto), fecha_de_pago: entry.fecha_de_pago ?? "", fecha_de_vencimiento: entry.fecha_de_vencimiento, modalidad: entry.modalidad })
-  }
-
-  const handleSave = async (id: number) => {
-    setSaving(true)
-    try {
-      await axios.put(`${process.env.NEXT_PUBLIC_URL_BACKEND}/payment/history/${id}`, editForm)
-      invalidate()
-      setEditingId(null)
-    } catch (e) { console.error(e) } finally { setSaving(false) }
   }
 
   const handleDelete = async (id: number) => {
@@ -219,35 +191,6 @@ export function PaymentHistoryGlobalDialog({ open, onOpenChange }: Props) {
                   </thead>
                   <tbody className="divide-y divide-border">
                     {filtered.map((entry) => {
-                      if (editingId === entry.id) {
-                        return (
-                          <tr key={entry.id} className="bg-muted/20">
-                            <td className="px-4 py-2 font-medium text-muted-foreground">{entry.nombre}</td>
-                            <td className="px-2 py-2">
-                              <Select value={editForm.modalidad} onValueChange={handlePlanChange}>
-                                <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Plan" /></SelectTrigger>
-                                <SelectContent>
-                                  {planes.map((p) => (
-                                    <SelectItem key={p.id} value={p.nombre} className="text-xs">
-                                      {p.nombre}{p.precio != null && <span className="ml-1.5 text-muted-foreground">${p.precio.toLocaleString("es-AR")}</span>}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </td>
-                            <td className="px-2 py-2"><Input type="number" value={editForm.monto} onChange={(e) => setEditForm((p) => ({ ...p, monto: e.target.value }))} className="h-7 text-xs" /></td>
-                            <td className="px-2 py-2"><Input type="date" value={editForm.fecha_de_pago} onChange={(e) => setEditForm((p) => ({ ...p, fecha_de_pago: e.target.value }))} className="h-7 text-xs" /></td>
-                            <td className="px-2 py-2"><Input type="date" value={editForm.fecha_de_vencimiento} onChange={(e) => setEditForm((p) => ({ ...p, fecha_de_vencimiento: e.target.value }))} className="h-7 text-xs" /></td>
-                            <td className="px-4 py-2 text-xs text-muted-foreground">{formatDateTime(entry.changed_at)}</td>
-                            <td className="px-2 py-2">
-                              <div className="flex gap-1">
-                                <button onClick={() => setEditingId(null)} className="p-1 rounded hover:bg-muted text-muted-foreground"><X className="h-3.5 w-3.5" /></button>
-                                <button onClick={() => handleSave(entry.id)} disabled={saving} className="p-1 rounded bg-[var(--primary-color)] text-white"><Check className="h-3.5 w-3.5" /></button>
-                              </div>
-                            </td>
-                          </tr>
-                        )
-                      }
                       if (deletingId === entry.id) {
                         return (
                           <tr key={entry.id} className="bg-red-50 dark:bg-red-950/20">
@@ -271,8 +214,7 @@ export function PaymentHistoryGlobalDialog({ open, onOpenChange }: Props) {
                           <td className="px-4 py-3 text-xs text-muted-foreground">{formatDateTime(entry.changed_at)}</td>
                           <td className="px-2 py-3">
                             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button onClick={() => startEdit(entry)} className="p-1.5 rounded hover:bg-muted text-muted-foreground"><Pencil className="h-3.5 w-3.5" /></button>
-                              <button onClick={() => { setEditingId(null); setDeletingId(entry.id) }} className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
+                              <button onClick={() => setDeletingId(entry.id)} className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
                             </div>
                           </td>
                         </tr>
@@ -285,32 +227,6 @@ export function PaymentHistoryGlobalDialog({ open, onOpenChange }: Props) {
               {/* Mobile: lista compacta */}
               <div className="md:hidden divide-y divide-border">
                 {filtered.map((entry) => {
-                  if (editingId === entry.id) {
-                    return (
-                      <div key={entry.id} className="px-4 py-3 flex flex-col gap-2 bg-muted/20">
-                        <p className="text-sm font-medium">{entry.nombre}</p>
-                        <div className="grid grid-cols-2 gap-2">
-                          <Select value={editForm.modalidad} onValueChange={handlePlanChange}>
-                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Plan" /></SelectTrigger>
-                            <SelectContent>
-                              {planes.map((p) => (
-                                <SelectItem key={p.id} value={p.nombre} className="text-xs">
-                                  {p.nombre}{p.precio != null && <span className="ml-1.5 text-muted-foreground">${p.precio.toLocaleString("es-AR")}</span>}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <Input type="number" value={editForm.monto} onChange={(e) => setEditForm((p) => ({ ...p, monto: e.target.value }))} placeholder="Monto" className="h-8 text-xs" />
-                          <Input type="date" value={editForm.fecha_de_pago} onChange={(e) => setEditForm((p) => ({ ...p, fecha_de_pago: e.target.value }))} className="h-8 text-xs" />
-                          <Input type="date" value={editForm.fecha_de_vencimiento} onChange={(e) => setEditForm((p) => ({ ...p, fecha_de_vencimiento: e.target.value }))} className="h-8 text-xs" />
-                        </div>
-                        <div className="flex gap-2 justify-end">
-                          <button onClick={() => setEditingId(null)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded border"><X className="h-3 w-3" /> Cancelar</button>
-                          <button onClick={() => handleSave(entry.id)} disabled={saving} className="flex items-center gap-1 text-xs text-white bg-[var(--primary-color)] px-2 py-1 rounded"><Check className="h-3 w-3" /> Guardar</button>
-                        </div>
-                      </div>
-                    )
-                  }
                   if (deletingId === entry.id) {
                     return (
                       <div key={entry.id} className="flex items-center justify-between px-4 py-3 gap-3 bg-red-50 dark:bg-red-950/20">
@@ -334,8 +250,7 @@ export function PaymentHistoryGlobalDialog({ open, onOpenChange }: Props) {
                           <p className="text-xs text-muted-foreground">hasta {formatDate(entry.fecha_de_vencimiento)}</p>
                         </div>
                         <div className="flex gap-1 transition-opacity">
-                          <button onClick={() => startEdit(entry)} className="p-1.5 rounded hover:bg-muted text-muted-foreground"><Pencil className="h-3.5 w-3.5" /></button>
-                          <button onClick={() => { setEditingId(null); setDeletingId(entry.id) }} className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
+                          <button onClick={() => setDeletingId(entry.id)} className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
                         </div>
                       </div>
                     </div>

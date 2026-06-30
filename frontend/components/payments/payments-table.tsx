@@ -290,6 +290,15 @@ export function PaymentsTable() {
               </button>
             ))}
           </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="md:hidden h-10 gap-1.5 w-full"
+            onClick={() => setIsGlobalHistoryOpen(true)}
+          >
+            <History className="h-4 w-4" />
+            Historial de pagos
+          </Button>
         </div>
         <div className="flex gap-2">
           <Button

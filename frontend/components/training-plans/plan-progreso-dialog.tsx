@@ -323,9 +323,11 @@ export function PlanProgresoDialog({
 
                                 const series: any[] = registro.series ?? []
 
+                                // Saltado = marcador explícito _saltado, o sin dato real (reps>0).
+                                // NO usar peso==0: ejercicios de peso corporal (dominadas) van sin peso.
                                 const esSaltado = series.length > 0
-                                  ? series.every((s: any) => (s.peso_kg ?? 0) === 0)
-                                  : (registro.peso_kg ?? 0) === 0
+                                  ? (series[0]?._saltado === true || series.every((s: any) => (s.repeticiones ?? 0) === 0))
+                                  : (registro.repeticiones ?? 0) === 0
 
                                 if (esSaltado) {
                                   return (

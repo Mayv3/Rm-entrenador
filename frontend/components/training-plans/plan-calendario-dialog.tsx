@@ -258,7 +258,9 @@ function DetalleAsistencia({ a }: { a: Asistencia }) {
                 const series: any[] = Array.isArray(r.series) && r.series.length > 0
                   ? r.series
                   : [{ peso_kg: r.peso_kg, repeticiones: r.repeticiones, rpe: r.rpe }]
-                const esSaltado = series.every((s) => (s.peso_kg ?? 0) === 0)
+                // Saltado = marcador explícito _saltado, o sin dato real (reps>0).
+                // NO usar peso==0: ejercicios de peso corporal (dominadas) van sin peso.
+                const esSaltado = (series[0] as any)?._saltado === true || series.every((s) => (s.repeticiones ?? 0) === 0)
                 return (
                   <tr key={r.id} style={rowStyle} className="hover:brightness-95 transition-colors">
                     <td className="px-2.5 md:px-4 py-2 md:py-3 text-xs text-muted-foreground tabular-nums">{idx + 1}</td>

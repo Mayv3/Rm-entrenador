@@ -471,6 +471,7 @@ export function EstadisticasSection() {
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth())
   const [billingYear,   setBillingYear]   = useState(today.getFullYear())
   const [estadoMode,    setEstadoMode]    = useState<"general" | "mensual">("mensual")
+  const [billingTab,    setBillingTab]    = useState<"plan" | "servicio">("plan")
 
   const { data: planes = [] } = usePlanes()
   const planColor = (nombre: string) => getPlanColorFromList(planes, nombre)
@@ -583,27 +584,43 @@ export function EstadisticasSection() {
     const topPlanPct     = pct(topPlanEntry[1], students.length)
     const topPlanStudents = students.filter(s => s.modalidad === topPlanEntry[0])
 
+    // Los pagos de servicios se guardan en la misma tabla con modalidad "Servicio: <nombre>".
+    // Se separan de los planes para mostrarse en su propia pestaña.
+    const SERVICIO_PREFIX = "Servicio:"
     const plansCurr: Record<string, number> = {}
     const plansPrev: Record<string, number> = {}
     const planPaymentsCurr: Record<string, (Payment & { alumno_nombre: string })[]> = {}
     const planPaymentsPrev: Record<string, (Payment & { alumno_nombre: string })[]> = {}
+    const serviciosCurr: Record<string, number> = {}
+    const serviciosPrev: Record<string, number> = {}
+    const servicioPaymentsCurr: Record<string, (Payment & { alumno_nombre: string })[]> = {}
+    const servicioPaymentsPrev: Record<string, (Payment & { alumno_nombre: string })[]> = {}
     paymentHistory.forEach(p => {
       const d = parseLocalDate(p.fecha_de_pago)
       if (!d || !p.modalidad) return
       const s = studentMap.get(p.alumno_id)
       const enriched = { ...p, alumno_nombre: s?.nombre ?? "—" }
+      const esServicio = p.modalidad.startsWith(SERVICIO_PREFIX)
+      const nombre = esServicio
+        ? (p.modalidad.slice(SERVICIO_PREFIX.length).trim() || "Servicio")
+        : p.modalidad
+      const totals  = esServicio ? serviciosCurr : plansCurr
+      const totalsP = esServicio ? serviciosPrev : plansPrev
+      const paysC   = esServicio ? servicioPaymentsCurr : planPaymentsCurr
+      const paysP   = esServicio ? servicioPaymentsPrev : planPaymentsPrev
       if (d.getMonth() === selectedMonth && d.getFullYear() === selectedYear) {
-        plansCurr[p.modalidad] = (plansCurr[p.modalidad] || 0) + Number(p.monto)
-        if (!planPaymentsCurr[p.modalidad]) planPaymentsCurr[p.modalidad] = []
-        planPaymentsCurr[p.modalidad].push(enriched)
+        totals[nombre] = (totals[nombre] || 0) + Number(p.monto)
+        if (!paysC[nombre]) paysC[nombre] = []
+        paysC[nombre].push(enriched)
       }
       if (d.getMonth() === prevMonth && d.getFullYear() === prevYear) {
-        plansPrev[p.modalidad] = (plansPrev[p.modalidad] || 0) + Number(p.monto)
-        if (!planPaymentsPrev[p.modalidad]) planPaymentsPrev[p.modalidad] = []
-        planPaymentsPrev[p.modalidad].push(enriched)
+        totalsP[nombre] = (totalsP[nombre] || 0) + Number(p.monto)
+        if (!paysP[nombre]) paysP[nombre] = []
+        paysP[nombre].push(enriched)
       }
     })
     const planNames = [...new Set([...Object.keys(plansCurr), ...Object.keys(plansPrev)])]
+    const servicioNames = [...new Set([...Object.keys(serviciosCurr), ...Object.keys(serviciosPrev)])]
 
     const ageKeys = ["0-12","13-17","18-25","26-35","36-45","46-60","60+"] as const
     const ageGroups: Record<string, number> = Object.fromEntries(ageKeys.map(k => [k, 0]))
@@ -645,6 +662,7 @@ export function EstadisticasSection() {
       total: students.length,
       topPlanEntry, topPlanPct, topPlanStudents,
       planNames, plansCurr, plansPrev, planPaymentsCurr, planPaymentsPrev,
+      servicioNames, serviciosCurr, serviciosPrev, servicioPaymentsCurr, servicioPaymentsPrev,
       ageGroups, ageGroupsM, ageGroupsF, ageGroupsN, studentsByAge, years,
     }
   }, [students, payments, paymentHistory, selectedYear, selectedMonth, billingYear, today])
@@ -666,6 +684,7 @@ export function EstadisticasSection() {
     total,
     topPlanEntry, topPlanPct, topPlanStudents,
     planNames, plansCurr, plansPrev, planPaymentsCurr, planPaymentsPrev,
+    servicioNames, serviciosCurr, serviciosPrev, servicioPaymentsCurr, servicioPaymentsPrev,
     ageGroups, ageGroupsM, ageGroupsF, ageGroupsN, studentsByAge, years,
   } = stats
 
@@ -684,7 +703,15 @@ export function EstadisticasSection() {
     : { Activos: activosUnionList, Inactivos: inactivosList, Altas: altasList, Bajas: bajasList }
 
   const prevMonth      = selectedMonth === 0 ? 11 : selectedMonth - 1
-  const longPlanNames  = planNames.some(p => p.length > 8)
+
+  // Facturación por plan/servicio: dataset activo según la pestaña.
+  const billIsServicio = billingTab === "servicio"
+  const billNames      = billIsServicio ? servicioNames : planNames
+  const billCurr       = billIsServicio ? serviciosCurr : plansCurr
+  const billPrev       = billIsServicio ? serviciosPrev : plansPrev
+  const billPaysCurr   = billIsServicio ? servicioPaymentsCurr : planPaymentsCurr
+  const billPaysPrev   = billIsServicio ? servicioPaymentsPrev : planPaymentsPrev
+  const longPlanNames  = billNames.some(p => p.length > 8)
 
   const activosSegment = { value: activosTotal, color: C.activos, label: "Activos", subLabel: `${activosPagoCount} activos · ${activosAltaCount} altas` }
   const donutSegments = estadoMode === "mensual"
@@ -947,17 +974,34 @@ export function EstadisticasSection() {
           />
         </ChartCard>
 
-        {/* Plan comparison */}
+        {/* Plan / Servicio comparison */}
         <ChartCard
-          title="Facturación por plan"
+          title={billIsServicio ? "Facturación por servicio" : "Facturación por plan"}
           className="lg:col-span-2"
           action={
-            <span className="text-[11px] text-muted-foreground font-medium">
-              {MONTHS_SHORT[selectedMonth]} vs {MONTHS_SHORT[prevMonth]}
-            </span>
+            <div className="flex items-center gap-3">
+              <div className="inline-flex rounded-lg bg-muted p-0.5">
+                {(["plan", "servicio"] as const).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setBillingTab(t)}
+                    className={`px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors ${
+                      billingTab === t
+                        ? "bg-card text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {t === "plan" ? "Planes" : "Servicios"}
+                  </button>
+                ))}
+              </div>
+              <span className="text-[11px] text-muted-foreground font-medium">
+                {MONTHS_SHORT[selectedMonth]} vs {MONTHS_SHORT[prevMonth]}
+              </span>
+            </div>
           }
         >
-          {planNames.length === 0 ? (
+          {billNames.length === 0 ? (
             <div className="flex items-center justify-center flex-1 py-16">
               <span className="text-sm text-muted-foreground/70">Sin datos para este período</span>
             </div>
@@ -965,7 +1009,7 @@ export function EstadisticasSection() {
             <BarChart
               xAxis={[{
                 scaleType: "band",
-                data: planNames,
+                data: billNames,
                 tickLabelStyle: longPlanNames
                   ? { angle: -30, textAnchor: "end", fill: C.axis, fontSize: 9 }
                   : { fill: C.axis, fontSize: 10 },
@@ -977,14 +1021,14 @@ export function EstadisticasSection() {
               series={[
                 {
                   id: "curr",
-                  data: planNames.map(p => plansCurr[p] ?? 0),
+                  data: billNames.map(p => billCurr[p] ?? 0),
                   label: MONTHS_LONG[selectedMonth],
                   color: C.primary,
                   valueFormatter: (v: number | null) => formatARSFull(v ?? 0),
                 },
                 {
                   id: "prev",
-                  data: planNames.map(p => plansPrev[p] ?? 0),
+                  data: billNames.map(p => billPrev[p] ?? 0),
                   label: MONTHS_LONG[prevMonth],
                   color: C.secondary,
                   valueFormatter: (v: number | null) => formatARSFull(v ?? 0),
@@ -996,10 +1040,10 @@ export function EstadisticasSection() {
               borderRadius={6}
               sx={{ width: "100%", ...chartSx, "& .MuiBarElement-root": { cursor: "pointer" } }}
               onItemClick={(_e: React.MouseEvent, d: BarItemIdentifier) => {
-                const plan = planNames[d.dataIndex]
+                const plan = billNames[d.dataIndex]
                 if (!plan) return
                 const isPrev = d.seriesId === "prev"
-                const list = isPrev ? (planPaymentsPrev[plan] ?? []) : (planPaymentsCurr[plan] ?? [])
+                const list = isPrev ? (billPaysPrev[plan] ?? []) : (billPaysCurr[plan] ?? [])
                 const monthLabel = isPrev ? MONTHS_LONG[prevMonth] : MONTHS_LONG[selectedMonth]
                 setDrillPayments({ title: `${plan} — ${monthLabel}`, list })
               }}
