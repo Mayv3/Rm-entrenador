@@ -483,28 +483,22 @@ export function StudentPlanificacionSection({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [diaSeleccionado?.id, semanaSeleccionada])
 
-  const semanaAnterior = semanaSeleccionada !== null && semanaSeleccionada > 1 ? semanaSeleccionada - 1 : null
-
-  const { data: sessionDataAnterior } = useQuery<SsnData>({
-    queryKey: queryKeySesion(
-      planificacion?.id ?? 0,
-      studentId,
-      hojaActiva?.id ?? 0,
-      diaSeleccionado?.id ?? 0,
-      semanaAnterior ?? 0
-    ),
+  // Sem > 1: pesos de la ÚLTIMA semana anterior CON datos reales (salta semanas vacías).
+  // Si el alumno hizo sem1 y saltó a sem3, en sem3 muestra los pesos de sem1.
+  const { data: semanaAnteriorData } = useQuery<{ registros: Record<string, SerieRegistro & { series?: SerieRegistro[]; _semana?: number }> }>({
+    queryKey: ["portalSemanaAnteriorPesos", planificacion?.id ?? 0, studentId, hojaActiva?.id ?? 0, diaSeleccionado?.id ?? 0, semanaSeleccionada ?? 0],
     queryFn: async () => {
-      const res = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/portal/planificaciones/${planificacion!.id}/sesiones`, {
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/portal/planificaciones/${planificacion!.id}/sesiones/semana-anterior`, {
         params: {
           alumno_id: studentId,
           hoja_id: hojaActiva!.id,
           dia_id: diaSeleccionado!.id,
-          semana: semanaAnterior,
+          semana: semanaSeleccionada,
         },
       })
       return res.data
     },
-    enabled: !!planificacion && !!hojaActiva && !!diaSeleccionado && !!semanaAnterior,
+    enabled: !!planificacion && !!hojaActiva && !!diaSeleccionado && semanaSeleccionada !== null && semanaSeleccionada > 1,
     staleTime: 60_000,
     gcTime: 5 * 60_000,
     refetchOnMount: "always",
@@ -512,8 +506,8 @@ export function StudentPlanificacionSection({
   })
 
   const registrosAnterioresMap = useMemo(
-    () => new Map((sessionDataAnterior?.registros ?? []).map((r) => [r.planificacion_ejercicio_id, r])),
-    [sessionDataAnterior]
+    () => new Map(Object.entries(semanaAnteriorData?.registros ?? {}).map(([k, v]) => [Number(k), v])),
+    [semanaAnteriorData]
   )
 
   // Semana 1: pesos de la última semana de la hoja anterior, por ejercicio_id
@@ -534,6 +528,27 @@ export function StudentPlanificacionSection({
   const hojaAnteriorMap = useMemo(
     () => new Map(Object.entries(hojaAnteriorData?.registros ?? {}).map(([k, v]) => [Number(k), v])),
     [hojaAnteriorData]
+  )
+
+  // Fallback entre planes: último peso real de cada ejercicio en OTROS planes (por ejercicio_id).
+  // Sirve cuando el plan actual aún no tiene datos previos (ej: plan nuevo) para mantener progresión.
+  const { data: globalData } = useQuery<{ registros: Record<string, SerieRegistro & { series?: SerieRegistro[]; _ord?: string }> }>({
+    queryKey: ["portalUltimoPesoGlobal", planificacion?.id ?? 0, studentId],
+    queryFn: async () => {
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/portal/planificaciones/${planificacion!.id}/sesiones/ultimo-global`, {
+        params: { alumno_id: studentId },
+      })
+      return res.data
+    },
+    enabled: !!planificacion,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  })
+
+  const globalMap = useMemo(
+    () => new Map(Object.entries(globalData?.registros ?? {}).map(([k, v]) => [Number(k), v])),
+    [globalData]
   )
 
   useEffect(() => {
@@ -1966,12 +1981,22 @@ export function StudentPlanificacionSection({
             const seriesCount = clampSeries(ej.series)
             const row = registrosForm[ej.id] ?? EMPTY_FORM_ROW(seriesCount)
             const isFilled = row.series.length > 0 && row.series.every((s) => !!s.peso_kg && !!s.repeticiones && !!s.rpe)
+            // Referencia por prioridad: (1) mismo plan sem/hoja previa; (2) fallback otro plan (por ejercicio_id).
             // Semana 1 → última semana del bloque anterior (match por ejercicio_id). Sem>1 → semana previa (match por planificacion_ejercicio_id)
-            const regAnterior = (semanaSeleccionada === 1
+            const regInPlan = (semanaSeleccionada === 1
               ? hojaAnteriorMap.get(ej.ejercicios?.id ?? -1)
               : registrosAnterioresMap.get(ej.id)) ?? null
-            const mostrarAnterior = semanaSeleccionada === 1 ? !!hojaAnterior : !!semanaAnterior
-            const anteriorLabelPrefix = semanaSeleccionada === 1 ? "Bloque anterior" : `Semana ${semanaAnterior}`
+            const regGlobal = globalMap.get(ej.ejercicios?.id ?? -1) ?? null
+            const regAnterior = regInPlan ?? regGlobal
+            const fromGlobal = !regInPlan && !!regGlobal
+            // Sem>1: la semana de referencia depende del ejercicio (última con datos < actual), viene en _semana
+            const anteriorSemana = (regInPlan as { _semana?: number } | null)?._semana ?? null
+            const mostrarAnterior = !!regAnterior
+            const anteriorLabelPrefix = fromGlobal
+              ? "Plan anterior"
+              : semanaSeleccionada === 1
+                ? "Bloque anterior"
+                : `Semana ${anteriorSemana}`
             const anteriorSeries: SerieRegistro[] | null = (() => {
               if (!regAnterior) return null
               if (Array.isArray(regAnterior.series) && regAnterior.series.length > 0) return regAnterior.series

@@ -251,6 +251,113 @@ export async function getPortalHojaAnteriorPesos(req, res) {
   return res.json({ registros: byEjercicio });
 }
 
+// Pesos de la última semana ANTERIOR con datos reales, dentro de la misma hoja y día,
+// agrupados por planificacion_ejercicio_id. Salta semanas vacías: si el alumno hizo
+// sem1 y saltó a sem3, en sem3 devuelve los pesos de sem1 (última con datos < semana actual).
+export async function getPortalSemanaAnteriorPesos(req, res) {
+  const planId = Number(req.params.planId);
+  const alumnoId = Number(req.query.alumno_id);
+  const hojaId = Number(req.query.hoja_id);
+  const diaId = Number(req.query.dia_id);
+  const semana = Number(req.query.semana); // semana actual
+
+  if (![planId, alumnoId, hojaId, diaId, semana].every(Number.isFinite)) {
+    return res.status(400).json({ error: "Faltan o son inválidos: alumno_id, hoja_id, dia_id, semana" });
+  }
+
+  const { data: sesiones, error: sErr } = await supabase
+    .from("entrenamiento_sesiones")
+    .select("id, semana")
+    .eq("planificacion_id", planId)
+    .eq("alumno_id", alumnoId)
+    .eq("hoja_id", hojaId)
+    .eq("dia_id", diaId)
+    .lt("semana", semana);
+  if (sErr) return res.status(500).json({ error: sErr.message });
+  if (!sesiones || sesiones.length === 0) return res.json({ registros: {} });
+
+  const semanaBySesion = new Map(sesiones.map((s) => [s.id, s.semana]));
+  const sesionIds = sesiones.map((s) => s.id);
+
+  const { data: registros, error: rErr } = await supabase
+    .from("entrenamiento_registros")
+    .select("*")
+    .in("sesion_id", sesionIds);
+  if (rErr) return res.status(500).json({ error: rErr.message });
+
+  // Dato real = al menos una serie con reps > 0 (un skip guarda reps 0).
+  const tieneData = (r) => {
+    if (Array.isArray(r.series) && r.series.length > 0) {
+      return r.series.some((s) => Number(s?.repeticiones) > 0);
+    }
+    return Number(r.repeticiones) > 0;
+  };
+
+  // Por planificacion_ejercicio_id: el registro de mayor semana con datos reales.
+  const byPlanEj = {};
+  for (const r of registros ?? []) {
+    if (r.planificacion_ejercicio_id == null || !tieneData(r)) continue;
+    const sem = semanaBySesion.get(r.sesion_id) ?? 0;
+    const prev = byPlanEj[r.planificacion_ejercicio_id];
+    if (!prev || sem > prev._semana || (sem === prev._semana && r.id > prev.id)) {
+      byPlanEj[r.planificacion_ejercicio_id] = { ...r, _semana: sem };
+    }
+  }
+
+  return res.json({ registros: byPlanEj });
+}
+
+// Fallback entre planes: último entrenamiento real de cada ejercicio (por ejercicio_id)
+// en sesiones de OTROS planes del alumno. Se usa cuando el plan actual todavía no tiene
+// datos previos para ese ejercicio (ej: plan nuevo, semana 1) para mantener la progresión.
+export async function getPortalUltimoPesoGlobal(req, res) {
+  const planId = Number(req.params.planId);
+  const alumnoId = Number(req.query.alumno_id);
+
+  if (![planId, alumnoId].every(Number.isFinite)) {
+    return res.status(400).json({ error: "Parámetros inválidos" });
+  }
+
+  const { data: sesiones, error: sErr } = await supabase
+    .from("entrenamiento_sesiones")
+    .select("id, planificacion_id, fecha_entrenamiento, finalizado_at, created_at")
+    .eq("alumno_id", alumnoId)
+    .neq("planificacion_id", planId);
+  if (sErr) return res.status(500).json({ error: sErr.message });
+  if (!sesiones || sesiones.length === 0) return res.json({ registros: {} });
+
+  // Clave de orden temporal: día de entrenamiento, luego finalizado/creado.
+  const ordKey = (s) => s.fecha_entrenamiento || s.finalizado_at || s.created_at || "";
+  const ordBySesion = new Map(sesiones.map((s) => [s.id, ordKey(s)]));
+  const sesionIds = sesiones.map((s) => s.id);
+
+  const { data: registros, error: rErr } = await supabase
+    .from("entrenamiento_registros")
+    .select("*")
+    .in("sesion_id", sesionIds);
+  if (rErr) return res.status(500).json({ error: rErr.message });
+
+  const tieneData = (r) => {
+    if (Array.isArray(r.series) && r.series.length > 0) {
+      return r.series.some((s) => Number(s?.repeticiones) > 0);
+    }
+    return Number(r.repeticiones) > 0;
+  };
+
+  // Por ejercicio_id: el registro real más reciente (mayor clave temporal).
+  const byEjercicio = {};
+  for (const r of registros ?? []) {
+    if (r.ejercicio_id == null || !tieneData(r)) continue;
+    const ord = ordBySesion.get(r.sesion_id) ?? "";
+    const prev = byEjercicio[r.ejercicio_id];
+    if (!prev || ord > prev._ord || (ord === prev._ord && r.id > prev.id)) {
+      byEjercicio[r.ejercicio_id] = { ...r, _ord: ord };
+    }
+  }
+
+  return res.json({ registros: byEjercicio });
+}
+
 export async function getPortalSesionesResumen(req, res) {
   const planId = Number(req.params.planId);
   const alumnoId = Number(req.query.alumno_id);
