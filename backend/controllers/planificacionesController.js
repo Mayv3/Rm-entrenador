@@ -738,6 +738,47 @@ export async function deleteDia(req, res) {
   if (diaError) return res.status(500).json({ error: diaError.message });
   if (!dia) return res.status(404).json({ error: "Día no encontrado" });
 
+  // Limpiar sesiones huérfanas (sin dato real) que bloquean el borrado del día.
+  // FK entrenamiento_sesiones_dia_id_fkey es RESTRICT: no se puede borrar el día
+  // mientras existan sesiones apuntándolo.
+  const { data: sesiones, error: sesionesError } = await supabase
+    .from("entrenamiento_sesiones")
+    .select("id")
+    .eq("dia_id", diaId);
+  if (sesionesError) return res.status(500).json({ error: sesionesError.message });
+
+  const sesionIds = (sesiones ?? []).map((s) => s.id);
+  if (sesionIds.length > 0) {
+    // Dato real = algún registro con repeticiones > 0.
+    const { data: regsReales, error: regsError } = await supabase
+      .from("entrenamiento_registros")
+      .select("sesion_id")
+      .in("sesion_id", sesionIds)
+      .gt("repeticiones", 0);
+    if (regsError) return res.status(500).json({ error: regsError.message });
+
+    const sesionesConDato = new Set((regsReales ?? []).map((r) => r.sesion_id));
+    if (sesionesConDato.size > 0) {
+      return res.status(409).json({
+        error:
+          "No se puede eliminar el día: tiene sesiones de entrenamiento con datos reales cargados por el alumno.",
+      });
+    }
+
+    // Todas las sesiones son huérfanas (sin reps). Borrar registros + sesiones.
+    const { error: delRegsError } = await supabase
+      .from("entrenamiento_registros")
+      .delete()
+      .in("sesion_id", sesionIds);
+    if (delRegsError) return res.status(500).json({ error: delRegsError.message });
+
+    const { error: delSesError } = await supabase
+      .from("entrenamiento_sesiones")
+      .delete()
+      .in("id", sesionIds);
+    if (delSesError) return res.status(500).json({ error: delSesError.message });
+  }
+
   const { error } = await supabase
     .from("planificacion_dias")
     .delete()
