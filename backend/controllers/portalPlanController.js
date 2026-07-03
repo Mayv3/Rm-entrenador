@@ -1,6 +1,24 @@
 import { supabase } from "../lib/supabase.js";
 import { cache } from "../lib/cache.js";
 
+// Una serie está "completa" si tiene peso, reps y rpe (mismo criterio que el front).
+function serieCompleta(s) {
+  return !!(s && s.peso_kg && s.repeticiones && s.rpe);
+}
+
+// Un ejercicio quedó "olvidado a medias" si tiene al menos una serie completa
+// y al menos una serie sin cargar que NO fue salteada explícitamente.
+function registroParcial(series) {
+  if (!Array.isArray(series)) return false;
+  let algunaCompleta = false;
+  let algunaFaltante = false;
+  for (const s of series) {
+    if (serieCompleta(s)) algunaCompleta = true;
+    else if (!s?._saltado) algunaFaltante = true;
+  }
+  return algunaCompleta && algunaFaltante;
+}
+
 function pickPlan(planificaciones) {
   if (!Array.isArray(planificaciones) || planificaciones.length === 0) return null;
   return (
@@ -272,7 +290,27 @@ export async function getPortalSesionesSemana(req, res) {
     .eq("semana", semana);
 
   if (error) return res.status(500).json({ error: error.message });
-  return res.json({ sesiones: data ?? [] });
+
+  const sesiones = data ?? [];
+
+  // Marcar sesiones con ejercicios "olvidados a medias" (empezados pero con alguna
+  // serie sin cargar). Solo se evalúan las no completadas.
+  const pendientes = sesiones.filter((s) => s.estado !== "completado").map((s) => s.id);
+  const parcialPorSesion = new Map();
+  if (pendientes.length > 0) {
+    const { data: registros, error: regError } = await supabase
+      .from("entrenamiento_registros")
+      .select("sesion_id, series")
+      .in("sesion_id", pendientes);
+    if (regError) return res.status(500).json({ error: regError.message });
+    for (const r of registros ?? []) {
+      if (registroParcial(r.series)) parcialPorSesion.set(r.sesion_id, true);
+    }
+  }
+
+  return res.json({
+    sesiones: sesiones.map((s) => ({ ...s, parcial: parcialPorSesion.get(s.id) === true })),
+  });
 }
 
 export async function upsertPortalSesion(req, res) {

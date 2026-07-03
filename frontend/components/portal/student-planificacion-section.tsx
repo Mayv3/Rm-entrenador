@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { CATEGORIA_ROW_STYLE } from "@/types/planificaciones"
 import { setSaveStatus } from "@/lib/save-status"
 import { CardSaveBadge } from "@/components/portal/card-save-badge"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   Loader2,
   ChevronLeft,
@@ -29,6 +30,7 @@ import {
   Frown,
   Activity,
   Eye,
+  AlertTriangle,
 } from "lucide-react"
 
 interface PlanSemana {
@@ -462,6 +464,10 @@ export function StudentPlanificacionSection({
     refetchOnWindowFocus: false,
   })
 
+  // Solo mostrar skeleton en la primera carga (sin data en cache). Si ya hay data
+  // prefetcheada/cacheada, se renderiza al instante y el refetch ocurre en background.
+  const cargandoSesionInicial = loadingSession && !sessionData
+
   useEffect(() => {
     if (
       planificacion &&
@@ -756,6 +762,24 @@ export function StudentPlanificacionSection({
     [ejerciciosDelDia, registrosForm, saltadoEjIds]
   )
 
+  // Ejercicios empezados a los que les falta alguna serie (olvidó cargar una serie).
+  // No salteados, con al menos una serie completa y al menos una serie incompleta.
+  const parcialesDelDia = useMemo(
+    () =>
+      ejerciciosDelDia
+        .filter((ej) => {
+          if (saltadoEjIds.has(ej.id)) return false
+          const row = registrosForm[ej.id]
+          if (!row) return false
+          const series = row.series ?? []
+          const completas = series.filter((s) => !!s.peso_kg && !!s.repeticiones && !!s.rpe)
+          const incompletas = series.filter((s) => !(s.peso_kg && s.repeticiones && s.rpe))
+          return completas.length > 0 && incompletas.length > 0
+        })
+        .map((ej) => ej.id),
+    [ejerciciosDelDia, registrosForm, saltadoEjIds]
+  )
+
   // True cuando lo único que separa al día de "completado" son ejercicios sin tocar,
   // y el último ejercicio de la lista (no salteado) ya está completo — señal de que el
   // alumno terminó su recorrido del día y los sin-tocar quedaron olvidados en el medio.
@@ -777,6 +801,7 @@ export function StudentPlanificacionSection({
   // Prompt "¿lo salteaste?": una vez por visita al día, y solo si el alumno editó algo en esta visita
   // (no al abrir un día que ya estaba en este estado).
   const [skipPromptOpen, setSkipPromptOpen] = useState(false)
+  const [exitPromptOpen, setExitPromptOpen] = useState(false)
   const skipPromptShownRef = useRef<string | null>(null)
   const userEditedDayRef = useRef<string | null>(null)
   useEffect(() => {
@@ -788,7 +813,69 @@ export function StudentPlanificacionSection({
     setSkipPromptOpen(true)
   }, [readyExceptUntouched, diaSeleccionado?.id, semanaSeleccionada])
 
-  const { data: sesionesSemana, refetch: _refetchSesionesSemana } = useQuery<{ sesiones: { id: number; dia_id: number; estado: string }[] }>({
+  // Animación "¡Día completado!": dispara una sola vez, la primera vez que el día
+  // pasa a estar 100% completo por acción del alumno. Persistido en localStorage para
+  // que no vuelva a aparecer (ni al re-editar, ni al reabrir el día).
+  const [celebracionOpen, setCelebracionOpen] = useState(false)
+  const celebracionStorageKey = `rmDiasCelebrados-${studentId}-${planificacion?.id ?? 0}`
+  const yaCelebrado = (key: string) => {
+    try {
+      const raw = localStorage.getItem(celebracionStorageKey)
+      return !!raw && (JSON.parse(raw) as string[]).includes(key)
+    } catch { return false }
+  }
+  const marcarCelebrado = (key: string) => {
+    try {
+      const raw = localStorage.getItem(celebracionStorageKey)
+      const set = new Set<string>(raw ? (JSON.parse(raw) as string[]) : [])
+      set.add(key)
+      localStorage.setItem(celebracionStorageKey, JSON.stringify([...set]))
+    } catch {}
+  }
+  useEffect(() => {
+    if (!allCompleted) return
+    const key = `${diaSeleccionado?.id}-${semanaSeleccionada}`
+    if (userEditedDayRef.current !== key) return // abrió un día ya completo → sin animación
+    if (yaCelebrado(key)) return // ya se celebró alguna vez → nunca más
+    marcarCelebrado(key)
+    setCelebracionOpen(true)
+  }, [allCompleted, diaSeleccionado?.id, semanaSeleccionada]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!celebracionOpen) return
+    const t = setTimeout(() => setCelebracionOpen(false), 3800)
+    return () => clearTimeout(t)
+  }, [celebracionOpen])
+
+  // Efecto máquina de escribir: primero "¡Día completado!", luego "Buen trabajo".
+  const CELEBRACION_TITULO = "¡Día completado!"
+  const CELEBRACION_SUB = "Buen trabajo"
+  const [tipeado, setTipeado] = useState("")
+  const [tipeadoSub, setTipeadoSub] = useState("")
+  useEffect(() => {
+    if (!celebracionOpen) { setTipeado(""); setTipeadoSub(""); return }
+    const timers: Array<ReturnType<typeof setTimeout>> = []
+    const intervals: Array<ReturnType<typeof setInterval>> = []
+    const tipear = (texto: string, setter: (v: string) => void, delayInicial: number, velocidad: number) =>
+      new Promise<void>((resolve) => {
+        timers.push(setTimeout(() => {
+          let i = 0
+          const id = setInterval(() => {
+            i++
+            setter(texto.slice(0, i))
+            if (i >= texto.length) { clearInterval(id); resolve() }
+          }, velocidad)
+          intervals.push(id)
+        }, delayInicial))
+      })
+    ;(async () => {
+      await tipear(CELEBRACION_TITULO, setTipeado, 400, 90)
+      await tipear(CELEBRACION_SUB, setTipeadoSub, 250, 70)
+    })()
+    return () => { timers.forEach(clearTimeout); intervals.forEach(clearInterval) }
+  }, [celebracionOpen])
+
+  const { data: sesionesSemana, refetch: _refetchSesionesSemana } = useQuery<{ sesiones: { id: number; dia_id: number; estado: string; parcial?: boolean }[] }>({
     queryKey: ["portalSesionesSemana", planificacion?.id, studentId, hojaActiva?.id, semanaSeleccionada],
     queryFn: async () => {
       const res = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/portal/planificaciones/${planificacion!.id}/sesiones/semana`, {
@@ -807,6 +894,26 @@ export function StudentPlanificacionSection({
     () => new Map((sesionesSemana?.sesiones ?? []).map((s) => [s.dia_id, s])),
     [sesionesSemana]
   )
+
+  // Prefetch: al mostrar la lista de días, cargar en cache la sesión de cada día de la
+  // semana. Así abrir un día es instantáneo (la data ya está) — sin spinner.
+  useEffect(() => {
+    if (!planificacion || !hojaActiva || !semanaSeleccionada) return
+    if (diaSeleccionadoId !== null) return // solo en la pantalla de selección de días
+    for (const dia of dias) {
+      queryClient.prefetchQuery({
+        queryKey: queryKeySesion(planificacion.id, studentId, hojaActiva.id, dia.id, semanaSeleccionada),
+        queryFn: async () => {
+          const res = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/portal/planificaciones/${planificacion.id}/sesiones`, {
+            params: { alumno_id: studentId, hoja_id: hojaActiva.id, dia_id: dia.id, semana: semanaSeleccionada },
+          })
+          return res.data
+        },
+        staleTime: 60_000,
+      })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planificacion?.id, hojaActiva?.id, semanaSeleccionada, diaSeleccionadoId, dias.length])
 
   const { data: sesionesResumen, refetch: _refetchResumen } = useQuery<{ sesiones: { semana: number; dia_id: number; estado: string }[] }>({
     queryKey: ["portalSesionesResumen", planificacion?.id, studentId, hojaActiva?.id],
@@ -1391,10 +1498,21 @@ export function StudentPlanificacionSection({
 
   if (loadingPlan) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-6 w-6 animate-spin text-green-500" />
-          <p className="text-xs text-muted-foreground dark:text-zinc-500">Cargando tu planificación…</p>
+      <div className="space-y-5">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-7 w-7 rounded-lg" />
+            <Skeleton className="h-5 w-40" />
+          </div>
+          <Skeleton className="h-3 w-32 ml-9" />
+        </div>
+        <div>
+          <Skeleton className="h-3 w-36 mb-3" />
+          <div className="grid grid-cols-2 gap-2.5">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="aspect-square rounded-2xl" />
+            ))}
+          </div>
         </div>
       </div>
     )
@@ -1493,7 +1611,9 @@ export function StudentPlanificacionSection({
         ) : (
           <div className="grid grid-cols-2 gap-2.5">
             {dias.map((dia) => {
-              const completado = sesionesMapSemana.get(dia.id)?.estado === "completado"
+              const sesionDia = sesionesMapSemana.get(dia.id)
+              const completado = sesionDia?.estado === "completado"
+              const incompleto = !completado && sesionDia?.parcial === true
               return (
                 <button
                   key={dia.id}
@@ -1505,15 +1625,19 @@ export function StudentPlanificacionSection({
                   className={`group relative aspect-square rounded-2xl border active:scale-95 transition-all duration-150 p-4 text-left overflow-hidden ${
                     completado
                       ? "border-green-500/40 bg-green-500/[0.07] hover:bg-green-500/[0.11]"
+                      : incompleto
+                      ? "border-amber-500/40 bg-amber-500/[0.07] hover:bg-amber-500/[0.11]"
                       : "border-border dark:border-white/[0.07] bg-muted/40 dark:bg-white/[0.03] hover:bg-muted/60 dark:bg-white/[0.06] hover:border-green-500/30 active:bg-green-500/20 active:border-green-500/60"
                   }`}
                 >
                   <div className="absolute inset-0 bg-gradient-to-br from-green-500/0 group-hover:from-green-500/5 to-transparent transition-all duration-200" />
-                  <span className={`absolute top-3 left-3 text-[10px] font-semibold uppercase tracking-widest transition-colors ${completado ? "text-green-500/70" : "text-muted-foreground dark:text-zinc-500 group-hover:text-green-500/70"}`}>Día</span>
-                  <span className={`absolute inset-0 flex items-center justify-center text-4xl font-black transition-colors ${completado ? "text-green-700 dark:text-green-400" : "text-foreground dark:text-white"}`}>{dia.numero_dia}</span>
+                  <span className={`absolute top-3 left-3 text-[10px] font-semibold uppercase tracking-widest transition-colors ${completado ? "text-green-500/70" : incompleto ? "text-amber-500/80" : "text-muted-foreground dark:text-zinc-500 group-hover:text-green-500/70"}`}>Día</span>
+                  <span className={`absolute inset-0 flex items-center justify-center text-4xl font-black transition-colors ${completado ? "text-green-700 dark:text-green-400" : incompleto ? "text-amber-600 dark:text-amber-400" : "text-foreground dark:text-white"}`}>{dia.numero_dia}</span>
                   <span className="absolute bottom-3 left-3 right-8 text-[10px] text-muted-foreground dark:text-zinc-400 truncate">{dia.nombre}</span>
                   {completado
                     ? <CheckCircle2 className="absolute right-3 bottom-3 h-4 w-4 text-green-600 dark:text-green-400" />
+                    : incompleto
+                    ? <AlertTriangle className="absolute right-3 bottom-3 h-4 w-4 text-amber-500 dark:text-amber-400" />
                     : <ChevronRight className="absolute right-3 bottom-3 h-4 w-4 text-muted-foreground/70 dark:text-zinc-600 group-hover:text-green-500/50 transition-colors" />
                   }
                 </button>
@@ -1531,7 +1655,11 @@ export function StudentPlanificacionSection({
       {/* Header */}
       <div className="flex items-center gap-2">
         <button
-          onClick={() => { if (previewPlan) setPreviewPlan(false); else history.back() }}
+          onClick={() => {
+            if (previewPlan) { setPreviewPlan(false); return }
+            if (parcialesDelDia.length > 0) { setExitPromptOpen(true); return }
+            history.back()
+          }}
           className="h-8 w-8 rounded-xl bg-muted/50 dark:bg-white/[0.05] hover:bg-muted/70 dark:bg-white/[0.08] flex items-center justify-center transition-colors flex-shrink-0"
         >
           <ChevronLeft className="h-4 w-4 text-muted-foreground dark:text-zinc-400" />
@@ -1544,8 +1672,8 @@ export function StudentPlanificacionSection({
             Día {diaSeleccionado?.numero_dia} · {diaSeleccionado?.nombre}
           </p>
         </div>
-        {loadingSession
-          ? <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground dark:text-zinc-500 flex-shrink-0" />
+        {cargandoSesionInicial
+          ? <Skeleton className="h-8 w-24 rounded-xl flex-shrink-0" />
           : (allCompleted && !previewPlan) ? (
             <span className="flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-semibold border bg-green-500/15 border-green-500/30 text-green-400 flex-shrink-0">
               <CheckCircle2 className="h-4 w-4 text-green-400" />
@@ -1555,11 +1683,26 @@ export function StudentPlanificacionSection({
         }
       </div>
 
-      {loadingSession ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground dark:text-zinc-500" />
+      {cargandoSesionInicial ? (
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="rounded-2xl border border-border dark:border-white/[0.06] bg-muted/40 dark:bg-white/[0.03] p-4 space-y-3">
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-10 w-10 rounded-xl flex-shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-2/3" />
+                  <Skeleton className="h-3 w-1/3" />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Skeleton className="h-12 flex-1 rounded-xl" />
+                <Skeleton className="h-12 flex-1 rounded-xl" />
+                <Skeleton className="h-12 flex-1 rounded-xl" />
+              </div>
+            </div>
+          ))}
         </div>
-      ) : (!checkinMostrado && !previewPlan) ? (
+      ) : (!checkinMostrado && sessionData?.estado_diario == null && !previewPlan) ? (
         /* ── Check-in inicial ── */
         <div className="flex-1 flex flex-col items-center justify-center min-h-[70vh] gap-6 px-4 py-4 pb-24 relative">
           <div className="w-full flex flex-col items-center gap-5">
@@ -2159,6 +2302,88 @@ export function StudentPlanificacionSection({
                   className="flex-1 h-10 rounded-xl bg-yellow-500/90 hover:bg-yellow-500 text-sm font-bold text-black transition-colors"
                 >
                   Sí, salteado
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {celebracionOpen && (
+        <div
+          onClick={() => setCelebracionOpen(false)}
+          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-zinc-950/95 animate-in fade-in duration-300 overflow-hidden"
+        >
+          <style>{`
+            @keyframes rm-trophy-pop {
+              0% { transform: scale(0) rotate(-25deg); }
+              60% { transform: scale(1.15) rotate(8deg); }
+              100% { transform: scale(1) rotate(0deg); }
+            }
+          `}</style>
+          <div
+            className="h-28 w-28 rounded-full bg-green-500/20 border-2 border-green-500/50 flex items-center justify-center shadow-2xl"
+            style={{ animation: "rm-trophy-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards" }}
+          >
+            <Trophy className="h-14 w-14 text-green-400" />
+          </div>
+          <p className="mt-6 text-2xl font-black text-white min-h-[2rem]">
+            {tipeado}
+            <span className="inline-block w-[2px] h-6 ml-0.5 bg-green-400 align-middle animate-pulse" />
+          </p>
+          <p className="mt-1 text-sm text-white/70 min-h-[1.25rem]">
+            {tipeadoSub}
+          </p>
+        </div>
+      )}
+
+      {exitPromptOpen && parcialesDelDia.length > 0 && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl border border-border dark:border-white/[0.08] bg-background dark:bg-zinc-950 overflow-hidden shadow-2xl">
+            <div className="p-5 space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 rounded-xl bg-amber-500/15 flex items-center justify-center flex-shrink-0">
+                  <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-bold text-foreground dark:text-white">
+                    {parcialesDelDia.length === 1 ? "Te falta una serie" : "Te faltan series"}
+                  </p>
+                  <p className="text-xs text-muted-foreground dark:text-zinc-400">
+                    Empezaste {parcialesDelDia.length > 1 ? "estos ejercicios" : "este ejercicio"} pero quedó una serie sin cargar.
+                  </p>
+                </div>
+              </div>
+              <ul className="space-y-1.5">
+                {parcialesDelDia.map((id) => {
+                  const ej = ejerciciosDelDia.find((e) => e.id === id)
+                  return (
+                    <li key={id} className="flex items-center gap-2 text-sm text-foreground dark:text-zinc-200">
+                      <Dumbbell className="h-3.5 w-3.5 text-muted-foreground dark:text-zinc-500 flex-shrink-0" />
+                      <span className="truncate">{ej?.ejercicios?.nombre ?? "Ejercicio"}</span>
+                    </li>
+                  )
+                })}
+              </ul>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setExitPromptOpen(false)
+                    history.back()
+                  }}
+                  className="flex-1 h-10 rounded-xl border border-border dark:border-white/[0.1] text-sm font-semibold text-foreground dark:text-zinc-200 hover:bg-muted/60 dark:hover:bg-white/[0.05] transition-colors"
+                >
+                  Salir igual
+                </button>
+                <button
+                  onClick={() => {
+                    setExitPromptOpen(false)
+                    const firstId = parcialesDelDia[0]
+                    exerciseCardRefs.current.get(firstId)?.scrollIntoView({ behavior: "smooth", block: "start" })
+                  }}
+                  className="flex-1 h-10 rounded-xl bg-amber-500/90 hover:bg-amber-500 text-sm font-bold text-black transition-colors"
+                >
+                  Completar
                 </button>
               </div>
             </div>

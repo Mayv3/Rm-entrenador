@@ -9,7 +9,7 @@ import { useQuery } from "@tanstack/react-query"
 import axios from "axios"
 import Image from "next/image"
 import logoRodrigoEntrenador from "../../assets/LOGO-RODRIGO-VERDE.png"
-import { Loader } from "@/components/ui/loader"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -311,8 +311,51 @@ export default function PortalPage() {
 
   if (status === "loading" || loadingStudent) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader />
+      <div className="min-h-screen bg-background">
+        {/* Header */}
+        <header className="border-b bg-background sticky top-0 z-10">
+          <div className="max-w-lg mx-auto flex items-center justify-between px-6 py-4">
+            <Skeleton className="h-6 w-24" />
+            <Skeleton className="h-4 w-16" />
+          </div>
+        </header>
+
+        <main className="max-w-lg mx-auto px-4 py-6 flex flex-col gap-5">
+          {/* Tarjeta resumen: perfil + estado + accesos */}
+          <div className="rounded-xl overflow-hidden border border-border bg-card shadow-sm">
+            <div className="px-5 py-4 flex items-center gap-4 border-b border-border">
+              <Skeleton className="h-12 w-12 rounded-full flex-shrink-0" />
+              <div className="flex flex-col gap-2 flex-1">
+                <Skeleton className="h-2.5 w-16" />
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-3 w-48" />
+              </div>
+            </div>
+            <div className="grid grid-cols-4 divide-x divide-border border-b border-border">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="flex flex-col items-center gap-1.5 px-2 py-3.5">
+                  <Skeleton className="h-2 w-10" />
+                  <Skeleton className="h-3 w-12" />
+                </div>
+              ))}
+            </div>
+            <div className="px-5 py-3.5 border-b border-border space-y-1.5">
+              <Skeleton className="h-4 w-36" />
+              <Skeleton className="h-3 w-24" />
+            </div>
+            <div className="px-5 py-3.5 space-y-1.5">
+              <Skeleton className="h-4 w-36" />
+              <Skeleton className="h-3 w-24" />
+            </div>
+          </div>
+
+          {/* Acciones 2x2 */}
+          <div className="grid grid-cols-2 gap-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-[104px] rounded-xl" />
+            ))}
+          </div>
+        </main>
       </div>
     )
   }
@@ -503,8 +546,9 @@ export default function PortalPage() {
 
           {!appPlanChecked ? (
             <div className="flex flex-col items-center justify-center gap-2 py-5 rounded-xl bg-muted/40 border border-border select-none">
-              <Loader2 className="h-6 w-6 animate-spin text-[var(--primary-color)]" />
-              <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Cargando…</span>
+              <Skeleton className="h-10 w-10 rounded-full" />
+              <Skeleton className="h-3.5 w-24" />
+              <Skeleton className="h-2.5 w-16" />
             </div>
           ) : hasAppPlan ? (
             <button
