@@ -192,7 +192,10 @@ export function StudentPlanificacionSection({
   const excelenteRef = useRef(false)
   const [checkinMostrado, setCheckinMostrado] = useState(false)
   const [estadoLocalDirty, setEstadoLocalDirty] = useState(false)
-  const justSavedRef = useRef(false)
+  // Guarda la clave (plan-hoja-dia-semana) recién guardada, no un booleano global:
+  // así el "skip re-hidratar" aplica SOLO al día guardado y no bloquea la hidratación
+  // de otro día al que se navega antes de que el flag se consuma (bug pesos en 0).
+  const justSavedRef = useRef<string | null>(null)
   const [activeSerieMap, setActiveSerieMap] = useState<Record<number, number>>({})
   const serieScrollRefs = useRef<Map<number, HTMLDivElement>>(new Map())
   const pendingSerieRestoreRef = useRef<Record<number, number>>({})
@@ -438,6 +441,12 @@ export function StudentPlanificacionSection({
   const getSeriesCount = (planEjId: number) =>
     clampSeries(ejerciciosDelDiaRef.current.find((e) => e.id === planEjId)?.series)
 
+  // Clave estable del día/sesión actual — usada para scopear justSavedRef al día correcto.
+  const sesionKeyStr =
+    planificacion && hojaActiva && diaSeleccionado && semanaSeleccionada
+      ? `${planificacion.id}-${hojaActiva.id}-${diaSeleccionado.id}-${semanaSeleccionada}`
+      : null
+
   const { data: sessionData, isFetching: loadingSession } = useQuery<SsnData>({
     queryKey: queryKeySesion(
       planificacion?.id ?? 0,
@@ -474,7 +483,7 @@ export function StudentPlanificacionSection({
       hojaActiva &&
       diaSeleccionado &&
       semanaSeleccionada &&
-      !justSavedRef.current
+      justSavedRef.current !== sesionKeyStr
     ) {
       queryClient.invalidateQueries({
         queryKey: queryKeySesion(planificacion.id, studentId, hojaActiva.id, diaSeleccionado.id, semanaSeleccionada),
@@ -563,9 +572,13 @@ export function StudentPlanificacionSection({
       return
     }
 
+    // Solo saltear la re-hidratación si lo recién guardado es ESTE mismo día.
+    // Si el flag quedó de otro día (no se consumió por race o cache vacía), se limpia
+    // y se hidrata igual para no dejar los pesos en 0.
     if (justSavedRef.current) {
-      justSavedRef.current = false
-      return
+      const esMismoDia = justSavedRef.current === sesionKeyStr
+      justSavedRef.current = null
+      if (esMismoDia) return
     }
 
     const registrosMap = new Map(
@@ -1206,7 +1219,7 @@ export function StudentPlanificacionSection({
         saveStatusResetRef.current = setTimeout(() => setSaveStatus("idle"), 2000)
       }
       if (!planificacion || !hojaActiva || !diaSeleccionado || !semanaSeleccionada) return
-      justSavedRef.current = true
+      justSavedRef.current = `${planificacion.id}-${hojaActiva.id}-${diaSeleccionado.id}-${semanaSeleccionada}`
 
       const sesionKey = queryKeySesion(planificacion.id, studentId, hojaActiva.id, diaSeleccionado.id, semanaSeleccionada)
 
