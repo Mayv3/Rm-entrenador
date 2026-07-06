@@ -305,6 +305,7 @@ export default function PortalPage() {
   }, [student?.id, appPlanChecked, hasAppPlan])
 
   const latestPayment = payments
+    .filter(p => !String(p.modalidad ?? "").startsWith("Servicio:"))
     .sort((a, b) => new Date(b.fecha_de_pago).getTime() - new Date(a.fecha_de_pago).getTime())[0]
 
   const subscriptionStatus = latestPayment ? determineSubscriptionStatus(latestPayment) : "Indefinido"
