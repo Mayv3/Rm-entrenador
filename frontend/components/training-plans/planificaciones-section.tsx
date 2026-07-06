@@ -198,11 +198,19 @@ export function PlanificacionesSection({ initialSearch }: { initialSearch?: stri
 
   // Alumnos que terminaron la última semana del bloque → necesitan nueva planificación.
   // Se sacan de su grupo normal y se muestran arriba de todo.
-  const necesitanNueva = filtered.filter((p) => p.necesita_nueva)
+  const nombreDe = (p: PlanificacionListItem) =>
+    (students.find((s) => s.id === p.alumno_id)?.nombre ?? p.nombre ?? "").toLowerCase()
+  const alfabetico = (a: PlanificacionListItem, b: PlanificacionListItem) =>
+    nombreDe(a).localeCompare(nombreDe(b), "es")
+
+  const necesitanNueva = filtered.filter((p) => p.necesita_nueva).sort(alfabetico)
   const resto = filtered.filter((p) => !p.necesita_nueva)
-  const borradores = resto.filter((p) => p.estado === "borrador")
-  const activas = resto.filter((p) => p.estado === "activo")
-  const finalizadas = resto.filter((p) => p.estado === "finalizado")
+  const borradores = resto.filter((p) => p.estado === "borrador").sort(alfabetico)
+  const activas = resto
+    .filter((p) => p.estado === "activo")
+    .sort((a, b) =>
+      Number(b.casi_completo ?? false) - Number(a.casi_completo ?? false) || alfabetico(a, b))
+  const finalizadas = resto.filter((p) => p.estado === "finalizado").sort(alfabetico)
   const isSearching = search.trim().length > 0
 
   return (
@@ -304,10 +312,10 @@ export function PlanificacionesSection({ initialSearch }: { initialSearch?: stri
           <p className="text-sm text-muted-foreground">No hay resultados para <span className="font-medium">"{search}"</span></p>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-6 pb-24">
           {/* Si está buscando, muestra flat sin grupos */}
           {isSearching ? (
-            <div className="rounded-xl border divide-y overflow-hidden">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {filtered.map((plan) => (
                 <PlanCard
                   key={plan.id}
@@ -421,7 +429,7 @@ function PlanGroup({
         </p>
         <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${highlight ? "bg-[var(--primary-color)]/15 text-[var(--primary-color)]" : "bg-muted text-muted-foreground"}`}>{count}</span>
       </div>
-      <div className={`rounded-xl border divide-y overflow-hidden ${highlight ? "border-green-400 dark:border-green-700 bg-green-100 dark:bg-green-900/30 animate-pulse" : ""}`}>
+      <div className={`columns-1 sm:columns-2 gap-2 [&>*]:mb-2 [&>*]:break-inside-avoid ${highlight ? "rounded-xl border border-green-400 dark:border-green-700 bg-green-100 dark:bg-green-900/30 animate-pulse p-2" : ""}`}>
         {plans.map((plan) => (
           <PlanCard
             key={plan.id}
@@ -456,10 +464,10 @@ function PlanCard({
   return (
     <div
       onClick={() => onOpen(plan.id)}
-      className={`group flex items-center gap-3 px-3 py-2 transition-colors cursor-pointer ${
+      className={`group flex items-center gap-3 px-3 py-2 rounded-xl border transition-colors cursor-pointer ${
         plan.casi_completo
-          ? "bg-green-100 hover:bg-green-200 dark:bg-green-900/30 dark:hover:bg-green-900/40"
-          : "hover:bg-muted/50"
+          ? "mb-4 bg-green-100 hover:bg-green-200 dark:bg-green-900/30 dark:hover:bg-green-900/40"
+          : "bg-card hover:bg-muted/50"
       }`}
     >
       <div className={`shrink-0 h-7 w-1 rounded-full ${estado.accentClass}`} />

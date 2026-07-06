@@ -16,6 +16,7 @@ import {
   createDia, updateDia, deleteDia, duplicateDia,
   addEjercicioADia, addEjerciciosADiaBulk, updateEjercicioEnDia, removeEjercicioDeDia,
   updateDosis, updateDosisBulk, guardarPlanCompleto, bulkUpdateOrden, saveMovilidad, getEjerciciosMovilidad, saveAll, getProgresoPlanificacion, getAsistenciasPlanificacion, getEntrenamientosDia,
+  saltarEjercicioProgreso, deshacerSaltoProgreso,
 } from "./controllers/planificacionesController.js";
 import { getAntrosByAlumno, getAllAntrosCounts, createAntro, deleteAntro, updateAntroNombre, updateAntroFecha, getParsedAntro } from "./controllers/antropometriasController.js";
 import { getNutricionByAlumno, getAllNutricionCounts, createNutricion, deleteNutricion, updateNutricionNombre, updateNutricionHabitos } from "./controllers/nutricionController.js";
@@ -174,6 +175,8 @@ app.put("/planificaciones/ejercicios/:planEjId/semanas", updateDosisBulk);
 
 // Progreso del alumno (pesos cargados por ejercicio/dia/semana)
 app.get("/planificaciones/:id/progreso", getProgresoPlanificacion);
+app.post("/planificaciones/:id/progreso/saltar", saltarEjercicioProgreso);
+app.post("/planificaciones/:id/progreso/deshacer-salto", deshacerSaltoProgreso);
 app.get("/planificaciones/:id/asistencias", getAsistenciasPlanificacion);
 
 // Apartado "Hoy": quiénes entrenaron en una fecha y qué hicieron

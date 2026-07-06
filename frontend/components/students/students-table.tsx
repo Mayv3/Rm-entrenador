@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react"
 import { useMediaQuery } from "@mui/material"
-import { AlertTriangle, Calendar, ClipboardList, Edit, FileText, Loader2, MessageSquare, MoreHorizontal, MoreVertical, Plus, Search, StickyNote, Trash2, TrendingUp } from "lucide-react"
+import { AlertTriangle, Calendar, ClipboardList, Edit, FileText, Loader2, MessageSquare, MoreHorizontal, MoreVertical, Plus, Search, SkipForward, StickyNote, Trash2, TrendingUp, Undo2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -125,8 +125,57 @@ function StudentProgresoDialog({
   const [comentarioModal, setComentarioModal] = useState<{ ejercicio: string; comentario: string } | null>(null)
   const [prescripcionEdits, setPrescripcionEdits] = useState<Record<string, { dosis: string; rpe: string; notas: string }>>({})
   const [savingKey, setSavingKey] = useState<string | null>(null)
+  const [skipKey, setSkipKey] = useState<string | null>(null)
 
   const prescripcionKey = (ejId: number, semana: number) => `${ejId}-${semana}`
+  const cellKey = (diaId: number, semana: number, ejId: number) => `${diaId}-${semana}-${ejId}`
+
+  const refetchProgreso = async () => {
+    if (!planId) return
+    const res = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/planificaciones/${planId}/progreso`)
+    setProgresoData(res.data)
+  }
+
+  // Profesor: marca un ejercicio como saltado en nombre del alumno (crea la sesión si no existe).
+  const handleSkip = async (dia: any, semana: number, ejId: number) => {
+    if (!planId || !plan?.alumno_id) return
+    const key = cellKey(dia.id, semana, ejId)
+    setSkipKey(key)
+    try {
+      await axios.post(`${process.env.NEXT_PUBLIC_URL_BACKEND}/planificaciones/${planId}/progreso/saltar`, {
+        alumno_id: plan.alumno_id,
+        hoja_id: dia.hoja_id,
+        dia_id: dia.id,
+        semana,
+        planificacion_ejercicio_id: ejId,
+      })
+      await refetchProgreso()
+      queryClient.invalidateQueries({ queryKey: queryKeys.planificacionById(planId) })
+    } catch (err) {
+      console.error("Error al saltar ejercicio:", err)
+    } finally {
+      setSkipKey(null)
+    }
+  }
+
+  // Deshace el salto: borra el registro para volver la celda a pendiente.
+  const handleUndoSkip = async (dia: any, semana: number, ejId: number, sesionId: number) => {
+    if (!planId) return
+    const key = cellKey(dia.id, semana, ejId)
+    setSkipKey(key)
+    try {
+      await axios.post(`${process.env.NEXT_PUBLIC_URL_BACKEND}/planificaciones/${planId}/progreso/deshacer-salto`, {
+        sesion_id: sesionId,
+        planificacion_ejercicio_id: ejId,
+      })
+      await refetchProgreso()
+      queryClient.invalidateQueries({ queryKey: queryKeys.planificacionById(planId) })
+    } catch (err) {
+      console.error("Error al deshacer salto:", err)
+    } finally {
+      setSkipKey(null)
+    }
+  }
 
   const getPrescripcion = (ej: any, semana: number) => {
     const key = prescripcionKey(ej.id, semana)
@@ -366,11 +415,21 @@ function StudentProgresoDialog({
                                 )
 
                                 if (!registro) {
+                                  const savingCell = skipKey === cellKey(dia.id, semana, ej.id)
                                   return (
                                     <td key={semana} className={`p-0 align-top ${borderSemana}`}>
                                       {prescripcionStrip}
-                                      <div className="px-3 py-3 text-center">
-                                        <span className="text-muted-foreground/25 text-xs">—</span>
+                                      <div className="px-3 py-3 flex justify-center items-center min-h-[40px]">
+                                        <button
+                                          onClick={(e) => { e.stopPropagation(); handleSkip(dia, semana, ej.id) }}
+                                          disabled={savingCell}
+                                          className="inline-flex items-center gap-1 text-[10px] text-muted-foreground/50 hover:text-amber-500 transition-colors disabled:opacity-50"
+                                          title="Marcar como saltado"
+                                        >
+                                          {savingCell
+                                            ? <Loader2 className="h-3 w-3 animate-spin" />
+                                            : <><SkipForward className="h-3 w-3" /> Saltar</>}
+                                        </button>
                                       </div>
                                     </td>
                                   )
@@ -384,11 +443,22 @@ function StudentProgresoDialog({
                                   : (registro.repeticiones ?? 0) === 0
 
                                 if (esSaltado) {
+                                  const savingCell = skipKey === cellKey(dia.id, semana, ej.id)
                                   return (
                                     <td key={semana} className={`p-0 align-top ${borderSemana}`}>
                                       {prescripcionStrip}
-                                      <div className="px-3 py-2 text-center">
+                                      <div className="px-3 py-2 text-center flex flex-col items-center gap-0.5">
                                         <span className="text-[10px] text-amber-400/70 font-medium italic">Saltado</span>
+                                        <button
+                                          onClick={(e) => { e.stopPropagation(); handleUndoSkip(dia, semana, ej.id, sesion.id) }}
+                                          disabled={savingCell}
+                                          className="inline-flex items-center gap-1 text-[10px] text-muted-foreground/50 hover:text-foreground transition-colors disabled:opacity-50"
+                                          title="Deshacer salto"
+                                        >
+                                          {savingCell
+                                            ? <Loader2 className="h-3 w-3 animate-spin" />
+                                            : <><Undo2 className="h-3 w-3" /> Deshacer</>}
+                                        </button>
                                       </div>
                                     </td>
                                   )

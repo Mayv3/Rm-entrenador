@@ -195,7 +195,7 @@ export default function Dashboard() {
       </div>
 
       {/* ── Contenido principal ── */}
-      <main className={`flex-1 md:ml-16 mt-16 md:mt-0 pb-20 md:pb-0 overflow-x-hidden ${activeTab === "planificaciones" ? "p-2 sm:p-3 md:overflow-y-hidden md:h-screen" : "p-4 sm:p-6"}`}>
+      <main className={`flex-1 md:ml-16 mt-16 md:mt-0 pb-20 md:pb-0 overflow-x-hidden ${activeTab === "planificaciones" ? "p-2 sm:p-3 md:overflow-y-auto md:h-screen" : "p-4 sm:p-6"}`}>
         {/* Contenido */}
         <div className={`w-full md:mx-auto ${activeTab === "planificaciones" ? "md:h-full md:max-w-[78vw]" : "md:max-w-[95vw] space-y-4"}`}>
           {activeTab === "students" ? <StudentsTable onOpenPlan={handleOpenPlan} />

@@ -1397,6 +1397,89 @@ export async function getProgresoPlanificacion(req, res) {
   res.json({ sesiones: sesionesConEstado, registros: registros ?? [] });
 }
 
+// ─── SALTAR EJERCICIO (profesor, desde panel de progreso) ────────────────────────
+// Marca un ejercicio como "saltado" en nombre del alumno: crea la sesión si no existe
+// y upsertea UN registro con series _saltado (sin tocar el resto de la sesión).
+export async function saltarEjercicioProgreso(req, res) {
+  const planId = Number(req.params.id);
+  const { alumno_id, hoja_id, dia_id, semana, planificacion_ejercicio_id } = req.body;
+  const a = Number(alumno_id), h = Number(hoja_id), d = Number(dia_id), s = Number(semana), pe = Number(planificacion_ejercicio_id);
+  if (![planId, a, h, d, s, pe].every(Number.isFinite)) {
+    return res.status(400).json({ error: "Parámetros inválidos: alumno_id, hoja_id, dia_id, semana, planificacion_ejercicio_id" });
+  }
+
+  // 1. Validar pertenencia del ejercicio al día + traer snapshots.
+  const { data: ej, error: ejErr } = await supabase
+    .from("planificacion_ejercicios")
+    .select("id, ejercicio_id, categoria, planificacion_dia_id, ejercicios(nombre)")
+    .eq("id", pe)
+    .single();
+  if (ejErr) return res.status(500).json({ error: ejErr.message });
+  if (!ej || ej.planificacion_dia_id !== d) {
+    return res.status(400).json({ error: "El ejercicio no pertenece al día indicado" });
+  }
+
+  // 2. Buscar sesión existente o crearla (no toca el estado si ya existe).
+  let sesionId;
+  const { data: ses, error: sesErr } = await supabase
+    .from("entrenamiento_sesiones")
+    .select("id")
+    .eq("alumno_id", a).eq("planificacion_id", planId).eq("hoja_id", h).eq("dia_id", d).eq("semana", s)
+    .maybeSingle();
+  if (sesErr) return res.status(500).json({ error: sesErr.message });
+  if (ses) {
+    sesionId = ses.id;
+  } else {
+    const { data: nueva, error: insErr } = await supabase
+      .from("entrenamiento_sesiones")
+      .insert({ alumno_id: a, planificacion_id: planId, hoja_id: h, dia_id: d, semana: s, estado: "abierta" })
+      .select("id").single();
+    if (insErr) return res.status(500).json({ error: insErr.message });
+    sesionId = nueva.id;
+  }
+
+  // 3. Upsert del registro saltado (conflict por sesión+ejercicio → no pisa otros registros).
+  const { error: regErr } = await supabase
+    .from("entrenamiento_registros")
+    .upsert({
+      sesion_id: sesionId,
+      planificacion_ejercicio_id: pe,
+      ejercicio_id: ej.ejercicio_id,
+      peso_kg: 0,
+      repeticiones: 0,
+      rpe: 0,
+      series: [{ peso_kg: 0, repeticiones: 0, rpe: 0, _saltado: true }],
+      ejercicio_nombre_snapshot: ej.ejercicios?.nombre ?? "Ejercicio",
+      categoria_snapshot: ej.categoria ?? null,
+    }, { onConflict: "sesion_id,planificacion_ejercicio_id" });
+  if (regErr) return res.status(500).json({ error: regErr.message });
+
+  invalidatePlanes(planId);
+  cache.del("planificaciones");
+  res.json({ ok: true, sesion_id: sesionId });
+}
+
+// Deshace el salto: borra el registro _saltado para volver la celda a "pendiente".
+export async function deshacerSaltoProgreso(req, res) {
+  const planId = Number(req.params.id);
+  const { sesion_id, planificacion_ejercicio_id } = req.body;
+  const ses = Number(sesion_id), pe = Number(planificacion_ejercicio_id);
+  if (![ses, pe].every(Number.isFinite)) {
+    return res.status(400).json({ error: "Parámetros inválidos: sesion_id, planificacion_ejercicio_id" });
+  }
+
+  const { error } = await supabase
+    .from("entrenamiento_registros")
+    .delete()
+    .eq("sesion_id", ses)
+    .eq("planificacion_ejercicio_id", pe);
+  if (error) return res.status(500).json({ error: error.message });
+
+  invalidatePlanes(planId);
+  cache.del("planificaciones");
+  res.json({ ok: true });
+}
+
 export async function updateDosisBulk(req, res) {
   const { planEjId } = req.params;
   const { semanas } = req.body;
