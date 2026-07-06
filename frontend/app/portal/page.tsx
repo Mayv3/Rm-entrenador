@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic"
 
 import { useSession, signOut } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, Suspense } from "react"
 import Link from "next/link"
 import { useTheme } from "next-themes"
 import { useQuery } from "@tanstack/react-query"
@@ -174,7 +174,7 @@ function isRealHabitsLink(link?: string | null): boolean {
   return true
 }
 
-export default function PortalPage() {
+function PortalPageInner() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -1035,6 +1035,14 @@ export default function PortalPage() {
         antros={antros}
       />
     </div>
+  )
+}
+
+export default function PortalPage() {
+  return (
+    <Suspense fallback={null}>
+      <PortalPageInner />
+    </Suspense>
   )
 }
 
