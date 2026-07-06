@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react"
 import { useMediaQuery } from "@mui/material"
-import { AlertTriangle, Calendar, ClipboardList, Edit, FileText, Loader2, MessageSquare, MoreHorizontal, MoreVertical, Plus, Search, SkipForward, StickyNote, Trash2, TrendingUp, Undo2 } from "lucide-react"
+import { AlertTriangle, Calendar, ClipboardList, Edit, Eye, FileText, Loader2, MessageSquare, MoreHorizontal, MoreVertical, Plus, Search, SkipForward, StickyNote, Trash2, TrendingUp, Undo2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -596,6 +596,12 @@ function StudentMobileCard({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => window.open(`/portal?asStudent=${student.id}`, "_blank")}
+                  className="text-amber-600 cursor-pointer"
+                >
+                  <Eye className="h-4 w-4 mr-2" /> Ver como alumno
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => onEdit(student)} className="text-blue-600 cursor-pointer">
                   <Edit className="h-4 w-4 mr-2" /> Editar
                 </DropdownMenuItem>
@@ -906,6 +912,12 @@ export function StudentsTable({ onOpenPlan }: { onOpenPlan?: (alumnoNombre: stri
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => window.open(`/portal?asStudent=${row.id}`, "_blank")}
+                className="text-amber-600 cursor-pointer"
+              >
+                <Eye className="h-4 w-4 mr-2" /> Ver como alumno
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleEdit(row as Student)} className="text-blue-600 cursor-pointer">
                 <Edit className="h-4 w-4 mr-2" /> Editar
               </DropdownMenuItem>

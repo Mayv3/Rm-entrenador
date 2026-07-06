@@ -1,7 +1,11 @@
 "use client"
 
+// useSearchParams (modo preview ?asStudent) requiere render dinámico; evita el
+// error de prerender "missing suspense boundary" en build.
+export const dynamic = "force-dynamic"
+
 import { useSession, signOut } from "next-auth/react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useTheme } from "next-themes"
@@ -173,6 +177,11 @@ function isRealHabitsLink(link?: string | null): boolean {
 export default function PortalPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  // Modo preview admin: /portal?asStudent=<id> muestra el portal de ese alumno
+  // sin sesión de alumno. Solo para uso interno del entrenador.
+  const previewId = searchParams.get("asStudent")
+  const isPreview = !!previewId
   const { setTheme } = useTheme()
   const themeInitRef = useRef(false)
 
@@ -220,16 +229,25 @@ export default function PortalPage() {
   }
 
   useEffect(() => {
+    if (isPreview) return
     if (status === "unauthenticated") router.replace("/portal/login")
-  }, [status, router])
+  }, [status, router, isPreview])
 
   const email = session?.user?.email ?? ""
 
   const { data: student, isLoading: loadingStudent, isError, error: studentError } = useQuery({
-    queryKey: ["portalStudent", email],
+    queryKey: isPreview ? ["portalStudentPreview", previewId] : ["portalStudent", email],
     queryFn: () =>
-      axios.get<Student>(`${process.env.NEXT_PUBLIC_URL_BACKEND}/student/by-email?email=${encodeURIComponent(email)}`).then(r => r.data),
-    enabled: !!email,
+      isPreview
+        ? axios
+            .get<Student[]>(`${process.env.NEXT_PUBLIC_URL_BACKEND}/getallstudents`)
+            .then(r => {
+              const found = r.data.find(s => Number(s.id) === Number(previewId))
+              if (!found) throw new Error("Alumno no encontrado")
+              return found
+            })
+        : axios.get<Student>(`${process.env.NEXT_PUBLIC_URL_BACKEND}/student/by-email?email=${encodeURIComponent(email)}`).then(r => r.data),
+    enabled: isPreview ? !!previewId : !!email,
     retry: (failureCount, err: any) => {
       const httpStatus = err?.response?.status
       if (httpStatus === 403 || httpStatus === 404) return false
@@ -310,7 +328,7 @@ export default function PortalPage() {
 
   const subscriptionStatus = latestPayment ? determineSubscriptionStatus(latestPayment) : "Indefinido"
 
-  if (status === "loading" || loadingStudent) {
+  if ((!isPreview && status === "loading") || loadingStudent) {
     return (
       <div className="min-h-screen bg-background">
         {/* Header */}
@@ -423,6 +441,18 @@ export default function PortalPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      {isPreview && (
+        <div className="sticky top-0 z-20 bg-amber-500 text-black text-xs font-bold px-4 py-2 flex items-center justify-between">
+          <span>MODO PREVIEW · viendo como {student.nombre}</span>
+          <button
+            onClick={() => router.push("/dashboard")}
+            className="flex items-center gap-1 underline"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Volver
+          </button>
+        </div>
+      )}
       {/* Header */}
       <header className="border-b bg-background sticky top-0 z-10">
         <div className="max-w-lg mx-auto flex items-center justify-between px-6 py-4">
@@ -430,7 +460,7 @@ export default function PortalPage() {
           <div className="flex items-center gap-2">
             <ModeToggle />
             <button
-              onClick={() => signOut({ callbackUrl: "/portal/login" })}
+              onClick={() => (isPreview ? router.push("/dashboard") : signOut({ callbackUrl: "/portal/login" }))}
               className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-red-500 transition-colors"
             >
               <LogOut className="h-3.5 w-3.5" />
