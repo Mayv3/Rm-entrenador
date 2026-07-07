@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useMemo, useRef, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import axios from "axios"
 import { Input } from "@/components/ui/input"
@@ -11,7 +11,6 @@ import { CardSaveBadge } from "@/components/portal/card-save-badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Loader2,
-  ChevronLeft,
   ChevronRight,
   Dumbbell,
   CalendarDays,
@@ -148,10 +147,14 @@ export function StudentPlanificacionSection({
   studentId,
   onRequestClose,
   historyDepthRef,
+  onCanGoBackChange,
+  backHandlerRef,
 }: {
   studentId: number
   onRequestClose?: () => void
   historyDepthRef?: React.MutableRefObject<number>
+  onCanGoBackChange?: (v: boolean) => void
+  backHandlerRef?: React.MutableRefObject<(() => void) | null>
 }) {
   const queryClient = useQueryClient()
   const [semanaSeleccionada, setSemanaSeleccionada] = useState<number | null>(null)
@@ -807,6 +810,28 @@ export function StudentPlanificacionSection({
         .map((ej) => ej.id),
     [ejerciciosDelDia, registrosForm, saltadoEjIds]
   )
+
+  // Back button unificado, izado al header del padre (al lado del calendario).
+  // Replica la lógica de cada vista: exercises (preview/parciales/back), días (back).
+  const handleBack = useCallback(() => {
+    if (diaSeleccionadoId !== null) {
+      if (previewPlan) { setPreviewPlan(false); return }
+      if (parcialesDelDia.length > 0) { setExitPromptOpen(true); return }
+      history.back()
+      return
+    }
+    if (semanaSeleccionada !== null) {
+      history.back()
+    }
+  }, [diaSeleccionadoId, semanaSeleccionada, previewPlan, parcialesDelDia])
+
+  const canGoBack = semanaSeleccionada !== null
+  useEffect(() => {
+    if (backHandlerRef) backHandlerRef.current = handleBack
+  }, [handleBack, backHandlerRef])
+  useEffect(() => {
+    onCanGoBackChange?.(canGoBack)
+  }, [canGoBack, onCanGoBackChange])
 
   // True cuando lo único que separa al día de "completado" son ejercicios sin tocar,
   // y el último ejercicio de la lista (no salteado) ya está completo — señal de que el
@@ -1622,15 +1647,9 @@ export function StudentPlanificacionSection({
     return (
       <div className="space-y-5">
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => history.back()}
-            className="h-8 w-8 rounded-xl bg-muted/50 dark:bg-white/[0.05] hover:bg-muted/70 dark:bg-white/[0.08] flex items-center justify-center transition-colors"
-          >
-            <ChevronLeft className="h-4 w-4 text-muted-foreground dark:text-zinc-400" />
-          </button>
           <div>
-            <p className="text-xs text-muted-foreground dark:text-zinc-500">Semana {semanaSeleccionada}</p>
-            <p className="text-sm font-bold text-foreground dark:text-white leading-tight">Elegí un día</p>
+            <p className="text-sm text-muted-foreground dark:text-zinc-500">Semana {semanaSeleccionada}</p>
+            <p className="text-xl font-bold text-foreground dark:text-white leading-tight">Elegí un día</p>
           </div>
         </div>
 
@@ -1682,21 +1701,11 @@ export function StudentPlanificacionSection({
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center gap-2">
-        <button
-          onClick={() => {
-            if (previewPlan) { setPreviewPlan(false); return }
-            if (parcialesDelDia.length > 0) { setExitPromptOpen(true); return }
-            history.back()
-          }}
-          className="h-8 w-8 rounded-xl bg-muted/50 dark:bg-white/[0.05] hover:bg-muted/70 dark:bg-white/[0.08] flex items-center justify-center transition-colors flex-shrink-0"
-        >
-          <ChevronLeft className="h-4 w-4 text-muted-foreground dark:text-zinc-400" />
-        </button>
         <div className="flex-1 min-w-0">
-          <p className="text-xs text-muted-foreground dark:text-zinc-500">
+          <p className="text-sm text-muted-foreground dark:text-zinc-500">
             {previewPlan ? "Vista previa · " : ""}Semana {semanaSeleccionada}
           </p>
-          <p className="text-base font-bold text-foreground dark:text-white leading-tight truncate">
+          <p className="text-xl font-bold text-foreground dark:text-white leading-tight truncate">
             Día {diaSeleccionado?.numero_dia} · {diaSeleccionado?.nombre}
           </p>
         </div>

@@ -17,7 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { FileText, LogOut, MessageSquare, ArrowLeft, Loader2, Download, Eye, TrendingUp, GitCompareArrows, Salad, Dumbbell, ArrowRight, X, CalendarDays } from "lucide-react"
+import { FileText, LogOut, MessageSquare, ArrowLeft, Loader2, Download, Eye, TrendingUp, GitCompareArrows, Salad, Dumbbell, ArrowRight, X, CalendarDays, ChevronLeft } from "lucide-react"
 import { ModeToggle } from "@/components/mode-toggle"
 import { StudentPlanificacionSection } from "@/components/portal/student-planificacion-section"
 import { SaveStatusIndicator } from "@/components/portal/save-status-indicator"
@@ -205,6 +205,8 @@ function PortalPageInner() {
   const [showMiPlan, setShowMiPlan] = useState(false)
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [progresoOpen, setProgresoOpen] = useState(false)
+  const [miPlanCanBack, setMiPlanCanBack] = useState(false)
+  const miPlanBackRef = useRef<(() => void) | null>(null)
   const miPlanHistoryDepth = useRef(0)
   const didRestoreMiPlanRef = useRef(false)
 
@@ -778,6 +780,16 @@ function PortalPageInner() {
             {/* Header */}
             <div className="border-b border-border dark:border-white/[0.06] bg-background/80 dark:bg-background dark:bg-[#0a0a0a]/80 backdrop-blur-xl px-4 py-3.5 flex items-center justify-between gap-2 flex-shrink-0">
               <div className="flex items-center gap-2">
+                {miPlanCanBack && (
+                  <button
+                    onClick={() => miPlanBackRef.current?.()}
+                    className="h-8 w-8 rounded-xl bg-muted dark:bg-white/[0.05] hover:bg-accent dark:hover:bg-white/[0.08] flex items-center justify-center transition-colors"
+                    aria-label="Volver"
+                    title="Volver"
+                  >
+                    <ChevronLeft className="h-4 w-4 text-muted-foreground dark:text-zinc-300" />
+                  </button>
+                )}
                 <button
                   onClick={() => setCalendarOpen(true)}
                   disabled={!appPlanResp?.planificacion?.id}
@@ -815,6 +827,8 @@ function PortalPageInner() {
                   studentId={student.id}
                   onRequestClose={() => setShowMiPlan(false)}
                   historyDepthRef={miPlanHistoryDepth}
+                  onCanGoBackChange={setMiPlanCanBack}
+                  backHandlerRef={miPlanBackRef}
                 />
               )}
             </div>

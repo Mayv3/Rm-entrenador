@@ -7,7 +7,7 @@ import { useTheme } from "next-themes"
 import Link from "next/link"
 import { useQuery } from "@tanstack/react-query"
 import axios from "axios"
-import { ArrowLeft, Dumbbell, CalendarDays } from "lucide-react"
+import { ArrowLeft, Dumbbell, CalendarDays, ChevronLeft } from "lucide-react"
 import { Loader } from "@/components/ui/loader"
 import { StudentPlanificacionSection } from "@/components/portal/student-planificacion-section"
 import { ModeToggle } from "@/components/mode-toggle"
@@ -25,6 +25,8 @@ export default function MiPlanAppPage() {
   const { setTheme } = useTheme()
   const themeInitRef = useRef(false)
   const [calendarOpen, setCalendarOpen] = useState(false)
+  const [canBack, setCanBack] = useState(false)
+  const backRef = useRef<(() => void) | null>(null)
 
   useEffect(() => {
     if (themeInitRef.current) return
@@ -128,6 +130,17 @@ export default function MiPlanAppPage() {
               <ArrowLeft className="h-4 w-4" />
               Volver
             </Link>
+            {canBack && (
+              <button
+                type="button"
+                onClick={() => backRef.current?.()}
+                className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-border dark:border-white/10 bg-background dark:bg-white/[0.04] text-foreground dark:text-zinc-200 hover:bg-accent dark:hover:bg-white/[0.08] transition-colors"
+                aria-label="Volver"
+                title="Volver"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setCalendarOpen(true)}
@@ -150,7 +163,11 @@ export default function MiPlanAppPage() {
       </header>
 
       <main className="max-w-lg mx-auto px-4 py-6">
-        <StudentPlanificacionSection studentId={student.id} />
+        <StudentPlanificacionSection
+          studentId={student.id}
+          onCanGoBackChange={setCanBack}
+          backHandlerRef={backRef}
+        />
       </main>
 
       {planId && (
