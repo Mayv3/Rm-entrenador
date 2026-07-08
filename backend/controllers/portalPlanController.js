@@ -19,6 +19,57 @@ function registroParcial(series) {
   return algunaCompleta && algunaFaltante;
 }
 
+// Enriquece un array de sesiones con su estado derivado de los registros:
+//  - parcial: algún ejercicio "olvidado a medias".
+//  - completados: cantidad de ejercicios resueltos (dato real reps>0 o salteados).
+//  - saltado: día completado, con registros, y sin ningún dato real (todo skip).
+// Reutilizado por el resumen embebido en el plan y por el detalle por semana.
+function enrichSesiones(sesiones, registros) {
+  const parcialPorSesion = new Map();
+  const resueltosPorSesion = new Map(); // sesion_id -> Set(planificacion_ejercicio_id)
+  const conDatoRealPorSesion = new Set();
+  const conRegistroPorSesion = new Set();
+  for (const r of registros ?? []) {
+    conRegistroPorSesion.add(r.sesion_id);
+    if (registroParcial(r.series)) parcialPorSesion.set(r.sesion_id, true);
+    const tieneReal = Array.isArray(r.series) && r.series.some((s) => Number(s?.repeticiones) > 0);
+    if (tieneReal) conDatoRealPorSesion.add(r.sesion_id);
+    const resuelto = tieneReal || (Array.isArray(r.series) && r.series.some((s) => s?._saltado === true));
+    if (resuelto) {
+      if (!resueltosPorSesion.has(r.sesion_id)) resueltosPorSesion.set(r.sesion_id, new Set());
+      resueltosPorSesion.get(r.sesion_id).add(r.planificacion_ejercicio_id);
+    }
+  }
+  return (sesiones ?? []).map((s) => ({
+    ...s,
+    parcial: parcialPorSesion.get(s.id) === true,
+    completados: resueltosPorSesion.get(s.id)?.size ?? 0,
+    saltado: s.estado === "completado" && conRegistroPorSesion.has(s.id) && !conDatoRealPorSesion.has(s.id),
+  }));
+}
+
+// Estados de TODAS las sesiones del alumno en el plan (todas las hojas/semanas/días).
+// Se embebe en la respuesta del plan para que los cuadrados de semanas y días tengan su
+// estado apenas carga la planificación, sin esperar queries extra (ni tras recargar la página).
+async function getSesionesEstados(planId, alumnoId) {
+  const { data: sesiones, error } = await supabase
+    .from("entrenamiento_sesiones")
+    .select("id, hoja_id, dia_id, semana, estado")
+    .eq("planificacion_id", planId)
+    .eq("alumno_id", alumnoId);
+  if (error) throw new Error(error.message);
+  if (!sesiones || sesiones.length === 0) return [];
+
+  const { data: registros, error: regError } = await supabase
+    .from("entrenamiento_registros")
+    .select("sesion_id, series, planificacion_ejercicio_id")
+    .in("sesion_id", sesiones.map((s) => s.id));
+  if (regError) throw new Error(regError.message);
+
+  // Se descarta el id de sesión: el front indexa por hoja_id/semana/dia_id.
+  return enrichSesiones(sesiones, registros).map(({ id, ...rest }) => rest);
+}
+
 function pickPlan(planificaciones) {
   if (!Array.isArray(planificaciones) || planificaciones.length === 0) return null;
   return (
@@ -29,51 +80,48 @@ function pickPlan(planificaciones) {
 }
 
 async function getPlanificacionCompleta(planId) {
-  const { data: plan, error: planError } = await supabase
-    .from("planificaciones")
-    .select("*, alumnos(id, nombre)")
-    .eq("id", planId)
-    .single();
+  // Etapa 1: plan y hojas en paralelo (ambos dependen solo de planId).
+  const [planRes, hojasRes] = await Promise.all([
+    supabase.from("planificaciones").select("*, alumnos(id, nombre)").eq("id", planId).single(),
+    supabase.from("planificacion_hojas").select("*").eq("planificacion_id", planId).is("deleted_at", null).order("numero", { ascending: true }),
+  ]);
 
-  if (planError) throw new Error(planError.message);
+  if (planRes.error) throw new Error(planRes.error.message);
+  const plan = planRes.data;
   if (!plan) return null;
-
-  const { data: hojas, error: hojasError } = await supabase
-    .from("planificacion_hojas")
-    .select("*")
-    .eq("planificacion_id", planId)
-    .is("deleted_at", null)
-    .order("numero", { ascending: true });
-
-  if (hojasError) throw new Error(hojasError.message);
-  if (!hojas || hojas.length === 0) return { ...plan, hojas: [] };
+  if (hojasRes.error) throw new Error(hojasRes.error.message);
+  const hojas = hojasRes.data ?? [];
+  if (hojas.length === 0) return { ...plan, hojas: [] };
 
   const hojaIds = hojas.map((h) => h.id);
 
-  const { data: dias, error: diasError } = await supabase
-    .from("planificacion_dias")
-    .select("*")
-    .in("hoja_id", hojaIds)
-    .order("orden", { ascending: true });
+  // Etapa 2: días y movilidad en paralelo (ambos dependen de hojaIds).
+  const [diasRes, movRes] = await Promise.all([
+    supabase.from("planificacion_dias").select("*").in("hoja_id", hojaIds).order("orden", { ascending: true }),
+    supabase.from("planificacion_movilidad").select("*").in("hoja_id", hojaIds).order("orden", { ascending: true }),
+  ]);
+  if (diasRes.error) throw new Error(diasRes.error.message);
+  const dias = diasRes.data ?? [];
+  const movilidad = movRes.data ?? [];
 
-  if (diasError) throw new Error(diasError.message);
-  if (!dias || dias.length === 0) {
-    return { ...plan, hojas: hojas.map((h) => ({ ...h, dias: [] })) };
-  }
-
+  // Etapa 3: ejercicios del día (por diaIds) y videos de movilidad (por nombre) en paralelo.
   const diaIds = dias.map((d) => d.id);
+  const nombresMov = [...new Set(movilidad.map((m) => m.nombre).filter(Boolean))];
+  const [ejerciciosRes, movEjRes] = await Promise.all([
+    diaIds.length > 0
+      ? supabase.from("planificacion_ejercicios").select("*, ejercicios(id, nombre, grupo_muscular, video_url)").in("planificacion_dia_id", diaIds).order("orden", { ascending: true })
+      : Promise.resolve({ data: [], error: null }),
+    nombresMov.length > 0
+      ? supabase.from("ejercicios_movilidad").select("nombre, video_url").in("nombre", nombresMov)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (ejerciciosRes.error) throw new Error(ejerciciosRes.error.message);
+  const ejercicios = ejerciciosRes.data ?? [];
+  const videoByNombre = new Map((movEjRes.data ?? []).map((e) => [e.nombre, e.video_url]));
 
-  const { data: ejercicios, error: ejerciciosError } = await supabase
-    .from("planificacion_ejercicios")
-    .select("*, ejercicios(id, nombre, grupo_muscular, video_url)")
-    .in("planificacion_dia_id", diaIds)
-    .order("orden", { ascending: true });
-
-  if (ejerciciosError) throw new Error(ejerciciosError.message);
-
-  const ejercicioIds = (ejercicios ?? []).map((e) => e.id);
+  // Etapa 4: semanas (dependen de los ids de ejercicios).
+  const ejercicioIds = ejercicios.map((e) => e.id);
   let semanas = [];
-
   if (ejercicioIds.length > 0) {
     const { data: semanasData, error: semanasError } = await supabase
       .from("planificacion_semanas")
@@ -83,26 +131,6 @@ async function getPlanificacionCompleta(planId) {
 
     if (semanasError) throw new Error(semanasError.message);
     semanas = semanasData ?? [];
-  }
-
-  const { data: movilidadData } = await supabase
-    .from("planificacion_movilidad")
-    .select("*")
-    .in("hoja_id", hojaIds)
-    .order("orden", { ascending: true });
-
-  const movilidad = movilidadData ?? [];
-
-  let videoByNombre = new Map();
-  if (movilidad.length > 0) {
-    const nombres = [...new Set(movilidad.map((m) => m.nombre).filter(Boolean))];
-    if (nombres.length > 0) {
-      const { data: movEj } = await supabase
-        .from("ejercicios_movilidad")
-        .select("nombre, video_url")
-        .in("nombre", nombres);
-      videoByNombre = new Map((movEj ?? []).map((e) => [e.nombre, e.video_url]));
-    }
   }
 
   const hojasCompletas = hojas.map((hoja) => ({
@@ -146,7 +174,13 @@ export async function getPortalPlanificacion(req, res) {
   }
 
   try {
-    const planificacion = await getPlanificacionCompleta(selectedPlan.id);
+    // Estructura del plan y estados de las sesiones en paralelo: los estados viajan embebidos
+    // para pintar los cuadrados sin un segundo request.
+    const [planificacion, sesiones] = await Promise.all([
+      getPlanificacionCompleta(selectedPlan.id),
+      getSesionesEstados(selectedPlan.id, alumnoId),
+    ]);
+    if (planificacion) planificacion.sesiones = sesiones;
     return res.json({ planificacion });
   } catch (error) {
     return res.status(500).json({ error: error.message });
@@ -399,25 +433,70 @@ export async function getPortalSesionesSemana(req, res) {
   if (error) return res.status(500).json({ error: error.message });
 
   const sesiones = data ?? [];
+  const sesionIds = sesiones.map((s) => s.id);
 
-  // Marcar sesiones con ejercicios "olvidados a medias" (empezados pero con alguna
-  // serie sin cargar). Solo se evalúan las no completadas.
-  const pendientes = sesiones.filter((s) => s.estado !== "completado").map((s) => s.id);
-  const parcialPorSesion = new Map();
-  if (pendientes.length > 0) {
-    const { data: registros, error: regError } = await supabase
+  let registros = [];
+  if (sesionIds.length > 0) {
+    const { data: regData, error: regError } = await supabase
       .from("entrenamiento_registros")
-      .select("sesion_id, series")
-      .in("sesion_id", pendientes);
+      .select("sesion_id, series, planificacion_ejercicio_id")
+      .in("sesion_id", sesionIds);
     if (regError) return res.status(500).json({ error: regError.message });
-    for (const r of registros ?? []) {
-      if (registroParcial(r.series)) parcialPorSesion.set(r.sesion_id, true);
-    }
+    registros = regData ?? [];
   }
 
-  return res.json({
-    sesiones: sesiones.map((s) => ({ ...s, parcial: parcialPorSesion.get(s.id) === true })),
-  });
+  return res.json({ sesiones: enrichSesiones(sesiones, registros) });
+}
+
+// Revertir un día SALTADO: borra la sesión y todo lo colgado (registros, estado diario, asistencia),
+// dejando el día como "sin empezar". Guard: solo procede si la sesión no tiene ningún dato real
+// (todo skip), para no destruir un entrenamiento cargado por error.
+export async function revertirPortalSaltadoDia(req, res) {
+  const planId = Number(req.params.planId);
+  const alumnoId = Number(req.query.alumno_id);
+  const hojaId = Number(req.query.hoja_id);
+  const diaId = Number(req.query.dia_id);
+  const semana = Number(req.query.semana);
+
+  if (![planId, alumnoId, hojaId, diaId, semana].every(Number.isFinite)) {
+    return res.status(400).json({ error: "Parámetros inválidos" });
+  }
+
+  const { data: sesion, error: sErr } = await supabase
+    .from("entrenamiento_sesiones")
+    .select("id")
+    .eq("planificacion_id", planId)
+    .eq("alumno_id", alumnoId)
+    .eq("hoja_id", hojaId)
+    .eq("dia_id", diaId)
+    .eq("semana", semana)
+    .maybeSingle();
+
+  if (sErr) return res.status(500).json({ error: sErr.message });
+  if (!sesion) return res.json({ ok: true }); // nada que revertir
+
+  const { data: registros, error: regErr } = await supabase
+    .from("entrenamiento_registros")
+    .select("series")
+    .eq("sesion_id", sesion.id);
+  if (regErr) return res.status(500).json({ error: regErr.message });
+
+  const tieneDatoReal = (registros ?? []).some(
+    (r) => Array.isArray(r.series) && r.series.some((s) => Number(s?.repeticiones) > 0)
+  );
+  if (tieneDatoReal) {
+    return res.status(409).json({ error: "NO_ES_SALTADO" });
+  }
+
+  // Borrar hijos antes que la sesión (FKs RESTRICT).
+  await supabase.from("asistencias_alumnos").delete().eq("sesion_id", sesion.id);
+  await supabase.from("entrenamiento_estado_diario").delete().eq("sesion_id", sesion.id);
+  const { error: delRegErr } = await supabase.from("entrenamiento_registros").delete().eq("sesion_id", sesion.id);
+  if (delRegErr) return res.status(500).json({ error: delRegErr.message });
+  const { error: delSesErr } = await supabase.from("entrenamiento_sesiones").delete().eq("id", sesion.id);
+  if (delSesErr) return res.status(500).json({ error: delSesErr.message });
+
+  return res.json({ ok: true });
 }
 
 export async function upsertPortalSesion(req, res) {

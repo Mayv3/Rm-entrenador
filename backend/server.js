@@ -20,7 +20,7 @@ import {
 } from "./controllers/planificacionesController.js";
 import { getAntrosByAlumno, getAllAntrosCounts, createAntro, deleteAntro, updateAntroNombre, updateAntroFecha, getParsedAntro } from "./controllers/antropometriasController.js";
 import { getNutricionByAlumno, getAllNutricionCounts, createNutricion, deleteNutricion, updateNutricionNombre, updateNutricionHabitos } from "./controllers/nutricionController.js";
-import { getPortalPlanificacion, getPortalSesion, upsertPortalSesion, getPortalSesionesSemana, getPortalSesionesResumen, getPortalHojaAnteriorPesos, getPortalSemanaAnteriorPesos, getPortalUltimoPesoGlobal } from "./controllers/portalPlanController.js";
+import { getPortalPlanificacion, getPortalSesion, upsertPortalSesion, getPortalSesionesSemana, getPortalSesionesResumen, getPortalHojaAnteriorPesos, getPortalSemanaAnteriorPesos, getPortalUltimoPesoGlobal, revertirPortalSaltadoDia } from "./controllers/portalPlanController.js";
 import {
   getPlantillas, getPlantillaById, createPlantilla, updatePlantilla, deletePlantilla, asignarPlantilla, syncPlantilla, hidratarPlantilla,
 } from "./controllers/plantillasController.js";
@@ -209,6 +209,7 @@ app.get("/portal/planificaciones/:planId/sesiones/semana-anterior", getPortalSem
 app.get("/portal/planificaciones/:planId/sesiones/ultimo-global", getPortalUltimoPesoGlobal);
 app.get("/portal/planificaciones/:planId/sesiones", getPortalSesion);
 app.put("/portal/planificaciones/:planId/sesiones", upsertPortalSesion);
+app.delete("/portal/planificaciones/:planId/sesiones/saltado", revertirPortalSaltadoDia);
 
 // Mailing
 

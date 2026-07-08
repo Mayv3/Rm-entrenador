@@ -30,6 +30,7 @@ import {
   Activity,
   Eye,
   AlertTriangle,
+  Lock,
 } from "lucide-react"
 
 interface PlanSemana {
@@ -81,12 +82,25 @@ interface PlanHojaPortal {
   dias: PlanDiaPortal[]
 }
 
+interface SesionEstadoEmbed {
+  hoja_id: number
+  semana: number
+  dia_id: number
+  estado: string
+  parcial: boolean
+  completados: number
+  saltado: boolean
+}
+
 interface PlanificacionPortal {
   id: number
   nombre: string
   semanas: number
   hoja_activa_id: number | null
   hojas: PlanHojaPortal[]
+  // Estados de todas las sesiones (semanas/días), embebidos por el backend para pintar los
+  // cuadrados apenas carga el plan, sin esperar los queries de resumen/semana.
+  sesiones?: SesionEstadoEmbed[]
 }
 
 interface SerieRegistro {
@@ -207,11 +221,9 @@ export function StudentPlanificacionSection({
   const movilidadScrollRef = useRef<HTMLDivElement | null>(null)
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map())
   const serieAdvanceDebounceRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
-  // Pendiente 11: idle por-input. 3s sin escribir en un input → saltar al próximo.
-  const fieldIdleTimerRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
   const registrosFormRef = useRef<Record<number, FormRow>>({})
   const [previewPlan, setPreviewPlan] = useState(false)
-  const didRestoreNavRef = useRef(false)
+  const [skipDayTarget, setSkipDayTarget] = useState<PlanDiaPortal | null>(null)
 
   const clampSerieValue = (field: keyof SerieRow, value: string): string => {
     if (value === "") return ""
@@ -371,25 +383,6 @@ export function StudentPlanificacionSection({
     setPreviewPlan(false)
   }, [planificacion?.id])
 
-  // Guarda la semana/día actual para poder reanudar tras un cold start (SO mató la PWA).
-  // No escribe hasta intentar restaurar, para no pisar el valor guardado en el arranque.
-  useEffect(() => {
-    if (!didRestoreNavRef.current) return
-    if (!studentId || !planificacion?.id) return
-    try {
-      if (semanaSeleccionada == null) {
-        localStorage.removeItem(`rmPlanNav-${studentId}`)
-      } else {
-        localStorage.setItem(`rmPlanNav-${studentId}`, JSON.stringify({
-          planId: planificacion.id,
-          semana: semanaSeleccionada,
-          diaId: diaSeleccionadoId,
-          ts: Date.now(),
-        }))
-      }
-    } catch {}
-  }, [studentId, planificacion?.id, semanaSeleccionada, diaSeleccionadoId])
-
   const hojaActiva = useMemo(() => {
     if (!planificacion) return null
     return (
@@ -409,6 +402,14 @@ export function StudentPlanificacionSection({
 
   const dias = hojaActiva?.dias ?? []
   const totalSemanas = Math.max(1, planificacion?.semanas ?? 1)
+
+  // Estados de sesión embebidos en el plan, acotados a la hoja activa. Fuente instantánea
+  // (viene con el plan, disponible en el primer render y tras recargar) usada como fallback
+  // de los queries live de resumen/semana.
+  const sesionesEmbedActiva = useMemo(
+    () => (planificacion?.sesiones ?? []).filter((s) => s.hoja_id === hojaActiva?.id),
+    [planificacion?.sesiones, hojaActiva?.id]
+  )
 
   const diaSeleccionado = useMemo(
     () => dias.find((d) => d.id === diaSeleccionadoId) || null,
@@ -928,7 +929,7 @@ export function StudentPlanificacionSection({
     return () => { timers.forEach(clearTimeout); intervals.forEach(clearInterval) }
   }, [celebracionOpen])
 
-  const { data: sesionesSemana, refetch: _refetchSesionesSemana } = useQuery<{ sesiones: { id: number; dia_id: number; estado: string; parcial?: boolean }[] }>({
+  const { data: sesionesSemana, refetch: _refetchSesionesSemana } = useQuery<{ sesiones: { id: number; dia_id: number; estado: string; parcial?: boolean; completados?: number; saltado?: boolean }[] }>({
     queryKey: ["portalSesionesSemana", planificacion?.id, studentId, hojaActiva?.id, semanaSeleccionada],
     queryFn: async () => {
       const res = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/portal/planificaciones/${planificacion!.id}/sesiones/semana`, {
@@ -937,16 +938,21 @@ export function StudentPlanificacionSection({
       return res.data
     },
     enabled: !!planificacion && !!hojaActiva && !!semanaSeleccionada && diaSeleccionadoId === null,
-    staleTime: 0,
-    gcTime: 0,
-    refetchOnMount: "always",
+    // Cache por semana: al revisitar una semana ya abierta, muestra los estados al instante
+    // (dato cacheado) mientras refresca en segundo plano; evita el flash de cuadrados vacíos.
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+    refetchOnMount: false,
     refetchOnWindowFocus: true,
   })
 
-  const sesionesMapSemana = useMemo(
-    () => new Map((sesionesSemana?.sesiones ?? []).map((s) => [s.dia_id, s])),
-    [sesionesSemana]
-  )
+  // Detalle por día de la semana abierta: query live si está, si no el embebido del plan
+  // (instantáneo). Ambos exponen estado/parcial/completados/saltado por dia_id.
+  const sesionesMapSemana = useMemo(() => {
+    const live = sesionesSemana?.sesiones
+    const source = live ?? sesionesEmbedActiva.filter((s) => s.semana === semanaSeleccionada)
+    return new Map(source.map((s) => [s.dia_id, s]))
+  }, [sesionesSemana, sesionesEmbedActiva, semanaSeleccionada])
 
   // Prefetch: al mostrar la lista de días, cargar en cache la sesión de cada día de la
   // semana. Así abrir un día es instantáneo (la data ya está) — sin spinner.
@@ -976,16 +982,22 @@ export function StudentPlanificacionSection({
       })
       return res.data
     },
-    enabled: !!planificacion && !!hojaActiva && semanaSeleccionada === null,
-    staleTime: 0,
-    gcTime: 0,
-    refetchOnMount: "always",
+    // Siempre habilitado (no solo en la vista de semanas): así los estados de la hoja completa
+    // están cacheados antes de renderizar los cuadrados de semanas Y de días.
+    enabled: !!planificacion && !!hojaActiva,
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+    refetchOnMount: false,
     refetchOnWindowFocus: true,
   })
 
   // Keep refetch refs up to date
   refetchSesionesSemanaRef.current = _refetchSesionesSemana
   refetchResumenRef.current = _refetchResumen
+
+  // Fuente de estados a nivel semana/día: query live si está (fresco tras guardar/saltar), si no
+  // el embebido del plan (instantáneo en el primer render y tras recargar la página).
+  const resumenSesiones = sesionesResumen?.sesiones ?? sesionesEmbedActiva
 
   // Save on page close / refresh / tab hidden + autosave periódico
   useEffect(() => {
@@ -1025,8 +1037,6 @@ export function StudentPlanificacionSection({
       clearInterval(autosaveInterval)
       if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current)
       if (saveStatusResetRef.current) clearTimeout(saveStatusResetRef.current)
-      fieldIdleTimerRef.current.forEach((t) => clearTimeout(t))
-      fieldIdleTimerRef.current.clear()
       setSaveStatus("idle")
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -1078,43 +1088,13 @@ export function StudentPlanificacionSection({
     return () => window.removeEventListener("popstate", handlePopState)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Cold-start resume: si el SO mató la PWA (poca RAM), el estado de React y la pila de
-  // history se pierden. Restaura semana/día desde localStorage y reconstruye la pila de
-  // history (semanas → días → ejercicios) para que el botón Atrás siga funcionando.
-  useEffect(() => {
-    if (didRestoreNavRef.current) return
-    if (!planificacion?.id) return
-    didRestoreNavRef.current = true
-    try {
-      const raw = localStorage.getItem(`rmPlanNav-${studentId}`)
-      if (!raw) return
-      const nav = JSON.parse(raw) as { planId?: number; semana?: number; diaId?: number | null; ts?: number }
-      if (!nav || nav.planId !== planificacion.id) { localStorage.removeItem(`rmPlanNav-${studentId}`); return }
-      if (typeof nav.ts === "number" && Date.now() - nav.ts > POS_TTL_MS) { localStorage.removeItem(`rmPlanNav-${studentId}`); return }
-      const semana = nav.semana
-      if (typeof semana !== "number" || semana < 1 || semana > Math.max(1, planificacion.semanas ?? 1)) {
-        localStorage.removeItem(`rmPlanNav-${studentId}`); return
-      }
-      const hoja = planificacion.hojas.find((h) => h.id === planificacion.hoja_activa_id) || planificacion.hojas[0] || null
-      const diaId = nav.diaId
-      const validDia = diaId != null && (hoja?.dias ?? []).some((d) => d.id === diaId)
-      // La pila base ("weeks") ya la empujó el efecto de montaje anterior.
-      history.pushState({ planNav: "days", semana }, "")
-      if (validDia) history.pushState({ planNav: "exercises" }, "")
-      if (historyDepthRef) historyDepthRef.current = validDia ? 3 : 2
-      setSemanaSeleccionada(semana)
-      if (validDia) setDiaSeleccionadoId(diaId!)
-    } catch {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [planificacion?.id, studentId])
-
   const semanaCompletadaMap = useMemo(() => {
     const map = new Map<number, boolean>()
-    if (!sesionesResumen || !hojaActiva) return map
+    if (!hojaActiva) return map
     const totalDias = (hojaActiva.dias ?? []).length
     if (totalDias === 0) return map
     const porSemana = new Map<number, number>()
-    for (const s of sesionesResumen.sesiones) {
+    for (const s of resumenSesiones) {
       if (s.estado === "completado") {
         porSemana.set(s.semana, (porSemana.get(s.semana) ?? 0) + 1)
       }
@@ -1123,7 +1103,36 @@ export function StudentPlanificacionSection({
       map.set(semana, count >= totalDias)
     }
     return map
-  }, [sesionesResumen, hojaActiva])
+  }, [resumenSesiones, hojaActiva])
+
+  // Progreso por semana: días completados / total de días (para rellenar la tarjeta).
+  const semanaProgresoMap = useMemo(() => {
+    const map = new Map<number, { done: number; total: number }>()
+    if (!hojaActiva) return map
+    const totalDias = (hojaActiva.dias ?? []).length
+    if (totalDias === 0) return map
+    const porSemana = new Map<number, number>()
+    for (const s of resumenSesiones) {
+      if (s.estado === "completado") {
+        porSemana.set(s.semana, (porSemana.get(s.semana) ?? 0) + 1)
+      }
+    }
+    for (let semana = 1; semana <= (planificacion?.semanas ?? 1); semana++) {
+      map.set(semana, { done: Math.min(porSemana.get(semana) ?? 0, totalDias), total: totalDias })
+    }
+    return map
+  }, [resumenSesiones, hojaActiva, planificacion?.semanas])
+
+  // Estado de cada día de la semana seleccionada. Fallback instantáneo para pintar "completado"
+  // antes de que llegue el query detallado por semana.
+  const estadoDiaResumenMap = useMemo(() => {
+    const map = new Map<number, string>()
+    if (semanaSeleccionada == null) return map
+    for (const s of resumenSesiones) {
+      if (s.semana === semanaSeleccionada) map.set(s.dia_id, s.estado)
+    }
+    return map
+  }, [resumenSesiones, semanaSeleccionada])
 
   const saveMutation = useMutation({
     onMutate: () => {
@@ -1331,6 +1340,82 @@ export function StudentPlanificacionSection({
     },
   })
 
+  // Saltar el día completo. Si el alumno ya entrenó ese día en una semana anterior, se copian
+  // esos registros (para no perder la progresión). Si no hay dato previo, se marca cada ejercicio
+  // como salteado. En ambos casos la sesión queda "completado" y suma al progreso de la semana.
+  const skipDayMutation = useMutation({
+    mutationFn: async (dia: PlanDiaPortal) => {
+      if (!planificacion || !hojaActiva || semanaSeleccionada == null) return
+
+      // Registros de la última semana anterior con datos reales de ESTE día, por ejercicio.
+      let prevByEj: Record<string, { series?: SerieRegistro[] }> = {}
+      try {
+        const res = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/portal/planificaciones/${planificacion.id}/sesiones/semana-anterior`, {
+          params: { alumno_id: studentId, hoja_id: hojaActiva.id, dia_id: dia.id, semana: semanaSeleccionada },
+        })
+        prevByEj = res.data?.registros ?? {}
+      } catch { prevByEj = {} }
+
+      const esReal = (s: SerieRegistro | undefined) => !!s && Number(s.repeticiones) > 0
+
+      const registros = (dia.ejercicios ?? []).map((ej) => {
+        const count = clampSeries(ej.series)
+        const prevSeries = prevByEj[ej.id]?.series
+        const tienePrev = Array.isArray(prevSeries) && prevSeries.some(esReal)
+
+        // Con dato previo: copio serie a serie (las que no son reales quedan como salteadas para
+        // no marcar el día como "a medias"). Sin dato previo: skip completo.
+        const series = Array.from({ length: count }, (_, i) => {
+          const s = tienePrev ? prevSeries![i] : undefined
+          return esReal(s)
+            ? { peso_kg: Number(s!.peso_kg) || 0, repeticiones: Number(s!.repeticiones) || 0, rpe: Number(s!.rpe) || 0 }
+            : { peso_kg: 0, repeticiones: 0, rpe: 0, _saltado: true }
+        })
+        const primera = series[0]
+        return {
+          planificacion_ejercicio_id: ej.id,
+          peso_kg: primera._saltado ? 0 : primera.peso_kg,
+          repeticiones: primera._saltado ? 0 : primera.repeticiones,
+          rpe: primera._saltado ? 0 : primera.rpe,
+          notas: null,
+          series,
+        }
+      })
+
+      const clientRev = Math.max(Date.now(), clientRevRef.current + 1)
+      clientRevRef.current = clientRev
+      await axios.put(`${process.env.NEXT_PUBLIC_URL_BACKEND}/portal/planificaciones/${planificacion.id}/sesiones`, {
+        alumno_id: studentId,
+        hoja_id: hojaActiva.id,
+        dia_id: dia.id,
+        semana: semanaSeleccionada,
+        estado: "completado",
+        client_rev: clientRev,
+        registros,
+      })
+    },
+    onSuccess: () => {
+      setSkipDayTarget(null)
+      refetchSesionesSemanaRef.current?.()
+      refetchResumenRef.current?.()
+    },
+  })
+
+  // Revertir un día saltado: borra la sesión (queda "sin empezar"). Solo el backend permite
+  // si no hay dato real, así que es seguro.
+  const revertDayMutation = useMutation({
+    mutationFn: async (dia: PlanDiaPortal) => {
+      if (!planificacion || !hojaActiva || semanaSeleccionada == null) return
+      await axios.delete(`${process.env.NEXT_PUBLIC_URL_BACKEND}/portal/planificaciones/${planificacion.id}/sesiones/saltado`, {
+        params: { alumno_id: studentId, hoja_id: hojaActiva.id, dia_id: dia.id, semana: semanaSeleccionada },
+      })
+    },
+    onSuccess: () => {
+      refetchSesionesSemanaRef.current?.()
+      refetchResumenRef.current?.()
+    },
+  })
+
   const saveMutateRef = useRef(saveMutation.mutate)
   saveMutateRef.current = saveMutation.mutate
   const saveIsPendingRef = useRef(saveMutation.isPending)
@@ -1397,28 +1482,6 @@ export function StudentPlanificacionSection({
     const serieEmpty = !thisSerie.peso_kg && !thisSerie.repeticiones && !thisSerie.rpe
     const wasNotEmpty = !!oldSerie.peso_kg || !!oldSerie.repeticiones || !!oldSerie.rpe
     const shouldSave = serieFilled || (serieEmpty && wasNotEmpty)
-
-    // Idle por-input (pendiente 11): 3s sin escribir en este input → saltar al próximo campo
-    // de la misma serie (peso→reps→rpe). El cambio de serie lo maneja el advance de serie-llena.
-    const fields: (keyof SerieRow)[] = ["peso_kg", "repeticiones", "rpe"]
-    const fieldIdx = fields.indexOf(field)
-    const idleKey = `${planEjId}-${serieIdx}-${field}`
-    const pendingIdle = fieldIdleTimerRef.current.get(idleKey)
-    if (pendingIdle) clearTimeout(pendingIdle)
-    if (clamped !== "" && fieldIdx < fields.length - 1 && !serieFilled) {
-      const idle = setTimeout(() => {
-        fieldIdleTimerRef.current.delete(idleKey)
-        const current = inputRefs.current.get(idleKey)
-        // solo saltar si el usuario sigue parado en este input (no robar foco si ya navegó)
-        if (current && document.activeElement !== current) {
-          console.log(`[idle] ${idleKey}: foco ya movido, no salto`)
-          return
-        }
-        console.log(`[idle] ${idleKey} → ${fields[fieldIdx + 1]} (${FIELD_IDLE_MS}ms sin escribir)`)
-        inputRefs.current.get(`${planEjId}-${serieIdx}-${fields[fieldIdx + 1]}`)?.focus()
-      }, FIELD_IDLE_MS)
-      fieldIdleTimerRef.current.set(idleKey, idle)
-    }
 
     const advanceKey = `${planEjId}-${serieIdx}`
     const pending = serieAdvanceDebounceRef.current.get(advanceKey)
@@ -1612,24 +1675,46 @@ export function StudentPlanificacionSection({
           <div className="grid grid-cols-2 gap-2.5">
             {Array.from({ length: totalSemanas }, (_, i) => i + 1).map((semana) => {
               const completada = semanaCompletadaMap.get(semana) === true
+              // Progresión secuencial: la semana N se desbloquea al completar la N-1.
+              // En vista previa del profesor no aplica el bloqueo.
+              const bloqueada = !previewPlan && semana > 1 && semanaCompletadaMap.get(semana - 1) !== true
+              const prog = semanaProgresoMap.get(semana) ?? { done: 0, total: 0 }
+              const pct = prog.total > 0 ? Math.round((prog.done / prog.total) * 100) : 0
+              const parcial = !completada && !bloqueada && prog.done > 0
               return (
                 <button
                   key={semana}
+                  disabled={bloqueada}
                   onClick={() => {
+                    if (bloqueada) return
                     history.pushState({ planNav: "days", semana }, "")
                     if (historyDepthRef) historyDepthRef.current++
                     setSemanaSeleccionada(semana)
                   }}
                   className={`group relative aspect-square rounded-2xl border active:scale-95 transition-all duration-150 p-4 text-left overflow-hidden shadow-sm dark:shadow-none ${
-                    completada
+                    bloqueada
+                      ? "border-border dark:border-white/[0.05] bg-muted/40 dark:bg-white/[0.02] cursor-not-allowed active:scale-100"
+                      : completada
                       ? "border-green-500 dark:border-green-500/40 bg-green-100 dark:bg-green-500/[0.07] hover:bg-green-200 dark:hover:bg-green-500/[0.11]"
                       : "border-border bg-card dark:bg-white/[0.03] hover:bg-muted dark:hover:bg-white/[0.06] hover:border-green-500/60 dark:hover:border-green-500/30 active:bg-green-200 dark:active:bg-green-500/20 active:border-green-500"
                   }`}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-br from-green-500/0 group-hover:from-green-500/5 to-transparent transition-all duration-200" />
-                  <span className={`absolute top-3 left-3 text-[10px] font-semibold uppercase tracking-widest transition-colors ${completada ? "text-green-500/70" : "text-muted-foreground dark:text-zinc-500 group-hover:text-green-500/70"}`}>Semana</span>
-                  <span className={`absolute inset-0 flex items-center justify-center text-4xl font-black transition-colors ${completada ? "text-green-700 dark:text-green-400" : "text-foreground dark:text-white"}`}>{semana}</span>
-                  {completada
+                  {/* Relleno proporcional a días completos (sube desde abajo) */}
+                  {parcial && (
+                    <div
+                      className="absolute inset-x-0 bottom-0 bg-green-500/20 dark:bg-green-500/[0.14] transition-all duration-500 ease-out pointer-events-none"
+                      style={{ height: `${pct}%` }}
+                    />
+                  )}
+                  {!bloqueada && <div className="absolute inset-0 bg-gradient-to-br from-green-500/0 group-hover:from-green-500/5 to-transparent transition-all duration-200" />}
+                  <span className={`absolute top-3 left-3 text-[10px] font-semibold uppercase tracking-widest transition-colors ${bloqueada ? "text-muted-foreground/50 dark:text-zinc-600" : completada ? "text-green-500/70" : "text-muted-foreground dark:text-zinc-500 group-hover:text-green-500/70"}`}>Semana</span>
+                  <span className={`absolute inset-0 flex items-center justify-center text-4xl font-black transition-colors ${bloqueada ? "text-muted-foreground/40 dark:text-zinc-700" : completada ? "text-green-700 dark:text-green-400" : "text-foreground dark:text-white"}`}>{semana}</span>
+                  {parcial && (
+                    <span className="absolute bottom-3 left-3 text-[10px] font-semibold tabular-nums text-green-600 dark:text-green-400">{prog.done}/{prog.total}</span>
+                  )}
+                  {bloqueada
+                    ? <Lock className="absolute right-3 bottom-3 h-4 w-4 text-muted-foreground/50 dark:text-zinc-600" />
+                    : completada
                     ? <CheckCircle2 className="absolute right-3 bottom-3 h-4 w-4 text-green-600 dark:text-green-400" />
                     : <ChevronRight className="absolute right-3 bottom-3 h-4 w-4 text-muted-foreground/70 dark:text-zinc-600 group-hover:text-green-500/50 transition-colors" />
                   }
@@ -1659,37 +1744,123 @@ export function StudentPlanificacionSection({
           <div className="grid grid-cols-2 gap-2.5">
             {dias.map((dia) => {
               const sesionDia = sesionesMapSemana.get(dia.id)
-              const completado = sesionDia?.estado === "completado"
+              const estadoDia = sesionDia?.estado ?? estadoDiaResumenMap.get(dia.id)
+              const completado = estadoDia === "completado"
               const incompleto = !completado && sesionDia?.parcial === true
+              const totalEj = dia.ejercicios?.length ?? 0
+              const doneEj = Math.min(sesionDia?.completados ?? 0, totalEj)
+              const pctDia = totalEj > 0 ? Math.round((doneEj / totalEj) * 100) : 0
+              const parcialDia = !completado && doneEj > 0
+              const saltado = sesionDia?.saltado === true
+              const puedeSaltar = !previewPlan && !completado
+              const puedeRevertir = !previewPlan && saltado
               return (
-                <button
-                  key={dia.id}
-                  onClick={() => {
-                    history.pushState({ planNav: "exercises" }, "")
-                    if (historyDepthRef) historyDepthRef.current++
-                    setDiaSeleccionadoId(dia.id)
-                  }}
-                  className={`group relative aspect-square rounded-2xl border active:scale-95 transition-all duration-150 p-4 text-left overflow-hidden ${
-                    completado
-                      ? "border-green-500/40 bg-green-500/[0.07] hover:bg-green-500/[0.11]"
+                <div key={dia.id} className="relative">
+                  <button
+                    disabled={saltado}
+                    onClick={() => {
+                      if (saltado) return
+                      history.pushState({ planNav: "exercises" }, "")
+                      if (historyDepthRef) historyDepthRef.current++
+                      setDiaSeleccionadoId(dia.id)
+                    }}
+                    className={`group w-full relative aspect-square rounded-2xl border ${saltado ? "cursor-not-allowed" : "active:scale-95"} transition-all duration-150 p-4 text-left overflow-hidden ${
+                      completado
+                        ? "border-green-500/40 bg-green-500/[0.07] hover:bg-green-500/[0.11]"
+                        : incompleto
+                        ? "border-amber-500/40 bg-amber-500/[0.07] hover:bg-amber-500/[0.11]"
+                        : "border-border dark:border-white/[0.07] bg-muted/40 dark:bg-white/[0.03] hover:bg-muted/60 dark:bg-white/[0.06] hover:border-green-500/30 active:bg-green-500/20 active:border-green-500/60"
+                    }`}
+                  >
+                    {/* Relleno proporcional a ejercicios resueltos (sube desde abajo) */}
+                    {parcialDia && (
+                      <div
+                        className={`absolute inset-x-0 bottom-0 transition-all duration-500 ease-out pointer-events-none ${incompleto ? "bg-amber-500/[0.16]" : "bg-green-500/[0.16]"}`}
+                        style={{ height: `${pctDia}%` }}
+                      />
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-br from-green-500/0 group-hover:from-green-500/5 to-transparent transition-all duration-200" />
+                    <span className={`absolute top-3 left-3 text-[10px] font-semibold uppercase tracking-widest transition-colors ${saltado ? "text-muted-foreground dark:text-zinc-400" : completado ? "text-green-500/70" : incompleto ? "text-amber-500/80" : "text-muted-foreground dark:text-zinc-500 group-hover:text-green-500/70"}`}>{saltado ? "Saltado" : `Día${parcialDia ? ` · ${doneEj}/${totalEj}` : ""}`}</span>
+                    {!saltado && <span className={`absolute inset-0 flex items-center justify-center text-4xl font-black transition-colors ${completado ? "text-green-700 dark:text-green-400" : incompleto ? "text-amber-600 dark:text-amber-400" : "text-foreground dark:text-white"}`}>{dia.numero_dia}</span>}
+                    <span className="absolute bottom-3 left-3 right-8 text-[10px] text-muted-foreground dark:text-zinc-400 truncate">{dia.nombre}</span>
+                    {saltado
+                      ? <SkipForward className="absolute right-3 bottom-3 h-4 w-4 text-green-600/80 dark:text-green-400/80" />
+                      : completado
+                      ? <CheckCircle2 className="absolute right-3 bottom-3 h-4 w-4 text-green-600 dark:text-green-400" />
                       : incompleto
-                      ? "border-amber-500/40 bg-amber-500/[0.07] hover:bg-amber-500/[0.11]"
-                      : "border-border dark:border-white/[0.07] bg-muted/40 dark:bg-white/[0.03] hover:bg-muted/60 dark:bg-white/[0.06] hover:border-green-500/30 active:bg-green-500/20 active:border-green-500/60"
-                  }`}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-br from-green-500/0 group-hover:from-green-500/5 to-transparent transition-all duration-200" />
-                  <span className={`absolute top-3 left-3 text-[10px] font-semibold uppercase tracking-widest transition-colors ${completado ? "text-green-500/70" : incompleto ? "text-amber-500/80" : "text-muted-foreground dark:text-zinc-500 group-hover:text-green-500/70"}`}>Día</span>
-                  <span className={`absolute inset-0 flex items-center justify-center text-4xl font-black transition-colors ${completado ? "text-green-700 dark:text-green-400" : incompleto ? "text-amber-600 dark:text-amber-400" : "text-foreground dark:text-white"}`}>{dia.numero_dia}</span>
-                  <span className="absolute bottom-3 left-3 right-8 text-[10px] text-muted-foreground dark:text-zinc-400 truncate">{dia.nombre}</span>
-                  {completado
-                    ? <CheckCircle2 className="absolute right-3 bottom-3 h-4 w-4 text-green-600 dark:text-green-400" />
-                    : incompleto
-                    ? <AlertTriangle className="absolute right-3 bottom-3 h-4 w-4 text-amber-500 dark:text-amber-400" />
-                    : <ChevronRight className="absolute right-3 bottom-3 h-4 w-4 text-muted-foreground/70 dark:text-zinc-600 group-hover:text-green-500/50 transition-colors" />
-                  }
-                </button>
+                      ? <AlertTriangle className="absolute right-3 bottom-3 h-4 w-4 text-amber-500 dark:text-amber-400" />
+                      : <ChevronRight className="absolute right-3 bottom-3 h-4 w-4 text-muted-foreground/70 dark:text-zinc-600 group-hover:text-green-500/50 transition-colors" />
+                    }
+                  </button>
+                  {puedeSaltar && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setSkipDayTarget(dia) }}
+                      title="Saltar día"
+                      aria-label="Saltar día"
+                      className="absolute top-2 right-2 z-10 h-7 w-7 rounded-full flex items-center justify-center bg-background/70 dark:bg-black/40 border border-border dark:border-white/[0.1] text-muted-foreground dark:text-zinc-400 hover:text-foreground hover:bg-muted dark:hover:bg-white/[0.1] active:scale-90 transition-all"
+                    >
+                      <SkipForward className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                  {puedeRevertir && (
+                    <button
+                      type="button"
+                      disabled={revertDayMutation.isPending}
+                      onClick={(e) => { e.stopPropagation(); revertDayMutation.mutate(dia) }}
+                      title="Revertir salto"
+                      aria-label="Revertir salto"
+                      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 h-12 w-12 rounded-full flex items-center justify-center bg-background/80 dark:bg-black/50 border border-green-500/40 text-green-700 dark:text-green-400 hover:bg-green-500/10 active:scale-90 transition-all disabled:opacity-50"
+                    >
+                      {revertDayMutation.isPending && revertDayMutation.variables?.id === dia.id
+                        ? <Loader2 className="h-5 w-5 animate-spin" />
+                        : <RotateCcw className="h-5 w-5" />}
+                    </button>
+                  )}
+                </div>
               )
             })}
+          </div>
+        )}
+
+        {skipDayTarget && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <div className="w-full max-w-sm rounded-2xl border border-border dark:border-white/[0.08] bg-background dark:bg-zinc-950 overflow-hidden shadow-2xl">
+              <div className="p-5 space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-muted dark:bg-white/[0.06] flex items-center justify-center flex-shrink-0">
+                    <SkipForward className="h-5 w-5 text-muted-foreground dark:text-zinc-300" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-bold text-foreground dark:text-white">
+                      ¿Saltar el día {skipDayTarget.numero_dia}?
+                    </p>
+                    <p className="text-xs text-muted-foreground dark:text-zinc-400">
+                      Se completa con los registros de la semana anterior de este día (si los hay). Cuenta para avanzar la semana.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    disabled={skipDayMutation.isPending}
+                    onClick={() => setSkipDayTarget(null)}
+                    className="flex-1 h-10 rounded-xl border border-border dark:border-white/[0.1] text-sm font-semibold text-foreground dark:text-zinc-200 hover:bg-muted/60 dark:hover:bg-white/[0.05] transition-colors disabled:opacity-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    disabled={skipDayMutation.isPending}
+                    onClick={() => skipDayMutation.mutate(skipDayTarget)}
+                    className="flex-1 h-10 rounded-xl bg-foreground dark:bg-white text-sm font-bold text-background dark:text-black hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {skipDayMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                    Saltar día
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -1739,8 +1910,8 @@ export function StudentPlanificacionSection({
             </div>
           ))}
         </div>
-      ) : (!checkinMostrado && sessionData?.estado_diario == null && !previewPlan) ? (
-        /* ── Check-in inicial ── */
+      ) : (!checkinMostrado && sessionData?.estado_diario == null && sessionData?.sesion?.estado !== "completado" && !previewPlan) ? (
+        /* ── Check-in inicial ── (no se pregunta si el día ya está completado, ej. saltado) */
         <div className="flex-1 flex flex-col items-center justify-center min-h-[70vh] gap-6 px-4 py-4 pb-24 relative">
           <div className="w-full flex flex-col items-center gap-5">
           <div className="text-center space-y-1 mb-2">

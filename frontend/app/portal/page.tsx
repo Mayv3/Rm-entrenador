@@ -208,7 +208,6 @@ function PortalPageInner() {
   const [miPlanCanBack, setMiPlanCanBack] = useState(false)
   const miPlanBackRef = useRef<(() => void) | null>(null)
   const miPlanHistoryDepth = useRef(0)
-  const didRestoreMiPlanRef = useRef(false)
 
   function closeMiPlan() {
     const depth = miPlanHistoryDepth.current
@@ -283,46 +282,21 @@ function PortalPageInner() {
     enabled: !!student?.id,
   })
 
-  const { data: appPlanResp, isLoading: loadingAppPlan, isFetching: fetchingAppPlan } = useQuery<{ planificacion: any | null }>({
-    queryKey: ["portalAppPlan", student?.id],
+  // Misma queryKey que StudentPlanificacionSection (queryKeyPlan) y mi-plan-app: así este fetch
+  // temprano (para saber si hay plan) precarga la caché y la sección abre el plan al instante,
+  // sin volver a pedir el mismo endpoint.
+  const { data: appPlanResp, isLoading: loadingAppPlan } = useQuery<{ planificacion: any | null }>({
+    queryKey: ["portalPlanificacion", student?.id],
     queryFn: () =>
       axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/portal/alumnos/${student!.id}/planificacion`).then(r => r.data),
     enabled: !!student?.id,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
   })
   const hasAppPlan = !!appPlanResp?.planificacion
-  const appPlanChecked = !!student?.id && !loadingAppPlan && !fetchingAppPlan && appPlanResp !== undefined
-
-  // Recordar si la planificación estaba abierta. En celulares con poca RAM (ej. A16) el SO
-  // mata la PWA en segundo plano y al volver hace cold start: React resetea showMiPlan a false
-  // y el alumno cae en el home en vez de su entrenamiento. Persistimos el flag en localStorage
-  // (sobrevive al cierre del proceso) y reabrimos el panel al arrancar.
-  useEffect(() => {
-    if (!student?.id) return
-    // No escribir hasta que el efecto de restauración haya corrido, si no borraría el flag
-    // (showMiPlan arranca en false) antes de poder reabrir el panel.
-    if (!didRestoreMiPlanRef.current) return
-    try {
-      if (showMiPlan) localStorage.setItem(`rmMiPlanOpen-${student.id}`, String(Date.now()))
-      else localStorage.removeItem(`rmMiPlanOpen-${student.id}`)
-    } catch {}
-  }, [showMiPlan, student?.id])
-
-  useEffect(() => {
-    if (didRestoreMiPlanRef.current) return
-    if (!student?.id || !appPlanChecked) return
-    didRestoreMiPlanRef.current = true
-    try {
-      const raw = localStorage.getItem(`rmMiPlanOpen-${student.id}`)
-      if (!hasAppPlan) { localStorage.removeItem(`rmMiPlanOpen-${student.id}`); return }
-      if (!raw) return
-      const ts = Number(raw)
-      if (!Number.isNaN(ts) && Date.now() - ts < 24 * 60 * 60 * 1000) {
-        setShowMiPlan(true)
-      } else {
-        localStorage.removeItem(`rmMiPlanOpen-${student.id}`)
-      }
-    } catch {}
-  }, [student?.id, appPlanChecked, hasAppPlan])
+  // Solo Skeleton en la carga inicial (sin data cacheada). Un refetch en background (volver
+  // al foco de la app) NO debe volver a poner el botón en estado de carga.
+  const appPlanChecked = !!student?.id && !loadingAppPlan && appPlanResp !== undefined
 
   const latestPayment = payments
     .filter(p => !String(p.modalidad ?? "").startsWith("Servicio:"))
