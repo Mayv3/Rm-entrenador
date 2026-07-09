@@ -1565,6 +1565,7 @@ export async function getEntrenamientosDia(req, res) {
       fecha: a.fecha,
       hora: a.created_at,
       alumno: a.alumnos ?? { id: a.alumno_id, nombre: "Alumno" },
+      planificacion_id: a.planificacion_id,
       sesion_id: a.sesion_id,
       sesion: sesionMap.get(a.sesion_id) ?? null,
       estado_diario: estadoMap.get(a.sesion_id) ?? null,
@@ -1573,6 +1574,54 @@ export async function getEntrenamientosDia(req, res) {
     .filter((e) => tieneDatosReales(e.registros));
 
   res.json({ fecha, entrenamientos });
+}
+
+// Ejercicios planificados de un día + la prescripción (dosis/rpe/notas) de una semana concreta.
+// Se usa en la vista "Hoy": el detalle de un entreno solo trae los registros que cargó el alumno;
+// este endpoint aporta la lista COMPLETA del día para poder mostrar también los ejercicios que no
+// hizo y editar la planificación (categoría/series/dosis/rpe) desde ese mismo detalle.
+export async function getEjerciciosDia(req, res) {
+  const diaId = Number(req.params.diaId);
+  const semana = Number(req.query.semana);
+  if (!Number.isFinite(diaId)) return res.status(400).json({ error: "diaId inválido" });
+
+  const { data: ejercicios, error: ejError } = await supabase
+    .from("planificacion_ejercicios")
+    .select("id, ejercicio_id, categoria, orden, series, notas_profesor, ejercicios(id, nombre)")
+    .eq("planificacion_dia_id", diaId)
+    .order("orden", { ascending: true });
+
+  if (ejError) return res.status(500).json({ error: ejError.message });
+
+  const ejIds = (ejercicios ?? []).map((e) => e.id);
+  let semanaMap = new Map();
+  if (ejIds.length > 0 && Number.isFinite(semana)) {
+    const { data: semanas, error: semError } = await supabase
+      .from("planificacion_semanas")
+      .select("planificacion_ejercicio_id, dosis, rpe, notas_profesor")
+      .in("planificacion_ejercicio_id", ejIds)
+      .eq("semana", semana);
+    if (semError) return res.status(500).json({ error: semError.message });
+    semanaMap = new Map((semanas ?? []).map((s) => [s.planificacion_ejercicio_id, s]));
+  }
+
+  const result = (ejercicios ?? []).map((e) => {
+    const sem = semanaMap.get(e.id);
+    return {
+      id: e.id,
+      ejercicio_id: e.ejercicio_id,
+      nombre: e.ejercicios?.nombre ?? "Ejercicio",
+      categoria: e.categoria,
+      orden: e.orden,
+      series: e.series,
+      notas_profesor: e.notas_profesor,
+      dosis: sem?.dosis ?? null,
+      rpe: sem?.rpe ?? null,
+      semana_notas_profesor: sem?.notas_profesor ?? null,
+    };
+  });
+
+  res.json({ ejercicios: result });
 }
 
 export async function getAsistenciasPlanificacion(req, res) {

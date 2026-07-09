@@ -15,7 +15,7 @@ import {
   createHoja, updateHoja, deleteHoja, duplicateHoja, listHojasEliminadas, restoreHoja,
   createDia, updateDia, deleteDia, duplicateDia,
   addEjercicioADia, addEjerciciosADiaBulk, updateEjercicioEnDia, removeEjercicioDeDia,
-  updateDosis, updateDosisBulk, guardarPlanCompleto, bulkUpdateOrden, saveMovilidad, getEjerciciosMovilidad, saveAll, getProgresoPlanificacion, getAsistenciasPlanificacion, getEntrenamientosDia,
+  updateDosis, updateDosisBulk, guardarPlanCompleto, bulkUpdateOrden, saveMovilidad, getEjerciciosMovilidad, saveAll, getProgresoPlanificacion, getAsistenciasPlanificacion, getEntrenamientosDia, getEjerciciosDia,
   saltarEjercicioProgreso, deshacerSaltoProgreso,
 } from "./controllers/planificacionesController.js";
 import { getAntrosByAlumno, getAllAntrosCounts, createAntro, deleteAntro, updateAntroNombre, updateAntroFecha, getParsedAntro } from "./controllers/antropometriasController.js";
@@ -181,6 +181,7 @@ app.get("/planificaciones/:id/asistencias", getAsistenciasPlanificacion);
 
 // Apartado "Hoy": quiénes entrenaron en una fecha y qué hicieron
 app.get("/entrenamientos/dia", getEntrenamientosDia);
+app.get("/planificaciones/dias/:diaId/ejercicios", getEjerciciosDia);
 
 // Plantillas de planificaciones
 app.get("/plantillas", getPlantillas);
