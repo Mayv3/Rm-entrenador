@@ -17,11 +17,6 @@ import { useQueryClient } from "@tanstack/react-query"
 import { queryKeys } from "@/lib/query-keys"
 import { usePlanes } from "@/hooks/use-planes"
 
-interface File {
-  nameFile: string;
-  url: string;
-}
-
 interface Student {
   id: number;
   alumno_id: number;
@@ -63,7 +58,6 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
     lastAntro: "",
     sexo: "",
   })
-  const [files, setFiles] = useState<File[]>([])
   const [isLoading, setIsLoading] = useState(false)
 
   const formatDate = (dateString: string | null) => {
@@ -91,7 +85,7 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
         id: String(student.id),
         studentId: String(student.alumno_id),
         name: student.nombre || "",
-        modality: student.modalidad || "",
+        modality: student.modalidad || "Personalizado RM",
         birthDate: formatDate(student.fecha_de_nacimiento),
         whatsapp: student.telefono || "",
         email: student.email || "",
@@ -105,12 +99,6 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
       })
     }
   }, [student])
-
-  useEffect(() => {
-    axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/files`)
-      .then((r) => setFiles(r.data))
-      .catch((e) => console.error("Error fetching files:", e))
-  }, [])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -186,21 +174,6 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
               </div>
             </div>
 
-            {/* Plan de entrenamiento — ancho completo */}
-            <div className="grid gap-1.5">
-              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Plan de entrenamiento</Label>
-              <Select value={formData.planUrl} onValueChange={(v) => setFormData((p) => ({ ...p, planUrl: v }))} required>
-                <SelectTrigger className="h-9 w-full">
-                  <SelectValue placeholder="Seleccioná un plan" />
-                </SelectTrigger>
-                <SelectContent>
-                  {files.map((file, i) => (
-                    <SelectItem key={i} value={file.url}>{file.nameFile}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
             {/* Días de entrenamiento */}
             <div className="grid gap-2">
               <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -252,12 +225,6 @@ export function EditStudentDialog({ open, onOpenChange, student, onStudentUpdate
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-
-            {/* Antropometría */}
-            <div className="grid gap-1.5">
-              <Label htmlFor="lastAntro" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Antropometría</Label>
-              <Input id="lastAntro" name="lastAntro" type="date" value={formData.lastAntro} onChange={handleChange} className="h-9" />
             </div>
 
           </div>

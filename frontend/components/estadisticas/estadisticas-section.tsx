@@ -353,14 +353,22 @@ function StudentsDrillDialog({ category, students, color, getColor, onClose, det
 
 // ─── PaymentsDrillDialog ──────────────────────────────────────────────────────
 
-function PaymentsDrillDialog({ title, payments, getColor, onClose }: {
+function PaymentsDrillDialog({ title, payments, getColor, onClose, typeTabs = false }: {
   title: string
   payments: (Payment & { alumno_nombre?: string })[]
   getColor: (nombre: string) => string
   onClose: () => void
+  typeTabs?: boolean
 }) {
-  const total = payments.reduce((s, p) => s + Number(p.monto), 0)
-  const showName = payments.some(p => p.alumno_nombre)
+  const [tab, setTab] = useState<"total" | "plan" | "servicio">("total")
+  const esServicio = (m?: string) => !!m && m.startsWith("Servicio:")
+  const filtered = !typeTabs || tab === "total"
+    ? payments
+    : tab === "servicio"
+      ? payments.filter(p => esServicio(p.modalidad))
+      : payments.filter(p => !esServicio(p.modalidad))
+  const total = filtered.reduce((s, p) => s + Number(p.monto), 0)
+  const showName = filtered.some(p => p.alumno_nombre)
   return (
     <Dialog open onOpenChange={v => !v && onClose()}>
       <DialogContent className="w-[90vw] max-w-md bg-card border-border text-foreground max-h-[calc(100dvh-5rem)] flex flex-col pr-14">
@@ -368,18 +376,35 @@ function PaymentsDrillDialog({ title, payments, getColor, onClose }: {
           <DialogTitle className="flex items-center gap-2 text-base">
             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: C.primary }} />
             {title}
-            <span className="ml-auto text-sm font-normal text-muted-foreground">{payments.length} pagos</span>
+            <span className="ml-auto text-sm font-normal text-muted-foreground">{filtered.length} pagos</span>
           </DialogTitle>
         </DialogHeader>
+        {typeTabs && (
+          <div className="shrink-0 inline-flex self-start rounded-lg bg-muted p-0.5">
+            {(["total", "plan", "servicio"] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                  tab === t
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {t === "total" ? "Total" : t === "plan" ? "Planes" : "Servicios"}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="shrink-0 flex items-center justify-between px-1 pb-2 border-b border-border">
           <span className="text-xs text-muted-foreground">Total del período</span>
           <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">{formatARSFull(total)}</span>
         </div>
-        {payments.length === 0 ? (
+        {filtered.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-8">Sin pagos en este período</p>
         ) : (
           <div className="overflow-y-auto flex flex-col divide-y divide-border -mx-6 px-6">
-            {payments.map(p => (
+            {filtered.map(p => (
               <div key={p.id} className="flex items-center justify-between py-3 gap-3">
                 <div className="flex items-center gap-2.5 min-w-0">
                   {showName && (
@@ -472,6 +497,7 @@ export function EstadisticasSection() {
   const [billingYear,   setBillingYear]   = useState(today.getFullYear())
   const [estadoMode,    setEstadoMode]    = useState<"general" | "mensual">("mensual")
   const [billingTab,    setBillingTab]    = useState<"plan" | "servicio">("plan")
+  const [monthlyTab,    setMonthlyTab]    = useState<"total" | "plan" | "servicio">("total")
 
   const { data: planes = [] } = usePlanes()
   const planColor = (nombre: string) => getPlanColorFromList(planes, nombre)
@@ -495,15 +521,27 @@ export function EstadisticasSection() {
     const prevMonth = selectedMonth === 0 ? 11 : selectedMonth - 1
     const prevYear  = selectedMonth === 0 ? selectedYear - 1 : selectedYear
 
-    const billingFor = (month: number, year: number) =>
+    const esServicioMod = (m?: string | null) => !!m && m.startsWith("Servicio:")
+    const billingFor = (month: number, year: number, kind: "total" | "plan" | "servicio" = "total") =>
       paymentHistory
-        .filter(p => { const d = parseLocalDate(p.fecha_de_pago); return d && d.getMonth() === month && d.getFullYear() === year })
+        .filter(p => {
+          const d = parseLocalDate(p.fecha_de_pago)
+          if (!d || d.getMonth() !== month || d.getFullYear() !== year) return false
+          if (kind === "plan")     return !esServicioMod(p.modalidad)
+          if (kind === "servicio") return esServicioMod(p.modalidad)
+          return true
+        })
         .reduce((s, p) => s + Number(p.monto), 0)
 
-    const currentBilling = billingFor(selectedMonth, selectedYear)
-    const prevBilling    = billingFor(prevMonth, prevYear)
-    const billingDiff    = prevBilling > 0 ? ((currentBilling - prevBilling) / prevBilling) * 100 : 0
-    const monthlyBilling = Array.from({ length: 12 }, (_, m) => billingFor(m, billingYear))
+    const kinds = ["total", "plan", "servicio"] as const
+    const currentBilling = Object.fromEntries(kinds.map(k => [k, billingFor(selectedMonth, selectedYear, k)])) as Record<typeof kinds[number], number>
+    const prevBilling    = Object.fromEntries(kinds.map(k => [k, billingFor(prevMonth, prevYear, k)])) as Record<typeof kinds[number], number>
+    const billingDiff    = Object.fromEntries(kinds.map(k => [k, prevBilling[k] > 0 ? ((currentBilling[k] - prevBilling[k]) / prevBilling[k]) * 100 : 0])) as Record<typeof kinds[number], number>
+    const monthlyBilling = {
+      total:    Array.from({ length: 12 }, (_, m) => billingFor(m, billingYear, "total")),
+      plan:     Array.from({ length: 12 }, (_, m) => billingFor(m, billingYear, "plan")),
+      servicio: Array.from({ length: 12 }, (_, m) => billingFor(m, billingYear, "servicio")),
+    }
 
     const latestPay = new Map<number, Payment>()
     payments.forEach(p => {
@@ -574,9 +612,14 @@ export function EstadisticasSection() {
     const bajasMes   = bajasMesList.length
 
     // Pagos del mes seleccionado (para drill facturación)
-    const currentMonthPayments = paymentHistory
+    const currentMonthPaymentsAll = paymentHistory
       .filter(p => { const d = parseLocalDate(p.fecha_de_pago); return d && d.getMonth() === selectedMonth && d.getFullYear() === selectedYear })
       .map(p => ({ ...p, alumno_nombre: studentMap.get(p.alumno_id)?.nombre ?? "—" }))
+    const currentMonthPayments = {
+      total:    currentMonthPaymentsAll,
+      plan:     currentMonthPaymentsAll.filter(p => !esServicioMod(p.modalidad)),
+      servicio: currentMonthPaymentsAll.filter(p =>  esServicioMod(p.modalidad)),
+    }
 
     const planCount: Record<string, number> = {}
     students.forEach(s => { if (s.modalidad) planCount[s.modalidad] = (planCount[s.modalidad] || 0) + 1 })
@@ -670,7 +713,7 @@ export function EstadisticasSection() {
   // ── Drill state — must be before any early return ──────────────────────────
   const [drillCategory, setDrillCategory] = useState<string | null>(null)
   const [drillStudents, setDrillStudents] = useState<{ title: string; list: Student[] } | null>(null)
-  const [drillPayments, setDrillPayments] = useState<{ title: string; list: (Payment & { alumno_nombre?: string })[] } | null>(null)
+  const [drillPayments, setDrillPayments] = useState<{ title: string; list: (Payment & { alumno_nombre?: string })[]; typeTabs?: boolean } | null>(null)
 
   if (ls || lp) return <Loader />
 
@@ -705,8 +748,12 @@ export function EstadisticasSection() {
   const prevMonth      = selectedMonth === 0 ? 11 : selectedMonth - 1
 
   // Facturación por plan/servicio: dataset activo según la pestaña.
+  // Excluir planes eliminados (ya no existen en la tabla `planes`).
+  // Los pagos guardan la modalidad con sufijo de variante ("Personalizado RM · Individual").
+  // Se compara la base (antes de " · ") contra los planes vigentes.
+  const activePlanNames = new Set(planes.map(p => p.nombre))
   const billIsServicio = billingTab === "servicio"
-  const billNames      = billIsServicio ? servicioNames : planNames
+  const billNames      = billIsServicio ? servicioNames : planNames.filter(n => activePlanNames.has(n.split(" · ")[0].trim()))
   const billCurr       = billIsServicio ? serviciosCurr : plansCurr
   const billPrev       = billIsServicio ? serviciosPrev : plansPrev
   const billPaysCurr   = billIsServicio ? servicioPaymentsCurr : planPaymentsCurr
@@ -748,12 +795,17 @@ export function EstadisticasSection() {
   // shared axis style for MUI charts
   const axisStyle = { tickLabelStyle: { fill: C.axis, fontSize: 11 } }
 
+  // No permitir navegar/seleccionar meses futuros
+  const isFutureMonth = selectedYear === today.getFullYear() && selectedMonth >= today.getMonth()
+
   // Navegación mes a mes (con rollover de año) — afecta filtro global
   const stepMonth = (delta: number) => {
     let m = selectedMonth + delta
     let y = selectedYear
     if (m < 0)       { m = 11; y -= 1 }
     else if (m > 11) { m = 0;  y += 1 }
+    // bloquear meses posteriores al actual
+    if (y > today.getFullYear() || (y === today.getFullYear() && m > today.getMonth())) return
     setSelectedMonth(m)
     setSelectedYear(y)
   }
@@ -769,11 +821,16 @@ export function EstadisticasSection() {
         </div>
         {/* Global filters (year + month) apply to Facturación KPI, Altas, Plan comparison */}
         <div className="flex items-center gap-2">
-          <StyledSelect value={selectedYear} onChange={setSelectedYear}>
-            {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+          <StyledSelect value={selectedYear} onChange={(y) => {
+            setSelectedYear(y)
+            if (y === today.getFullYear() && selectedMonth > today.getMonth()) setSelectedMonth(today.getMonth())
+          }}>
+            {YEARS.filter(y => y <= today.getFullYear()).map(y => <option key={y} value={y}>{y}</option>)}
           </StyledSelect>
           <StyledSelect value={selectedMonth} onChange={setSelectedMonth}>
-            {MONTHS_LONG.map((m, i) => <option key={i} value={i}>{m}</option>)}
+            {MONTHS_LONG.map((m, i) => (
+              <option key={i} value={i} disabled={selectedYear === today.getFullYear() && i > today.getMonth()}>{m}</option>
+            ))}
           </StyledSelect>
         </div>
       </div>
@@ -783,25 +840,25 @@ export function EstadisticasSection() {
 
         {/* Facturación */}
         <StatCard label="Facturación del mes" icon={<TrendingUp className="h-3.5 w-3.5" />} accentColor={C.primary}
-          onClick={() => setDrillPayments({ title: `Pagos — ${MONTHS_LONG[selectedMonth]} ${selectedYear}`, list: currentMonthPayments })}
+          onClick={() => setDrillPayments({ title: `Pagos — ${MONTHS_LONG[selectedMonth]} ${selectedYear}`, list: currentMonthPayments.total, typeTabs: true })}
         >
           <div>
             <p className="text-3xl font-bold text-foreground leading-none tracking-tight">
-              {formatARSFull(currentBilling)}
+              {formatARSFull(currentBilling.total)}
             </p>
           </div>
           <div className="flex items-center gap-2 text-xs">
-            <span className="text-muted-foreground">Mes ant.: {formatARSFull(prevBilling)}</span>
-            {billingDiff !== 0 && (
+            <span className="text-muted-foreground">Mes ant.: {formatARSFull(prevBilling.total)}</span>
+            {billingDiff.total !== 0 && (
               <span className={`flex items-center gap-0.5 font-semibold px-1.5 py-0.5 rounded-md text-[11px] ${
-                billingDiff > 0
+                billingDiff.total > 0
                   ? "text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-400/10"
                   : "text-rose-600 bg-rose-50 dark:text-red-400 dark:bg-red-400/10"
               }`}>
-                {billingDiff > 0
+                {billingDiff.total > 0
                   ? <TrendingUp className="h-3 w-3"/>
                   : <TrendingDown className="h-3 w-3"/>}
-                {Math.abs(billingDiff).toFixed(1)}%
+                {Math.abs(billingDiff.total).toFixed(1)}%
               </span>
             )}
           </div>
@@ -860,7 +917,8 @@ export function EstadisticasSection() {
                   <button
                     type="button"
                     onClick={() => stepMonth(1)}
-                    className="flex items-center justify-center w-6 h-6 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    disabled={isFutureMonth}
+                    className="flex items-center justify-center w-6 h-6 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:pointer-events-none"
                     aria-label="Mes siguiente"
                   >
                     <ChevronRight className="w-3.5 h-3.5" />
@@ -902,9 +960,26 @@ export function EstadisticasSection() {
           title="Facturación mensual"
           className="lg:col-span-3"
           action={
-            <StyledSelect value={billingYear} onChange={setBillingYear}>
-              {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-            </StyledSelect>
+            <div className="flex items-center gap-3">
+              <div className="inline-flex rounded-lg bg-muted p-0.5">
+                {(["total", "plan", "servicio"] as const).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setMonthlyTab(t)}
+                    className={`px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors ${
+                      monthlyTab === t
+                        ? "bg-card text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {t === "total" ? "Total" : t === "plan" ? "Planes" : "Servicios"}
+                  </button>
+                ))}
+              </div>
+              <StyledSelect value={billingYear} onChange={setBillingYear}>
+                {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+              </StyledSelect>
+            </div>
           }
         >
           <BarChart
@@ -917,9 +992,9 @@ export function EstadisticasSection() {
               tickLabelStyle: { fill: C.axis, fontSize: 10 },
             }]}
             series={[{
-              data: monthlyBilling,
-              label: "Facturación",
-              color: C.primary,
+              data: monthlyBilling[monthlyTab],
+              label: monthlyTab === "total" ? "Facturación" : monthlyTab === "plan" ? "Planes" : "Servicios",
+              color: monthlyTab === "servicio" ? C.altas : C.primary,
               valueFormatter: (v: number | null) => v !== null ? formatARSFull(v) : "$0",
             }]}
             height={260}
@@ -1093,6 +1168,7 @@ export function EstadisticasSection() {
           title={drillPayments.title}
           payments={drillPayments.list}
           getColor={planColor}
+          typeTabs={drillPayments.typeTabs}
           onClose={() => setDrillPayments(null)}
         />
       )}
