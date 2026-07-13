@@ -3,13 +3,14 @@
 import { FormEvent, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
-import { Loader2 } from "lucide-react"
+import { Eye, EyeOff, Loader2 } from "lucide-react"
 import logoRodrigoEntrenador from "../../../assets/LOGO-RODRIGO-VERDE.png"
 
 export default function NutricionistaLoginPage() {
   const router = useRouter()
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
   useEffect(() => {
     if (localStorage.getItem("nutricionistaAuthenticated") === "true") router.replace("/nutricionista")
@@ -50,7 +51,15 @@ export default function NutricionistaLoginPage() {
         </div>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 rounded-3xl border border-white/10 bg-white/[0.06] p-6 shadow-2xl shadow-black/20 backdrop-blur-xl">
           <label className="flex flex-col gap-2 text-xs font-medium uppercase tracking-[0.16em] text-zinc-400">Usuario<input name="username" type="text" autoComplete="username" required disabled={loading} className="rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm normal-case tracking-normal text-white outline-none transition focus:border-emerald-400/70 focus:ring-2 focus:ring-emerald-400/20 disabled:opacity-50" /></label>
-          <label className="flex flex-col gap-2 text-xs font-medium uppercase tracking-[0.16em] text-zinc-400">Contraseña<input name="password" type="password" autoComplete="current-password" required disabled={loading} className="rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm normal-case tracking-normal text-white outline-none transition focus:border-emerald-400/70 focus:ring-2 focus:ring-emerald-400/20 disabled:opacity-50" /></label>
+          <label className="flex flex-col gap-2 text-xs font-medium uppercase tracking-[0.16em] text-zinc-400">
+            Contraseña
+            <span className="relative">
+              <input name="password" type={showPassword ? "text" : "password"} autoComplete="current-password" required disabled={loading} className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 pr-11 text-sm normal-case tracking-normal text-white outline-none transition focus:border-emerald-400/70 focus:ring-2 focus:ring-emerald-400/20 disabled:opacity-50" />
+              <button type="button" onClick={() => setShowPassword((current) => !current)} disabled={loading} aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"} className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-zinc-500 transition hover:text-zinc-200 disabled:opacity-50">
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </span>
+          </label>
           {error && <p role="alert" className="rounded-xl border border-red-400/20 bg-red-400/10 px-3 py-2 text-center text-xs text-red-300">{error}</p>}
           <button type="submit" disabled={loading} className="mt-2 inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60">{loading ? <><Loader2 className="h-4 w-4 animate-spin" />Ingresando...</> : "Ingresar"}</button>
         </form>
