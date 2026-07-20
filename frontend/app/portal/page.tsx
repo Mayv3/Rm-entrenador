@@ -482,23 +482,10 @@ function PortalPageInner() {
                   {subscriptionStatus === "Pagado" ? "Activo" : subscriptionStatus === "Indefinido" ? "Indefinido" : "Inactivo"}
                 </span>
               </div>
-              <div className="grid grid-cols-4 divide-x divide-border border-b border-border">
+              <div className="grid grid-cols-2 divide-x divide-border border-b border-border">
                 <div className="flex flex-col items-center justify-center gap-0.5 px-2 py-3">
                   <span className="text-[9px] uppercase tracking-widest text-muted-foreground font-medium">Plan</span>
                   <span className="font-bold text-xs text-center">{latestPayment.modalidad}</span>
-                </div>
-                <div className="flex flex-col items-center justify-center gap-0.5 px-2 py-3">
-                  <span className="text-[9px] uppercase tracking-widest text-muted-foreground font-medium">Precio</span>
-                  <span className="font-bold text-xs" style={{ color: getStatusColor(subscriptionStatus) }}>
-                    {(() => {
-                      const planData = planes.find(p => p.nombre === latestPayment.modalidad)
-                      return planData ? `$${Number(planData.precio).toLocaleString("es-AR")}` : `$${Number(latestPayment.monto).toLocaleString("es-AR")}`
-                    })()}
-                  </span>
-                </div>
-                <div className="flex flex-col items-center justify-center gap-0.5 px-2 py-3">
-                  <span className="text-[9px] uppercase tracking-widest text-muted-foreground font-medium">Inicio</span>
-                  <span className="font-bold text-xs text-center">{formatDate(student.fecha_de_inicio)}</span>
                 </div>
                 <div className="flex flex-col items-center justify-center gap-0.5 px-2 py-3">
                   <span className="text-[9px] uppercase tracking-widest text-muted-foreground font-medium">Vence</span>

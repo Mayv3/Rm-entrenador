@@ -116,11 +116,11 @@ export default function Dashboard() {
     { value: "students", label: "Alumnos", icon: Users },
     { value: "payments", label: "Pagos", icon: CreditCard },
     { value: "planificaciones", label: "Planificaciones", icon: ClipboardList },
+    { value: "antropometrias", label: "Antropometría", icon: Ruler },
+    { value: "nutricion", label: "Nutrición", icon: Salad },
     { value: "planes", label: "Planes", icon: Tag },
     { value: "servicios", label: "Servicios", icon: HeartPulse },
     { value: "portal", label: "Portal", icon: Globe },
-    { value: "antropometrias", label: "Antropometría", icon: Ruler },
-    { value: "nutricion", label: "Nutrición", icon: Salad },
   ] as const;
 
   return (

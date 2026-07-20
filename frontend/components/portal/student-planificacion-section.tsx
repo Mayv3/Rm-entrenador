@@ -171,6 +171,11 @@ export function StudentPlanificacionSection({
   backHandlerRef?: React.MutableRefObject<(() => void) | null>
 }) {
   const queryClient = useQueryClient()
+  // Nuevo diseño de planificación: visible solo para estos alumnos (id).
+  // El resto sigue viendo el diseño clásico. Sumar ids acá para ampliar el rollout.
+  // 4 = Nico Pereyra · 36 = Rodri Montenegro · 32 = Jade Haber
+  const NUEVO_DISENO_IDS = [4, 36, 32]
+  const esNico = NUEVO_DISENO_IDS.includes(studentId)
   const [semanaSeleccionada, setSemanaSeleccionada] = useState<number | null>(null)
   const [diaSeleccionadoId, setDiaSeleccionadoId] = useState<number | null>(null)
   const [registrosForm, setRegistrosForm] = useState<Record<number, FormRow>>({})
@@ -214,6 +219,8 @@ export function StudentPlanificacionSection({
   // de otro día al que se navega antes de que el flag se consuma (bug pesos en 0).
   const justSavedRef = useRef<string | null>(null)
   const [activeSerieMap, setActiveSerieMap] = useState<Record<number, number>>({})
+  // Serie "abierta" por ejercicio: al seleccionarla se muestra su registro anterior
+  const [serieAbierta, setSerieAbierta] = useState<Record<number, number>>({})
   const serieScrollRefs = useRef<Map<number, HTMLDivElement>>(new Map())
   const pendingSerieRestoreRef = useRef<Record<number, number>>({})
   const exerciseCardRefs = useRef<Map<number, HTMLDivElement>>(new Map())
@@ -2162,7 +2169,7 @@ export function StudentPlanificacionSection({
           {ejerciciosDelDia.length === 0 ? (
             <p className="text-sm text-muted-foreground dark:text-zinc-400 text-center py-8">Este día no tiene ejercicios asignados.</p>
           ) : (
-            <div className="space-y-6">
+            <div className={esNico ? "space-y-4" : "space-y-6"}>
               {ejerciciosDelDia.map((ej) => {
             const semanaPlan = ej.semanas.find((s) => s.semana === semanaSeleccionada)
             const semanaPlanPrev = semanaSeleccionada != null && semanaSeleccionada % 2 === 0
@@ -2204,7 +2211,216 @@ export function StudentPlanificacionSection({
             const catBg = catStyle.backgroundColor as string | undefined
             const esSaltado = saltadoEjIds.has(ej.id)
 
-            return (
+            return esNico ? (
+              <div
+                key={ej.id}
+                data-ej-id={ej.id}
+                ref={(el) => { if (el) exerciseCardRefs.current.set(ej.id, el) }}
+                className={`rounded-2xl bg-card/50 dark:bg-white/[0.02] overflow-hidden transition-all duration-200 ${
+                  esSaltado ? "opacity-60" : ""
+                }`}
+              >
+                {/* Header: nombre + acciones — verde característico */}
+                <div className="flex items-center gap-3 px-4 py-3 bg-primary/10 dark:bg-primary/[0.12]">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[17px] font-bold text-primary leading-tight">
+                      {ej.ejercicios?.nombre ?? "Ejercicio"}
+                    </p>
+                  </div>
+
+                  {/* Video + guardado (der) */}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {!previewPlan && <CardSaveBadge ejId={ej.id} />}
+                    {ej.ejercicios?.video_url && (
+                      <button
+                        onClick={() => setVideoModal({ nombre: ej.ejercicios!.nombre, url: ej.ejercicios!.video_url! })}
+                        className="h-9 w-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center flex-shrink-0 shadow-sm transition-opacity hover:opacity-80"
+                      >
+                        <Play className="h-4 w-4" fill="currentColor" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Prescripción: Reps (3/4) · RPE (1/4, solo número) — panel debajo del header */}
+                {(effectiveDosis || typeof effectiveRpe === "number") && (
+                  <div>
+                    <div
+                      className="grid overflow-hidden bg-muted/30 dark:bg-white/[0.02]"
+                      style={{ gridTemplateColumns: "3fr 1fr" }}
+                    >
+                      <div className="flex flex-col items-center justify-center gap-0.5 px-3 py-2.5">
+                        <span className="flex items-center gap-1 text-[9px] font-semibold uppercase tracking-widest text-muted-foreground dark:text-zinc-500">
+                          <Repeat className="h-3 w-3" /> Reps
+                        </span>
+                        <span className="font-bold text-base text-center text-foreground dark:text-white leading-tight">{effectiveDosis ?? "—"}</span>
+                      </div>
+                      <div className="flex flex-col items-center justify-center gap-0.5 px-2 py-2.5 border-l border-border dark:border-white/[0.08]">
+                        <span className="flex items-center gap-1 text-[9px] font-semibold uppercase tracking-widest text-muted-foreground dark:text-zinc-500">
+                          <Flame className="h-3 w-3" /> RPE
+                        </span>
+                        <span className="font-bold text-base text-orange-600 dark:text-orange-400 leading-tight">{typeof effectiveRpe === "number" ? effectiveRpe : "—"}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {effectiveNota && (
+                  <div className="px-3.5 pt-2.5">
+                    <div className="rounded-xl border border-violet-400 dark:border-violet-500/20 bg-violet-100 dark:bg-violet-500/[0.08] px-3 py-2">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-violet-700 dark:text-violet-400 mb-1">Nota del profesor · Semana {semanaSeleccionada}</p>
+                      <p className="text-sm text-foreground dark:text-zinc-200 whitespace-pre-wrap">{effectiveNota}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Series — tabla vertical, todas visibles (sin swipe) */}
+                {previewPlan ? (
+                  <div className="pb-3" />
+                ) : (
+                <div className="px-3.5 pt-3 pb-4">
+                  <div className="space-y-3">
+                    {Array.from({ length: seriesCount }, (_, serieIdx) => {
+                      const serie = row.series[serieIdx] ?? EMPTY_SERIE
+                      const anteriorSerie = anteriorSeries?.[serieIdx] ?? null
+                      const serieFilled = !!serie.peso_kg && !!serie.repeticiones && !!serie.rpe
+                      const anteriorConDatos = !!anteriorSerie && (anteriorSerie.peso_kg !== null || anteriorSerie.repeticiones !== null || anteriorSerie.rpe !== null)
+                      const inputCls = "bg-transparent border-0 focus-visible:ring-0 focus:ring-0 focus:border-0 text-foreground dark:text-white placeholder:text-foreground/40 dark:placeholder:text-zinc-600 h-14 !text-xl !font-black text-right rounded-none shadow-none p-0 min-w-0"
+                      return (
+                        <div key={serieIdx}>
+                          {/* Etiqueta de serie — aparte, sin fondo */}
+                          <span className={`block mb-1 px-0.5 text-xs font-bold uppercase tracking-widest ${serieFilled ? "text-green-600 dark:text-green-400" : "text-muted-foreground dark:text-zinc-500"}`}>
+                            Serie {serieIdx + 1}
+                          </span>
+
+                          <div
+                            onFocusCapture={() => setSerieAbierta((prev) => ({ ...prev, [ej.id]: serieIdx }))}
+                            onClick={() => setSerieAbierta((prev) => ({ ...prev, [ej.id]: serieIdx }))}
+                            className={`rounded-2xl overflow-hidden transition-colors ${
+                              serieFilled ? "bg-green-500/[0.07]" : "bg-muted/30 dark:bg-white/[0.02]"
+                            }`}
+                          >
+                          {/* Inputs de la serie — con unidad kg / rep / rpe */}
+                          <div className="grid grid-cols-3 divide-x divide-border dark:divide-white/[0.08]">
+                            <div className="flex items-baseline justify-center gap-0.5 px-1">
+                              <Input
+                                ref={(el) => { if (el) inputRefs.current.set(`${ej.id}-${serieIdx}-peso_kg`, el) }}
+                                type="text"
+                                inputMode="decimal"
+                                placeholder="0"
+                                value={serie.peso_kg}
+                                onChange={(e) => handleSerieChange(ej.id, serieIdx, "peso_kg", e.target.value)}
+                                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNextInput(ej.id, serieIdx, "peso_kg") } }}
+                                className={`${inputCls} w-[2.4rem]`}
+                              />
+                              <span className="text-sm font-bold text-muted-foreground dark:text-zinc-500 flex-shrink-0">kg</span>
+                            </div>
+                            <div className="flex items-baseline justify-center gap-0.5 px-1">
+                              <Input
+                                ref={(el) => { if (el) inputRefs.current.set(`${ej.id}-${serieIdx}-repeticiones`, el) }}
+                                type="text"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                placeholder="0"
+                                value={serie.repeticiones}
+                                onChange={(e) => handleSerieChange(ej.id, serieIdx, "repeticiones", e.target.value)}
+                                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNextInput(ej.id, serieIdx, "repeticiones") } }}
+                                className={`${inputCls} w-[1.8rem]`}
+                              />
+                              <span className="text-sm font-bold text-muted-foreground dark:text-zinc-500 flex-shrink-0">rep</span>
+                            </div>
+                            <div className="flex items-baseline justify-center gap-0.5 px-1">
+                              <Input
+                                ref={(el) => { if (el) inputRefs.current.set(`${ej.id}-${serieIdx}-rpe`, el) }}
+                                type="text"
+                                inputMode="decimal"
+                                placeholder="0"
+                                value={serie.rpe}
+                                onChange={(e) => handleSerieChange(ej.id, serieIdx, "rpe", e.target.value)}
+                                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNextInput(ej.id, serieIdx, "rpe") } }}
+                                className={`${inputCls} w-[1.8rem]`}
+                              />
+                              <span className="text-sm font-bold text-muted-foreground dark:text-zinc-500 flex-shrink-0">rpe</span>
+                            </div>
+                          </div>
+
+                          {/* Registro anterior — solo al seleccionar la serie */}
+                          {mostrarAnterior && serieAbierta[ej.id] === serieIdx && (
+                            <div className="border-t border-dashed border-border dark:border-white/[0.08] bg-violet-500/[0.05] dark:bg-violet-500/[0.04]">
+                              {anteriorConDatos ? (
+                                <div className="grid grid-cols-3 divide-x divide-violet-500/15 py-1.5">
+                                  <div className="flex items-baseline justify-center gap-0.5 px-1">
+                                    <span className="w-[2.4rem] text-right text-xl font-black text-violet-700 dark:text-violet-300">{anteriorSerie!.peso_kg ?? "—"}</span>
+                                    <span className="text-sm font-bold text-violet-500/70 flex-shrink-0">kg</span>
+                                  </div>
+                                  <div className="flex items-baseline justify-center gap-0.5 px-1">
+                                    <span className="w-[1.8rem] text-right text-xl font-black text-violet-700 dark:text-violet-300">{anteriorSerie!.repeticiones ?? "—"}</span>
+                                    <span className="text-sm font-bold text-violet-500/70 flex-shrink-0">rep</span>
+                                  </div>
+                                  <div className="flex items-baseline justify-center gap-0.5 px-1">
+                                    <span className="w-[1.8rem] text-right text-xl font-black text-violet-700 dark:text-violet-300">{anteriorSerie!.rpe ?? "—"}</span>
+                                    <span className="text-sm font-bold text-violet-500/70 flex-shrink-0">rpe</span>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="text-center py-1.5 text-[11px] text-violet-500/70">Sin registro</div>
+                              )}
+                              <p className="text-center mt-1.5 pb-1.5 text-[9px] font-semibold uppercase tracking-widest text-violet-500/60 dark:text-violet-400/50">
+                                Registros de la sesión anterior
+                              </p>
+                            </div>
+                          )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {/* Notas */}
+                  <div className="pt-3 space-y-1.5">
+                    <label className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground dark:text-zinc-500">
+                      <StickyNote className="h-3.5 w-3.5" />
+                      Mis notas
+                    </label>
+                    <Textarea
+                      placeholder="Opcional…"
+                      maxLength={100}
+                      className="min-h-14 resize-none bg-card/80 dark:bg-card dark:bg-zinc-900/80 border-border dark:border-white/[0.08] focus:border-green-500/50 focus:ring-green-500/20 text-foreground dark:text-white placeholder:text-muted-foreground/70 dark:text-zinc-600 text-base rounded-xl"
+                      value={row.notas}
+                      onChange={(e) => handleNotasChange(ej.id, e.target.value)}
+                    />
+                    <span className="text-xs text-muted-foreground dark:text-zinc-400 text-right block">{row.notas.length}/100</span>
+                  </div>
+                </div>
+                )}
+
+                {/* Footer anclado al pie: Saltado / Completado / Saltar — uno a la vez. Saltado tiene prioridad sobre completado. */}
+                {!previewPlan && (
+                  esSaltado ? (
+                    <button
+                      onClick={() => handleToggleSkip(ej.id)}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-3.5 border-t border-amber-500/30 bg-amber-500/15 text-base font-bold text-amber-500 dark:text-amber-400 transition-colors active:scale-[0.99]"
+                    >
+                      <SkipForward className="h-5 w-5" />
+                      Saltado
+                    </button>
+                  ) : isFilled ? (
+                    <div className="flex items-center justify-center gap-2 px-4 py-3.5 border-t border-green-500/30 bg-green-500/15 text-base font-bold text-green-600 dark:text-green-400">
+                      <CheckCircle2 className="h-5 w-5" />
+                      Completado
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => handleToggleSkip(ej.id)}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-3.5 border-t border-border dark:border-white/[0.07] bg-transparent text-base font-bold text-muted-foreground transition-colors active:scale-[0.99] hover:bg-amber-500/5 hover:text-amber-500 dark:hover:text-amber-400"
+                    >
+                      <SkipForward className="h-5 w-5" />
+                      Saltar
+                    </button>
+                  )
+                )}
+              </div>
+            ) : (
               <div
                 key={ej.id}
                 data-ej-id={ej.id}
