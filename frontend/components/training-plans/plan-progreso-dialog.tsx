@@ -170,6 +170,28 @@ export function PlanProgresoDialog({
     registroMap.set(`${r.sesion_id}-${r.planificacion_ejercicio_id}`, r)
   })
 
+  // Saltado = marcador explícito _saltado, o sin dato real (reps>0). NO usar peso==0
+  // (dominadas/peso corporal van sin peso).
+  const registroEsSaltado = (registro: any) => {
+    if (!registro) return false
+    const series: any[] = registro.series ?? []
+    return series.length > 0
+      ? (series[0]?._saltado === true || series.every((s: any) => (s.repeticiones ?? 0) === 0))
+      : (registro.repeticiones ?? 0) === 0
+  }
+
+  // Día entero salteado por el alumno en esa semana: existe la sesión y TODOS los
+  // ejercicios (no-activadores) quedaron saltados.
+  const diaSaltado = (dia: any, semana: number) => {
+    const sesion = sesionMap.get(`${dia.id}-${semana}`)
+    if (!sesion) return false
+    const ejs = (dia.ejercicios ?? []).filter(
+      (e: any) => !esActivador(localData[e.id]?.categoria ?? e.categoria)
+    )
+    if (ejs.length === 0) return false
+    return ejs.every((e: any) => registroEsSaltado(registroMap.get(`${sesion.id}-${e.id}`)))
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[98vw] md:max-w-[1500px] flex flex-col p-0 max-h-[calc(100dvh-5rem)]">
@@ -227,10 +249,17 @@ export function PlanProgresoDialog({
                             ]
                             const active = sesion ? flags.filter((f) => !!sesion[f.key]) : []
                             const popoverKey = `${dia.id}-${s}`
+                            const esDiaSaltado = diaSaltado(dia, s)
                             return (
                               <th key={s} className={`px-0 py-2.5 text-center font-semibold w-[200px] relative ${s > 1 ? "border-l-2 border-border" : ""}`}>
                                 <div className="flex items-center justify-center gap-1 mb-1">
                                   <span>S{s}</span>
+                                  {esDiaSaltado && (
+                                    <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-500/15 text-amber-500 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide" title={`El alumno saltó el día ${dia.numero_dia} en la semana ${s}`}>
+                                      <SkipForward className="h-2.5 w-2.5" />
+                                      Saltado
+                                    </span>
+                                  )}
                                   {sesion && (
                                     <button
                                       onClick={(e) => { e.stopPropagation(); setEstadoPopover(estadoPopover === popoverKey ? null : popoverKey) }}

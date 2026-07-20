@@ -152,6 +152,15 @@ const EMPTY_FORM_ROW = (count: number = DEFAULT_SERIES): FormRow => ({
 const padSeries = (arr: SerieRow[] | undefined, count: number): SerieRow[] =>
   Array.from({ length: count }, (_, i) => arr?.[i] ?? { ...EMPTY_SERIE })
 
+// Color del RPE por intensidad: ≤6 verde, 7 amarillo, 8 naranja, 9/10 rojo.
+const rpeColorClass = (rpe: number | null | undefined) => {
+  if (rpe == null) return "text-muted-foreground dark:text-zinc-500"
+  if (rpe <= 6) return "text-green-600 dark:text-green-400"
+  if (rpe === 7) return "text-yellow-500 dark:text-yellow-400"
+  if (rpe === 8) return "text-orange-500 dark:text-orange-400"
+  return "text-red-500 dark:text-red-400"
+}
+
 
 const queryKeyPlan = (studentId: number) => ["portalPlanificacion", studentId] as const
 const queryKeySesion = (planId: number, studentId: number, hojaId: number, diaId: number, semana: number) =>
@@ -2259,7 +2268,7 @@ export function StudentPlanificacionSection({
                         <span className="flex items-center gap-1 text-[9px] font-semibold uppercase tracking-widest text-muted-foreground dark:text-zinc-500">
                           <Flame className="h-3 w-3" /> RPE
                         </span>
-                        <span className="font-bold text-base text-orange-600 dark:text-orange-400 leading-tight">{typeof effectiveRpe === "number" ? effectiveRpe : "—"}</span>
+                        <span className={`font-bold text-base leading-tight ${rpeColorClass(effectiveRpe)}`}>{typeof effectiveRpe === "number" ? effectiveRpe : "—"}</span>
                       </div>
                     </div>
                   </div>
