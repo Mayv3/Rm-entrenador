@@ -741,6 +741,11 @@ export function EstadisticasSection() {
   const activosPagoCount = activosPagoList.length
   const activosAltaCount = altasList.length
 
+  // KPI "Alumnos activos" siempre usa el conteo general (no sigue el toggle mensual)
+  const baseActivosGeneralIds = new Set(activosList.map(s => s.id))
+  const activosUnionGeneralList = [...activosList, ...altasList.filter(s => !baseActivosGeneralIds.has(s.id))]
+  const activosTotalGeneral = activosUnionGeneralList.length
+
   const drillData: Record<string, Student[]> = estadoMode === "mensual"
     ? { Activos: activosUnionList, Altas: altasList, Bajas: bajasMesList }
     : { Activos: activosUnionList, Inactivos: inactivosList, Altas: altasList, Bajas: bajasList }
@@ -866,15 +871,15 @@ export function EstadisticasSection() {
 
         {/* Activos */}
         <StatCard label="Alumnos activos" icon={<Users className="h-3.5 w-3.5" />} accentColor={C.activos}
-          onClick={() => setDrillStudents({ title: "Alumnos Activos", list: activosUnionList })}
+          onClick={() => setDrillStudents({ title: "Alumnos Activos", list: activosUnionGeneralList })}
         >
           <div className="flex items-end justify-between">
             <p className="text-3xl font-bold text-foreground leading-none tracking-tight">
-              {pct(activosTotal, total)}<span className="text-lg text-muted-foreground ml-0.5">%</span>
+              {pct(activosTotalGeneral, total)}<span className="text-lg text-muted-foreground ml-0.5">%</span>
             </p>
-            <span className="text-xs text-muted-foreground mb-0.5">{activosTotal} / {total}</span>
+            <span className="text-xs text-muted-foreground mb-0.5">{activosTotalGeneral} / {total}</span>
           </div>
-          <ProgressBar value={pct(activosTotal, total)} color={C.activos} />
+          <ProgressBar value={pct(activosTotalGeneral, total)} color={C.activos} />
         </StatCard>
 
         {/* Plan más frecuente */}

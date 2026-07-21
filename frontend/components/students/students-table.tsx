@@ -737,7 +737,12 @@ export function StudentsTable({ onOpenPlan }: { onOpenPlan?: (alumnoNombre: stri
     return rawStudents.map((student) => {
       const pagosAlumno = payments
         .filter((p) => Number(p.alumno_id) === Number(student.id))
-        .sort((a, b) => new Date(b.fecha_de_pago).getTime() - new Date(a.fecha_de_pago).getTime())
+        .sort((a, b) => {
+          const va = a.fecha_de_vencimiento ? new Date(a.fecha_de_vencimiento).getTime() : 0
+          const vb = b.fecha_de_vencimiento ? new Date(b.fecha_de_vencimiento).getTime() : 0
+          if (vb !== va) return vb - va
+          return new Date(b.fecha_de_pago).getTime() - new Date(a.fecha_de_pago).getTime()
+        })
       return {
         ...student,
         status: pagosAlumno[0]?.status ?? "Indefinido",
