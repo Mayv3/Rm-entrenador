@@ -180,11 +180,9 @@ export function StudentPlanificacionSection({
   backHandlerRef?: React.MutableRefObject<(() => void) | null>
 }) {
   const queryClient = useQueryClient()
-  // Nuevo diseño de planificación: visible solo para estos alumnos (id).
-  // El resto sigue viendo el diseño clásico. Sumar ids acá para ampliar el rollout.
-  // 4 = Nico Pereyra · 36 = Rodri Montenegro · 32 = Jade Haber
-  const NUEVO_DISENO_IDS = [4, 36, 32]
-  const esNico = NUEVO_DISENO_IDS.includes(studentId)
+  // Nuevo diseño de planificación: ahora visible para TODOS los alumnos.
+  // La ui clásica se conserva en el `else` del render (rama `!esNico`) por si hay que volver.
+  const esNico = true
   const [semanaSeleccionada, setSemanaSeleccionada] = useState<number | null>(null)
   const [diaSeleccionadoId, setDiaSeleccionadoId] = useState<number | null>(null)
   const [registrosForm, setRegistrosForm] = useState<Record<number, FormRow>>({})
@@ -228,8 +226,6 @@ export function StudentPlanificacionSection({
   // de otro día al que se navega antes de que el flag se consuma (bug pesos en 0).
   const justSavedRef = useRef<string | null>(null)
   const [activeSerieMap, setActiveSerieMap] = useState<Record<number, number>>({})
-  // Serie "abierta" por ejercicio: al seleccionarla se muestra su registro anterior
-  const [serieAbierta, setSerieAbierta] = useState<Record<number, number>>({})
   const serieScrollRefs = useRef<Map<number, HTMLDivElement>>(new Map())
   const pendingSerieRestoreRef = useRef<Record<number, number>>({})
   const exerciseCardRefs = useRef<Map<number, HTMLDivElement>>(new Map())
@@ -2190,6 +2186,9 @@ export function StudentPlanificacionSection({
             const seriesCount = clampSeries(ej.series)
             const row = registrosForm[ej.id] ?? EMPTY_FORM_ROW(seriesCount)
             const isFilled = row.series.length > 0 && row.series.every((s) => !!s.peso_kg && !!s.repeticiones && !!s.rpe)
+            // Incompleto: hay al menos una serie con datos pero no están todas completas → tarjeta en amarillo
+            const algunaSerieConDatos = row.series.some((s) => !!s.peso_kg || !!s.repeticiones || !!s.rpe)
+            const parcialIncompleto = algunaSerieConDatos && !isFilled
             // Referencia por prioridad: (1) mismo plan sem/hoja previa; (2) fallback otro plan (por ejercicio_id).
             // Semana 1 → última semana del bloque anterior (match por ejercicio_id). Sem>1 → semana previa (match por planificacion_ejercicio_id)
             const regInPlan = (semanaSeleccionada === 1
@@ -2226,15 +2225,18 @@ export function StudentPlanificacionSection({
                 data-ej-id={ej.id}
                 ref={(el) => { if (el) exerciseCardRefs.current.set(ej.id, el) }}
                 className={`rounded-2xl bg-card/50 dark:bg-white/[0.02] overflow-hidden transition-all duration-200 ${
-                  esSaltado ? "opacity-60" : ""
+                  esSaltado ? "opacity-60" : parcialIncompleto ? "ring-2 ring-amber-500/60 dark:ring-amber-500/50" : ""
                 }`}
               >
-                {/* Header: nombre + acciones — verde característico */}
-                <div className="flex items-center gap-3 px-4 py-3 bg-primary/10 dark:bg-primary/[0.12]">
+                {/* Header: nombre + acciones — verde (amarillo si quedó incompleto por una serie) */}
+                <div className={`flex items-center gap-3 px-4 py-3 ${parcialIncompleto ? "bg-amber-500/15 dark:bg-amber-500/[0.12]" : "bg-primary/10 dark:bg-primary/[0.12]"}`}>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[17px] font-bold text-primary leading-tight">
+                    <p className={`text-[17px] font-bold leading-tight ${parcialIncompleto ? "text-amber-600 dark:text-amber-400" : "text-primary"}`}>
                       {ej.ejercicios?.nombre ?? "Ejercicio"}
                     </p>
+                    {parcialIncompleto && (
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400">Incompleto · faltan series</span>
+                    )}
                   </div>
 
                   {/* Video + guardado (der) */}
@@ -2288,102 +2290,125 @@ export function StudentPlanificacionSection({
                   <div className="pb-3" />
                 ) : (
                 <div className="px-3.5 pt-3 pb-4">
-                  <div className="space-y-3">
-                    {Array.from({ length: seriesCount }, (_, serieIdx) => {
-                      const serie = row.series[serieIdx] ?? EMPTY_SERIE
-                      const anteriorSerie = anteriorSeries?.[serieIdx] ?? null
-                      const serieFilled = !!serie.peso_kg && !!serie.repeticiones && !!serie.rpe
-                      const anteriorConDatos = !!anteriorSerie && (anteriorSerie.peso_kg !== null || anteriorSerie.repeticiones !== null || anteriorSerie.rpe !== null)
-                      const inputCls = "bg-transparent border-0 focus-visible:ring-0 focus:ring-0 focus:border-0 text-foreground dark:text-white placeholder:text-foreground/40 dark:placeholder:text-zinc-600 h-14 !text-xl !font-black text-right rounded-none shadow-none p-0 min-w-0"
-                      return (
-                        <div key={serieIdx}>
-                          {/* Etiqueta de serie — aparte, sin fondo */}
-                          <span className={`block mb-1 px-0.5 text-xs font-bold uppercase tracking-widest ${serieFilled ? "text-green-600 dark:text-green-400" : "text-muted-foreground dark:text-zinc-500"}`}>
-                            Serie {serieIdx + 1}
-                          </span>
-
-                          <div
-                            onFocusCapture={() => setSerieAbierta((prev) => ({ ...prev, [ej.id]: serieIdx }))}
-                            onClick={() => setSerieAbierta((prev) => ({ ...prev, [ej.id]: serieIdx }))}
-                            className={`rounded-2xl overflow-hidden transition-colors ${
-                              serieFilled ? "bg-green-500/[0.07]" : "bg-muted/30 dark:bg-white/[0.02]"
-                            }`}
-                          >
-                          {/* Inputs de la serie — con unidad kg / rep / rpe */}
-                          <div className="grid grid-cols-3 divide-x divide-border dark:divide-white/[0.08]">
-                            <div className="flex items-baseline justify-center gap-0.5 px-1">
-                              <Input
-                                ref={(el) => { if (el) inputRefs.current.set(`${ej.id}-${serieIdx}-peso_kg`, el) }}
-                                type="text"
-                                inputMode="decimal"
-                                placeholder="0"
-                                value={serie.peso_kg}
-                                onChange={(e) => handleSerieChange(ej.id, serieIdx, "peso_kg", e.target.value)}
-                                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNextInput(ej.id, serieIdx, "peso_kg") } }}
-                                className={`${inputCls} w-[2.4rem]`}
-                              />
-                              <span className="text-sm font-bold text-muted-foreground dark:text-zinc-500 flex-shrink-0">kg</span>
-                            </div>
-                            <div className="flex items-baseline justify-center gap-0.5 px-1">
-                              <Input
-                                ref={(el) => { if (el) inputRefs.current.set(`${ej.id}-${serieIdx}-repeticiones`, el) }}
-                                type="text"
-                                inputMode="numeric"
-                                pattern="[0-9]*"
-                                placeholder="0"
-                                value={serie.repeticiones}
-                                onChange={(e) => handleSerieChange(ej.id, serieIdx, "repeticiones", e.target.value)}
-                                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNextInput(ej.id, serieIdx, "repeticiones") } }}
-                                className={`${inputCls} w-[1.8rem]`}
-                              />
-                              <span className="text-sm font-bold text-muted-foreground dark:text-zinc-500 flex-shrink-0">rep</span>
-                            </div>
-                            <div className="flex items-baseline justify-center gap-0.5 px-1">
-                              <Input
-                                ref={(el) => { if (el) inputRefs.current.set(`${ej.id}-${serieIdx}-rpe`, el) }}
-                                type="text"
-                                inputMode="decimal"
-                                placeholder="0"
-                                value={serie.rpe}
-                                onChange={(e) => handleSerieChange(ej.id, serieIdx, "rpe", e.target.value)}
-                                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNextInput(ej.id, serieIdx, "rpe") } }}
-                                className={`${inputCls} w-[1.8rem]`}
-                              />
-                              <span className="text-sm font-bold text-muted-foreground dark:text-zinc-500 flex-shrink-0">rpe</span>
-                            </div>
-                          </div>
-
-                          {/* Registro anterior — solo al seleccionar la serie */}
-                          {mostrarAnterior && serieAbierta[ej.id] === serieIdx && (
-                            <div className="border-t border-dashed border-border dark:border-white/[0.08] bg-violet-500/[0.05] dark:bg-violet-500/[0.04]">
-                              {anteriorConDatos ? (
-                                <div className="grid grid-cols-3 divide-x divide-violet-500/15 py-1.5">
+                  {(() => {
+                    const inputCls = "bg-transparent border-0 focus-visible:ring-0 focus:ring-0 focus:border-0 text-foreground dark:text-white placeholder:text-foreground/40 dark:placeholder:text-zinc-600 h-14 !text-xl !font-black text-right rounded-none shadow-none p-0 min-w-0"
+                    return (
+                      /* Carrusel de la tarjeta: Panel 1 = las series (inputs) · Panel 2 = las mismas series de la sesión anterior. Deslizar → las 3 juntas y alineadas fila por fila */
+                      <div className="relative overflow-hidden">
+                      <div
+                        className="flex overflow-x-auto snap-x snap-mandatory"
+                        style={{ scrollbarWidth: "none" }}
+                      >
+                        {/* Panel 1: series actuales — ancho exacto del carrusel (100%) */}
+                        <div className="snap-start shrink-0 grow-0 basis-full space-y-3">
+                          {Array.from({ length: seriesCount }, (_, serieIdx) => {
+                            const serie = row.series[serieIdx] ?? EMPTY_SERIE
+                            const serieFilled = !!serie.peso_kg && !!serie.repeticiones && !!serie.rpe
+                            return (
+                              <div key={serieIdx}>
+                                <span className={`block mb-1 px-0.5 text-xs font-bold uppercase tracking-widest ${serieFilled ? "text-green-600 dark:text-green-400" : "text-muted-foreground dark:text-zinc-500"}`}>
+                                  Serie {serieIdx + 1}
+                                </span>
+                                <div className={`rounded-2xl overflow-hidden transition-colors grid grid-cols-3 divide-x divide-border dark:divide-white/[0.08] ${serieFilled ? "bg-green-500/[0.07]" : "bg-muted/30 dark:bg-white/[0.02]"}`}>
                                   <div className="flex items-baseline justify-center gap-0.5 px-1">
-                                    <span className="w-[2.4rem] text-right text-xl font-black text-violet-700 dark:text-violet-300">{anteriorSerie!.peso_kg ?? "—"}</span>
-                                    <span className="text-sm font-bold text-violet-500/70 flex-shrink-0">kg</span>
+                                    <Input
+                                      ref={(el) => { if (el) inputRefs.current.set(`${ej.id}-${serieIdx}-peso_kg`, el) }}
+                                      type="text"
+                                      inputMode="decimal"
+                                      placeholder="0"
+                                      value={serie.peso_kg}
+                                      onChange={(e) => handleSerieChange(ej.id, serieIdx, "peso_kg", e.target.value)}
+                                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNextInput(ej.id, serieIdx, "peso_kg") } }}
+                                      className={`${inputCls} w-[2.4rem]`}
+                                    />
+                                    <span className="text-sm font-bold text-muted-foreground dark:text-zinc-500 flex-shrink-0">kg</span>
                                   </div>
                                   <div className="flex items-baseline justify-center gap-0.5 px-1">
-                                    <span className="w-[1.8rem] text-right text-xl font-black text-violet-700 dark:text-violet-300">{anteriorSerie!.repeticiones ?? "—"}</span>
-                                    <span className="text-sm font-bold text-violet-500/70 flex-shrink-0">rep</span>
+                                    <Input
+                                      ref={(el) => { if (el) inputRefs.current.set(`${ej.id}-${serieIdx}-repeticiones`, el) }}
+                                      type="text"
+                                      inputMode="numeric"
+                                      pattern="[0-9]*"
+                                      placeholder="0"
+                                      value={serie.repeticiones}
+                                      onChange={(e) => handleSerieChange(ej.id, serieIdx, "repeticiones", e.target.value)}
+                                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNextInput(ej.id, serieIdx, "repeticiones") } }}
+                                      className={`${inputCls} w-[1.8rem]`}
+                                    />
+                                    <span className="text-sm font-bold text-muted-foreground dark:text-zinc-500 flex-shrink-0">rep</span>
                                   </div>
                                   <div className="flex items-baseline justify-center gap-0.5 px-1">
-                                    <span className="w-[1.8rem] text-right text-xl font-black text-violet-700 dark:text-violet-300">{anteriorSerie!.rpe ?? "—"}</span>
-                                    <span className="text-sm font-bold text-violet-500/70 flex-shrink-0">rpe</span>
+                                    <Input
+                                      ref={(el) => { if (el) inputRefs.current.set(`${ej.id}-${serieIdx}-rpe`, el) }}
+                                      type="text"
+                                      inputMode="decimal"
+                                      placeholder="0"
+                                      value={serie.rpe}
+                                      onChange={(e) => handleSerieChange(ej.id, serieIdx, "rpe", e.target.value)}
+                                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNextInput(ej.id, serieIdx, "rpe") } }}
+                                      className={`${inputCls} w-[1.8rem]`}
+                                    />
+                                    <span className="text-sm font-bold text-muted-foreground dark:text-zinc-500 flex-shrink-0">rpe</span>
                                   </div>
                                 </div>
-                              ) : (
-                                <div className="text-center py-1.5 text-[11px] text-violet-500/70">Sin registro</div>
-                              )}
-                              <p className="text-center mt-1.5 pb-1.5 text-[9px] font-semibold uppercase tracking-widest text-violet-500/60 dark:text-violet-400/50">
-                                Registros de la sesión anterior
-                              </p>
+                              </div>
+                            )
+                          })}
+                          {mostrarAnterior && (
+                            <div className="flex justify-center pt-3">
+                              <div className="flex items-center gap-1 rounded-full bg-violet-500/15 dark:bg-violet-500/20 px-3 py-1.5">
+                                <span className="text-[9px] font-bold uppercase tracking-widest text-violet-600 dark:text-violet-400">Deslizá para ver anterior</span>
+                                <ChevronRight className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                              </div>
                             </div>
                           )}
-                          </div>
                         </div>
-                      )
-                    })}
-                  </div>
+
+                        {/* Panel 2: mismas series de la sesión anterior — alineadas fila por fila */}
+                        {mostrarAnterior && (
+                          <div className="snap-start shrink-0 grow-0 basis-full space-y-3">
+                            {Array.from({ length: seriesCount }, (_, serieIdx) => {
+                              const anteriorSerie = anteriorSeries?.[serieIdx] ?? null
+                              const anteriorConDatos = !!anteriorSerie && (anteriorSerie.peso_kg !== null || anteriorSerie.repeticiones !== null || anteriorSerie.rpe !== null)
+                              return (
+                                <div key={serieIdx}>
+                                  <span className="block mb-1 px-0.5 text-xs font-bold uppercase tracking-widest text-violet-600 dark:text-violet-400">
+                                    Serie {serieIdx + 1}
+                                  </span>
+                                  <div className="rounded-2xl overflow-hidden h-14 flex items-center bg-violet-500/[0.07] dark:bg-violet-500/[0.06]">
+                                    {anteriorConDatos ? (
+                                      <div className="grid grid-cols-3 divide-x divide-violet-500/15 w-full">
+                                        <div className="flex items-baseline justify-center gap-0.5 px-1">
+                                          <span className="w-[2.4rem] text-right text-xl font-black text-violet-700 dark:text-violet-300">{anteriorSerie!.peso_kg ?? "—"}</span>
+                                          <span className="text-sm font-bold text-violet-500/70 flex-shrink-0">kg</span>
+                                        </div>
+                                        <div className="flex items-baseline justify-center gap-0.5 px-1">
+                                          <span className="w-[1.8rem] text-right text-xl font-black text-violet-700 dark:text-violet-300">{anteriorSerie!.repeticiones ?? "—"}</span>
+                                          <span className="text-sm font-bold text-violet-500/70 flex-shrink-0">rep</span>
+                                        </div>
+                                        <div className="flex items-baseline justify-center gap-0.5 px-1">
+                                          <span className="w-[1.8rem] text-right text-xl font-black text-violet-700 dark:text-violet-300">{anteriorSerie!.rpe ?? "—"}</span>
+                                          <span className="text-sm font-bold text-violet-500/70 flex-shrink-0">rpe</span>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="w-full text-center text-[11px] text-violet-500/70">Sin registro</div>
+                                    )}
+                                  </div>
+                                </div>
+                              )
+                            })}
+                            <div className="flex justify-center pt-3">
+                              <div className="rounded-full bg-violet-500/15 dark:bg-violet-500/20 px-3 py-1.5">
+                                <span className="text-[9px] font-bold uppercase tracking-widest text-violet-600 dark:text-violet-400">Registros de la sesión anterior</span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      </div>
+                    )
+                  })()}
 
                   {/* Notas */}
                   <div className="pt-3 space-y-1.5">

@@ -205,6 +205,8 @@ function PortalPageInner() {
   const [showMiPlan, setShowMiPlan] = useState(false)
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [progresoOpen, setProgresoOpen] = useState(false)
+  // Aviso de plan vencido: se muestra cada vez que el alumno entra (sin persistir dismiss).
+  const [showVencidoAlert, setShowVencidoAlert] = useState(false)
   const [miPlanCanBack, setMiPlanCanBack] = useState(false)
   const miPlanBackRef = useRef<(() => void) | null>(null)
   const miPlanHistoryDepth = useRef(0)
@@ -304,6 +306,12 @@ function PortalPageInner() {
 
   const subscriptionStatus = latestPayment ? determineSubscriptionStatus(latestPayment) : "Indefinido"
 
+  // Al entrar, si el plan está vencido → abrir el cartel de aviso (una vez por carga).
+  // También en modo preview, para poder verificarlo.
+  useEffect(() => {
+    if (subscriptionStatus === "Vencido") setShowVencidoAlert(true)
+  }, [subscriptionStatus])
+
   if ((!isPreview && status === "loading") || loadingStudent) {
     return (
       <div className="min-h-screen bg-background">
@@ -398,6 +406,35 @@ function PortalPageInner() {
 
   if (!student) return null
 
+  // Bloqueo duro: plan vencido y ya pasó el día 15 del mes → se deshabilita todo el perfil
+  // y solo se muestra el cartel para que regularice el pago.
+  const bloqueadoVencido = subscriptionStatus === "Vencido" && new Date().getDate() > 15
+  if (bloqueadoVencido) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-4 text-center">
+        <div className="h-14 w-14 rounded-full bg-red-500/10 flex items-center justify-center ring-1 ring-red-500/30">
+          <CalendarDays className="h-7 w-7 text-red-500" />
+        </div>
+        <p className="text-foreground font-bold text-lg">Tu plan está vencido</p>
+        <p className="text-muted-foreground text-sm max-w-xs">
+          Tu plan venció el <strong className="text-foreground">{formatDate(latestPayment?.fecha_de_vencimiento)}</strong>. Regularizá el pago con tu entrenador para volver a acceder a tu perfil.
+        </p>
+        <a
+          href="https://wa.me/543516671026"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold shadow hover:bg-emerald-700 active:scale-[0.97] transition-all"
+        >
+          <MessageSquare className="h-4 w-4" />
+          Contactar a mi entrenador
+        </a>
+        <button onClick={() => signOut({ callbackUrl: "/portal/login" })} className="text-xs text-red-500 underline">
+          Cerrar sesión
+        </button>
+      </div>
+    )
+  }
+
   // Agrupar antros de a 4 (más reciente primero)
   const sortedAntros = [...antros].sort((a, b) => {
     const da = new Date((a.fecha || a.created_at).replace(" ", "T"))
@@ -417,6 +454,32 @@ function PortalPageInner() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Aviso de plan vencido — aparece cada vez que el alumno entra */}
+      <Dialog open={showVencidoAlert} onOpenChange={setShowVencidoAlert}>
+        <DialogContent className="max-w-sm text-center">
+          <div className="flex flex-col items-center gap-3 pt-2">
+            <div className="h-14 w-14 rounded-full bg-red-500/10 flex items-center justify-center ring-1 ring-red-500/30">
+              <CalendarDays className="h-7 w-7 text-red-500" />
+            </div>
+            <DialogTitle className="text-lg font-bold">Tu plan está vencido</DialogTitle>
+            <p className="text-sm text-muted-foreground max-w-xs">
+              Tu plan venció el <strong className="text-foreground">{formatDate(latestPayment?.fecha_de_vencimiento)}</strong>. Regularizá el pago con tu entrenador para seguir con tu acceso.
+            </p>
+            <a
+              href="https://wa.me/543516671026"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold shadow hover:bg-emerald-700 active:scale-[0.97] transition-all"
+            >
+              <MessageSquare className="h-4 w-4" />
+              Contactar a mi entrenador
+            </a>
+            <button onClick={() => setShowVencidoAlert(false)} className="text-xs text-muted-foreground underline mt-1">
+              Entendido, continuar
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
       {isPreview && (
         <div className="sticky top-0 z-20 bg-amber-500 text-black text-xs font-bold px-4 py-2 flex items-center justify-between">
           <span>MODO PREVIEW · viendo como {student.nombre}</span>
