@@ -263,6 +263,44 @@ function StudentProgresoDialog({
     return m
   }, [progresoData])
 
+  // Saltado = marcador explícito _saltado, o sin dato real (reps>0). NO usar peso==0.
+  const registroEsSaltado = (registro: any) => {
+    if (!registro) return false
+    const series: any[] = registro.series ?? []
+    return series.length > 0
+      ? (series[0]?._saltado === true || series.every((s: any) => (s.repeticiones ?? 0) === 0))
+      : (registro.repeticiones ?? 0) === 0
+  }
+  const diaSaltado = (dia: any, semana: number) => {
+    const sesion = sesionMap.get(`${dia.id}-${semana}`)
+    if (!sesion) return false
+    const ejs = dia.ejercicios ?? []
+    if (ejs.length === 0) return false
+    return ejs.every((e: any) => registroEsSaltado(registroMap.get(`${sesion.id}-${e.id}`)))
+  }
+
+  // Día "copiado" de la semana anterior: el portal pre-carga la referencia y el alumno manda sin
+  // tocar => todas las series idénticas a la semana previa. Señal de salto real aunque haya reps>0.
+  const serieClave = (s: any) => `${s?.peso_kg ?? ""}|${s?.repeticiones ?? ""}|${s?.rpe ?? ""}`
+  const seriesIguales = (a: any[], b: any[]) => {
+    if (!Array.isArray(a) || !Array.isArray(b) || a.length === 0 || a.length !== b.length) return false
+    return a.every((s, i) => serieClave(s) === serieClave(b[i]))
+  }
+  const diaCopiadoAnterior = (dia: any, semana: number) => {
+    if (semana <= 1) return false
+    const sesion = sesionMap.get(`${dia.id}-${semana}`)
+    const sesionPrev = sesionMap.get(`${dia.id}-${semana - 1}`)
+    if (!sesion || !sesionPrev) return false
+    const ejs = dia.ejercicios ?? []
+    if (ejs.length === 0) return false
+    return ejs.every((e: any) => {
+      const cur = registroMap.get(`${sesion.id}-${e.id}`)
+      const prev = registroMap.get(`${sesionPrev.id}-${e.id}`)
+      if (!cur || !prev) return false
+      return seriesIguales(cur.series ?? [], prev.series ?? [])
+    })
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[98vw] md:max-w-[1500px] flex flex-col p-0 max-h-[calc(100dvh-5rem)]">
@@ -310,10 +348,24 @@ function StudentProgresoDialog({
                             ]
                             const active = sesion ? flags.filter((f) => !!sesion[f.key]) : []
                             const popoverKey = `${dia.id}-${s}`
+                            const esDiaSaltado = diaSaltado(dia, s)
+                            const esDiaCopiado = !esDiaSaltado && diaCopiadoAnterior(dia, s)
                             return (
                               <th key={s} className={`px-0 py-2.5 text-center font-semibold w-[200px] relative ${s > 1 ? "border-l-2 border-border" : ""}`}>
                                 <div className="flex items-center justify-center gap-1 mb-1">
                                   <span>S{s}</span>
+                                  {esDiaSaltado && (
+                                    <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-500/15 text-amber-500 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide" title={`El alumno saltó el día ${dia.numero_dia} en la semana ${s}`}>
+                                      <SkipForward className="h-2.5 w-2.5" />
+                                      Saltado
+                                    </span>
+                                  )}
+                                  {esDiaCopiado && (
+                                    <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-500/15 text-amber-500 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide" title={`Posible salto: todos los ejercicios del día ${dia.numero_dia} tienen valores idénticos a la semana ${s - 1}`}>
+                                      <SkipForward className="h-2.5 w-2.5" />
+                                      Saltado
+                                    </span>
+                                  )}
                                   {sesion && (
                                     <button
                                       onClick={(e) => { e.stopPropagation(); setEstadoPopover(estadoPopover === popoverKey ? null : popoverKey) }}
