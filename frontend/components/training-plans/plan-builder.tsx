@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader } from "@/components/ui/loader"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { queryKeys } from "@/lib/query-keys"
-import { ArrowLeft, Plus, Loader2, Save, Eye, EyeOff, Trash2, TrendingUp, AlertTriangle, CheckCircle2, StickyNote, CalendarDays, FileText, ClipboardList, Pencil, Check, Copy, RotateCcw } from "lucide-react"
+import { ArrowLeft, Plus, Loader2, Save, Eye, EyeOff, Trash2, TrendingUp, AlertTriangle, CheckCircle2, StickyNote, CalendarDays, FileText, ClipboardList, Pencil, Check, Copy, RotateCcw, FileDown } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { Label } from "@/components/ui/label"
@@ -20,6 +20,7 @@ import { ExerciseLibrarySheet } from "./exercise-library-sheet"
 import { ExerciseListDialog } from "./exercise-list-dialog"
 import { MovilidadSection } from "./movilidad-section"
 import { PlanProgresoDialog } from "./plan-progreso-dialog"
+import { exportPlanToPdf } from "./export-plan-pdf"
 import type { Planificacion, Ejercicio } from "@/types/planificaciones"
 import { CATEGORIA_COLORS, CATEGORIA_ROW_STYLE } from "@/types/planificaciones"
 
@@ -70,6 +71,7 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
   const [templateNombre, setTemplateNombre] = useState("")
   const [templateDesc, setTemplateDesc] = useState("")
   const [savingTemplate, setSavingTemplate] = useState(false)
+  const [exportingPdf, setExportingPdf] = useState(false)
 
   const { data: hojasEliminadas = [], isLoading: loadingTrash, refetch: refetchTrash } = useQuery<{ id: number; nombre: string; numero: number; deleted_at: string }[]>({
     queryKey: ["hojasEliminadas", planId],
@@ -154,7 +156,8 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
         }
       })
     })
-    setLocalData(data)
+    // Merge: conservar ediciones locales aún no guardadas de filas ya conocidas
+    setLocalData((prev) => ({ ...data, ...prev }))
     // Inicializar movilidad por hoja (solo hojas que aún no tienen estado local)
     setMovByHoja((prev) => {
       const next = { ...prev }
@@ -594,6 +597,20 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
     }
   }
 
+  const handleExportPdf = async () => {
+    const hoja = plan?.hojas?.find((h) => h.id === activeHojaId) ?? plan?.hojas?.[0]
+    if (!plan || !hoja) return
+    setExportingPdf(true)
+    try {
+      await exportPlanToPdf({ plan, hoja, localData, pendingByDay, orderByDay, pendingDeletes })
+    } catch (err) {
+      console.error(err)
+      alert("No se pudo generar el PDF. Intentá de nuevo.")
+    } finally {
+      setExportingPdf(false)
+    }
+  }
+
   const handleReplaceEj = (planEjId: number) => {
     replacingEjIdRef.current = planEjId
     setLibSheetOpen(true)
@@ -628,7 +645,8 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
       axios.put(`${process.env.NEXT_PUBLIC_URL_BACKEND}/planificaciones/ejercicios/${planEjId}`, {
         ejercicio_id: ejercicio.id,
       }).then(() => {
-        initialized.current = false
+        // No re-inicializar localData: el id de planificacion_ejercicios no cambia
+        // y hacerlo descartaría la dosificación editada y aún sin guardar.
         refetch()
       }).catch((err) => {
         console.error(err)
@@ -890,6 +908,22 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
         >
           <Eye className="h-4 w-4 md:h-3.5 md:w-3.5" />
           Preview
+        </Button>
+
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={handleExportPdf}
+          disabled={!activeHoja || exportingPdf}
+          title="Descargar la hoja activa en PDF"
+          className="h-11 px-4 text-xs gap-2 shrink-0 md:h-8 md:px-3 md:text-xs md:gap-1.5"
+        >
+          {exportingPdf ? (
+            <Loader2 className="h-4 w-4 animate-spin md:h-3.5 md:w-3.5" />
+          ) : (
+            <FileDown className="h-4 w-4 md:h-3.5 md:w-3.5" />
+          )}
+          {exportingPdf ? "Generando..." : "Descargar PDF"}
         </Button>
 
         <Button
