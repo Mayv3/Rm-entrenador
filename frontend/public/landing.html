@@ -248,7 +248,7 @@ window.__TWEAKS = /*EDITMODE-BEGIN*/{
   .segment button { padding: 10px 20px; border-radius: 8px; font-size: 13px; color: var(--text-2); transition: background .2s, color .2s; }
   .segment button.on { background: var(--bg); color: var(--text); box-shadow: 0 0 0 1px var(--line-strong); }
 
-  .plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; align-items: stretch; }
+  .plans { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: stretch; }
   .plan {
     background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg);
     padding: 36px 32px; display: flex; flex-direction: column;
@@ -413,7 +413,6 @@ window.__TWEAKS = /*EDITMODE-BEGIN*/{
     <div class="nav-links">
       <a class="nav-link" href="#sobre-mi">Sobre mí</a>
       <a class="nav-link" href="#servicios">Servicios</a>
-      <a class="nav-link" href="#planes">Planes</a>
       <a class="nav-link" href="#proceso">Proceso</a>
     </div>
     <div class="nav-cta">
@@ -437,7 +436,7 @@ window.__TWEAKS = /*EDITMODE-BEGIN*/{
       <h1 class="hero-title reveal d1">Tu cambio<br/>empieza <span class="serif accent">con un plan</span> <span class="accent">real</span>.</h1>
       <p class="hero-sub reveal d2">Soy Rodrigo Montenegro, Técnico en Actividades Físicas. Te acompaño con un enfoque personalizado, consciente y adaptado a vos — para que disfrutes entrenar y construyas hábitos sostenibles.</p>
       <div class="hero-actions reveal d3">
-        <a class="btn btn-primary" href="#planes">
+        <a class="btn btn-primary" href="#servicios">
           Empezar ahora
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
         </a>
@@ -560,8 +559,8 @@ window.__TWEAKS = /*EDITMODE-BEGIN*/{
   <div class="wrap">
     <div class="section-head reveal">
       <div class="section-tag">Servicios</div>
-      <h2 class="section-title">Planificación <span class="serif accent">individualizada</span>, seguimiento real.</h2>
-      <p class="section-lede">Cada plan tiene una duración de 6 semanas y contempla tu objetivo, experiencia y gustos. La fuerza es el eje, combinada con aeróbico y movilidad como herramientas.</p>
+      <h2 class="section-title">Elegí lo que mejor se <span class="serif accent">adapte</span> a vos.</h2>
+      <p class="section-lede">Recordá que estás contratando un <b style="color:var(--text)">plan mensual</b>. Se renueva del 1 al 10 de cada mes.</p>
     </div>
 
     <div class="services">
@@ -653,76 +652,6 @@ window.__TWEAKS = /*EDITMODE-BEGIN*/{
   </div>
 </section>
 
-<!-- ————— PLANES ————— -->
-<section class="block" id="planes">
-  <div class="wrap">
-    <div class="section-head reveal" style="text-align: center; margin: 0 auto 44px;">
-      <div class="section-tag" style="justify-content: center">Planes mensuales</div>
-      <h2 class="section-title">Elegí el que mejor se <span class="serif accent">adapte</span> a vos.</h2>
-      <p class="section-lede" style="margin: 16px auto 0">Estás contratando un <b style="color:var(--text)">plan mensual</b>. Se renueva del 1 al 10 de cada mes.</p>
-    </div>
-
-
-    <div class="plans">
-      <div class="plan reveal">
-        <div class="plan-head">
-        </div>
-        <h3>El primer paso</h3>
-        <p class="lede">Ideal si necesitás una mano con tu planificación y aprender a entrenar.</p>
-        <ul>
-          <li><span class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg></span>Planificación de entrenamiento personalizada</li>
-          <li><span class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg></span>Seguimiento en app propia con perfil de alumno</li>
-          <li><span class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg></span>Asistencia presencial u online por WhatsApp</li>
-          <li class="muted"><span class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 18L18 6M6 6l12 12"/></svg></span>Evaluación antropométrica</li>
-          <li class="muted"><span class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 18L18 6M6 6l12 12"/></svg></span>Seguimiento nutricional</li>
-        </ul>
-        <div class="plan-cta">
-          <a class="btn btn-outline" href="https://wa.me/5493516671026?text=Hola%20Rodrigo%2C%20me%20interesa%20el%20Plan%20mensual%20y%20quiero%20empezar%20a%20entrenar%20con%20vos%21" target="_blank" rel="noopener">Elegir plan mensual</a>
-        </div>
-      </div>
-
-      <div class="plan reveal d1">
-        <div class="plan-head">
-        </div>
-        <h3>Cambios medibles</h3>
-        <p class="lede">Perfecto si buscás progresar y que tus resultados sean medibles.</p>
-        <ul>
-          <li><span class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg></span>Todo lo incluido en el plan anterior</li>
-          <li><span class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg></span>Evaluación antropométrica cada 3 meses</li>
-          <li><span class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg></span>PDF con resultados antropométricos</li>
-          <li><span class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg></span>Tabla de comparación de resultados</li>
-          <li class="muted"><span class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 18L18 6M6 6l12 12"/></svg></span>Seguimiento nutricional</li>
-        </ul>
-        <div class="plan-cta">
-          <a class="btn btn-outline" href="https://wa.me/5493516671026?text=Hola%20Rodrigo%2C%20me%20interesa%20el%20Plan%20mensual%20y%20quiero%20empezar%20a%20entrenar%20con%20vos%21" target="_blank" rel="noopener">Elegir plan mensual</a>
-        </div>
-      </div>
-
-      <div class="plan featured reveal d2">
-        <span class="featured-tag">MÁS COMPLETO</span>
-        <div class="plan-head">
-        </div>
-        <h3>Resultados asegurados</h3>
-        <p class="lede">La experiencia más completa, pensada para transformar tu estilo de vida.</p>
-        <ul>
-          <li><span class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg></span>Todo lo incluido en el plan anterior</li>
-          <li><span class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg></span>Seguimiento nutricional completo</li>
-          <li><span class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg></span>Tabla de seguimiento en fotos</li>
-          <li><span class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg></span>Tabla de hábitos diarios</li>
-          <li><span class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg></span>Prioridad en asistencia WhatsApp</li>
-        </ul>
-        <div class="plan-cta">
-          <a class="btn btn-primary" href="https://wa.me/5493516671026?text=Hola%20Rodrigo%2C%20me%20interesa%20el%20Plan%20mensual%20y%20quiero%20empezar%20a%20entrenar%20con%20vos%21" target="_blank" rel="noopener">Elegir plan mensual</a>
-        </div>
-      </div>
-    </div>
-
-    <p style="text-align:center; color: var(--text-3); font-size: 13px; margin-top: 36px; max-width: 680px; margin-left: auto; margin-right: auto; line-height: 1.6">
-      <b style="color:var(--text-2)">Importante:</b> La cuota se renueva del 1 al 10 de cada mes, independientemente de la duración del plan. De lo contrario, el acceso al plan se bloquea temporalmente.
-    </p>
-  </div>
-</section>
-
 <!-- ————— QUOTE ————— -->
 <section class="block" style="padding-top: 40px">
   <div class="wrap reveal">
@@ -741,7 +670,6 @@ window.__TWEAKS = /*EDITMODE-BEGIN*/{
         <h2>¿Listo para <span class="serif accent">empezar</span>?</h2>
         <p>Podés contar conmigo para este cambio. Un mensaje es todo lo que necesitás — lo demás lo construimos juntos, paso a paso.</p>
         <div class="cta-actions">
-          <a class="btn btn-outline" href="#planes">Ver planes</a>
           <a class="btn btn-primary" href="https://wa.me/5493516671026?text=Hola%20Rodrigo%2C%20quiero%20empezar%20a%20entrenar%20con%20vos%21" target="_blank" rel="noopener">
             Escribirme por WhatsApp
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
@@ -774,7 +702,6 @@ window.__TWEAKS = /*EDITMODE-BEGIN*/{
         <h4>Navegar</h4>
         <a href="#sobre-mi">Sobre mí</a>
         <a href="#servicios">Servicios</a>
-        <a href="#planes">Planes</a>
         <a href="#proceso">Proceso</a>
       </div>
       <div class="foot-col">
