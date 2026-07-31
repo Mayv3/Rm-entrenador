@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Image from "next/image";
 import logoRodrigoEntrenador from "../../assets/LOGO-RODRIGO-VERDE.png";
-import { Users, CreditCard, Tag, LogOut, Moon, Sun, Globe, Copy, Check, Ruler, Salad, BarChart2, ClipboardList, HeartPulse, CalendarDays } from "lucide-react";
+import { Users, CreditCard, Tag, LogOut, Moon, Sun, Globe, Copy, Check, Ruler, Salad, BarChart2, ClipboardList, HeartPulse, CalendarDays, BookOpen } from "lucide-react";
 import { HoySection } from "@/components/hoy/hoy-section";
 import { AntropometriasSection } from "@/components/antropometrias/antropometrias-section";
 import { NutricionSection } from "@/components/nutricion/nutricion-section";
@@ -19,6 +19,7 @@ import { EstadisticasSection } from "@/components/estadisticas/estadisticas-sect
 import { PlanificacionesSection } from "@/components/training-plans/planificaciones-section";
 import { BackGuard } from "@/components/back-guard";
 import { useTheme } from "next-themes";
+import { ManualSection } from "@/components/manual/manual-section";
 
 function PortalSection({ copied, setCopied }: { copied: boolean; setCopied: (v: boolean) => void }) {
   const [portalUrl, setPortalUrl] = useState("/portal/login");
@@ -85,16 +86,8 @@ export default function Dashboard() {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  const [activeTab, setActiveTab] = useState<"students" | "payments" | "planes" | "servicios" | "portal" | "antropometrias" | "nutricion" | "estadisticas" | "planificaciones" | "hoy">("students");
+  const [activeTab, setActiveTab] = useState<"students" | "payments" | "planes" | "servicios" | "portal" | "antropometrias" | "nutricion" | "estadisticas" | "planificaciones" | "hoy" | "manual">("students");
   const [copied, setCopied] = useState(false);
-  const [alumnoFilter, setAlumnoFilter] = useState<string | null>(null);
-
-  // "Plan App" desde Alumnos: aterriza en la lista de planificaciones filtrada por el alumno,
-  // sin abrir el builder automáticamente.
-  const handleOpenPlan = (alumnoNombre: string) => {
-    setAlumnoFilter(alumnoNombre);
-    setActiveTab("planificaciones");
-  };
 
   useEffect(() => setMounted(true), []);
 
@@ -120,6 +113,7 @@ export default function Dashboard() {
     { value: "nutricion", label: "Nutrición", icon: Salad },
     { value: "planes", label: "Planes", icon: Tag },
     { value: "servicios", label: "Servicios", icon: HeartPulse },
+    { value: "manual", label: "Manual", icon: BookOpen },
     { value: "portal", label: "Portal", icon: Globe },
   ] as const;
 
@@ -195,19 +189,22 @@ export default function Dashboard() {
       </div>
 
       {/* ── Contenido principal ── */}
-      <main className={`flex-1 md:ml-16 mt-16 md:mt-0 pb-20 md:pb-0 overflow-x-hidden ${activeTab === "planificaciones" ? "p-2 sm:p-3 md:overflow-y-auto md:h-screen" : "p-4 sm:p-6"}`}>
+      {/* overflow-x-clip (no -hidden): clip recorta sin crear un scroll container,
+          así los headers sticky de las secciones siguen funcionando. */}
+      <main className={`flex-1 md:ml-16 mt-16 md:mt-0 pb-20 md:pb-0 overflow-x-clip ${activeTab === "planificaciones" ? "p-2 sm:p-3 md:overflow-y-auto md:h-screen" : "p-4 sm:p-6"}`}>
         {/* Contenido */}
         <div className={`w-full md:mx-auto ${activeTab === "planificaciones" ? "md:h-full md:max-w-[78vw]" : "md:max-w-[95vw] space-y-4"}`}>
-          {activeTab === "students" ? <StudentsTable onOpenPlan={handleOpenPlan} />
+          {activeTab === "students" ? <StudentsTable />
             : activeTab === "hoy" ? <HoySection />
-            : activeTab === "payments" ? <PaymentsTable />
-              : activeTab === "planes" ? <PlanesTable />
-                : activeTab === "servicios" ? <ServiciosTable />
-                  : activeTab === "antropometrias" ? <AntropometriasSection />
-                    : activeTab === "nutricion" ? <NutricionSection />
-                      : activeTab === "estadisticas" ? <EstadisticasSection />
-                        : activeTab === "planificaciones" ? <PlanificacionesSection initialSearch={alumnoFilter} />
-                          : <PortalSection copied={copied} setCopied={setCopied} />
+              : activeTab === "payments" ? <PaymentsTable />
+                : activeTab === "planes" ? <PlanesTable />
+                  : activeTab === "servicios" ? <ServiciosTable />
+                    : activeTab === "antropometrias" ? <AntropometriasSection />
+                      : activeTab === "nutricion" ? <NutricionSection />
+                        : activeTab === "estadisticas" ? <EstadisticasSection />
+                          : activeTab === "planificaciones" ? <PlanificacionesSection />
+                            : activeTab === "manual" ? <ManualSection />
+                              : <PortalSection copied={copied} setCopied={setCopied} />
           }
         </div>
       </main>

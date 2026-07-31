@@ -2215,7 +2215,6 @@ export function StudentPlanificacionSection({
               return null
             })()
             const catStyle = CATEGORIA_ROW_STYLE[ej.categoria] ?? {}
-            const catColor = catStyle.color as string | undefined
             const catBg = catStyle.backgroundColor as string | undefined
             const esSaltado = saltadoEjIds.has(ej.id)
 
@@ -2465,18 +2464,11 @@ export function StudentPlanificacionSection({
                     : "border-border dark:border-white/[0.07]"
                 }`}
               >
-                {/* Category + name + video strip */}
+                {/* Name + video strip */}
                 <div
                   className="px-4 py-3 rounded-t-2xl flex items-center gap-2"
                   style={{ backgroundColor: catBg ? `color-mix(in srgb, ${catBg} 60%, transparent)` : undefined }}
                 >
-                  {/* Categoría (izq) */}
-                  <span
-                    className="text-xs font-black uppercase tracking-widest px-2.5 py-1 rounded-md flex-shrink-0"
-                    style={{ color: catColor, backgroundColor: catBg }}
-                  >
-                    {ej.categoria}
-                  </span>
                   {/* Nombre centrado en el medio */}
                   <p className="flex-1 min-w-0 text-lg font-bold text-foreground dark:text-white leading-snug text-center">
                     {ej.ejercicios?.nombre ?? "Ejercicio"}

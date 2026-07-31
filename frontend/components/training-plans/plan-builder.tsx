@@ -22,9 +22,8 @@ import { MovilidadSection } from "./movilidad-section"
 import { PlanProgresoDialog } from "./plan-progreso-dialog"
 import { exportPlanToPdf } from "./export-plan-pdf"
 import type { Planificacion, Ejercicio } from "@/types/planificaciones"
-import { CATEGORIA_COLORS, CATEGORIA_ROW_STYLE } from "@/types/planificaciones"
+import { CATEGORIA_ROW_STYLE } from "@/types/planificaciones"
 
-const CATEGORIA_ORDER = ["ACTIVADOR", "A", "B", "C", "D", "E"]
 
 export type SemanaLocal = { dosis: string; rpe: string; notas: string }
 export type EjercicioLocal = { categoria: string; notas_profesor: string; series: number; semanas: Record<number, SemanaLocal> }
@@ -355,10 +354,9 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
       for (const [diaId, pending] of Object.entries(snapshotPendingByDay)) {
         if (!pending.length) continue
         pendingByDayPayload[diaId] = [...pending]
-          .sort((a, b) => CATEGORIA_ORDER.indexOf(a.categoria) - CATEGORIA_ORDER.indexOf(b.categoria))
           .map((p, i) => ({
             ejercicio_id: p.ejercicio.id,
-            categoria: p.categoria,
+            categoria: p.categoria || "",
             orden: i,
             series: p.series ?? 3,
             notas_profesor: p.notas_profesor || null,
@@ -1324,7 +1322,7 @@ function PlanPreviewDialog({
                 ),
                 isPending: true,
               }))
-              // Activador siempre primero (antes de A); el resto conserva su orden
+              // Los activadores se mantienen identificables; el resto conserva su orden.
               const allEjs = [...savedEjs, ...pendingEjs].sort((a, b) => {
                 const aAct = (a.categoria ?? "").toUpperCase() === "ACTIVADOR" ? 0 : 1
                 const bAct = (b.categoria ?? "").toUpperCase() === "ACTIVADOR" ? 0 : 1
@@ -1349,7 +1347,6 @@ function PlanPreviewDialog({
                       <table className="w-full text-xs min-w-[700px]">
                         <thead>
                           <tr className="border-b bg-muted/30">
-                            <th className="px-3 py-2 text-left font-medium text-muted-foreground w-16">Cat.</th>
                             <th className="px-3 py-2 text-left font-medium text-muted-foreground">Ejercicio</th>
                             {SEMANAS_PREVIEW.map((s) => (
                               <th key={s} className="px-2 py-2 text-center font-medium text-muted-foreground w-24">
@@ -1361,11 +1358,6 @@ function PlanPreviewDialog({
                         <tbody className="divide-y">
                           {allEjs.map((ej) => (
                             <tr key={ej.key} style={CATEGORIA_ROW_STYLE[ej.categoria]}>
-                              <td className="px-3 py-2">
-                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${CATEGORIA_COLORS[ej.categoria] ?? ""}`}>
-                                  {ej.categoria}
-                                </span>
-                              </td>
                               <td className="px-3 py-2 font-medium whitespace-nowrap">
                                 {ej.nombre}
                                 {ej.isPending && (

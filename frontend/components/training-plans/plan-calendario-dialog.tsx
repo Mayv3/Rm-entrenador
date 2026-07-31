@@ -7,7 +7,7 @@ import { Loader } from "@/components/ui/loader"
 import { Calendar as CalendarIcon, AlertTriangle } from "lucide-react"
 import { Calendar } from "@/components/ui/calendar"
 import { es } from "date-fns/locale"
-import { CATEGORIA_COLORS, CATEGORIA_ROW_STYLE } from "@/types/planificaciones"
+import { CATEGORIA_ROW_STYLE } from "@/types/planificaciones"
 
 type Asistencia = {
   id: number
@@ -227,7 +227,6 @@ function DetalleAsistencia({ a }: { a: Asistencia }) {
               <tr className="bg-muted/60 border-b">
                 <th className="px-2.5 md:px-4 py-2 md:py-2.5 text-left font-semibold w-12">#</th>
                 <th className="px-2.5 md:px-4 py-2 md:py-2.5 text-left font-semibold">Ejercicio</th>
-                <th className="px-3 py-2.5 text-center font-semibold w-20">Cat.</th>
                 {Array.from({ length: maxSeries }).map((_, i) => (
                   <th
                     key={i}
@@ -239,7 +238,6 @@ function DetalleAsistencia({ a }: { a: Asistencia }) {
                 ))}
               </tr>
               <tr className="bg-muted/30 border-b text-[10px] uppercase tracking-wide text-muted-foreground">
-                <th></th>
                 <th></th>
                 <th></th>
                 {Array.from({ length: maxSeries }).map((_, i) => (
@@ -268,13 +266,6 @@ function DetalleAsistencia({ a }: { a: Asistencia }) {
                       {r.ejercicio_nombre_snapshot}
                       {r.notas && (
                         <p className="text-[11px] text-blue-500 dark:text-blue-300 italic mt-1">"{r.notas}"</p>
-                      )}
-                    </td>
-                    <td className="px-3 py-2 md:py-3 text-center">
-                      {cat && (
-                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${CATEGORIA_COLORS[cat] ?? ""}`}>
-                          {cat}
-                        </span>
                       )}
                     </td>
                     {Array.from({ length: maxSeries }).map((_, i) => {

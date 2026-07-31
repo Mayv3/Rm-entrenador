@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react"
 import { useMediaQuery } from "@mui/material"
-import { AlertTriangle, Calendar, ClipboardList, Edit, Eye, FileText, Loader2, MessageSquare, MoreHorizontal, MoreVertical, Plus, Search, SkipForward, StickyNote, Trash2, TrendingUp, Undo2 } from "lucide-react"
+import { AlertTriangle, Calendar, Edit, Eye, Loader2, MessageSquare, MoreHorizontal, MoreVertical, Plus, Search, SkipForward, StickyNote, Trash2, TrendingUp, Undo2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -621,14 +621,12 @@ function StudentMobileCard({
   onEdit,
   onDelete,
   onProgreso,
-  onPlanApp,
   hasPlan,
 }: {
   student: Student
   onEdit: (s: Student) => void
   onDelete: (s: Student) => void
   onProgreso: (s: Student) => void
-  onPlanApp: (s: Student) => void
   hasPlan: boolean
 }) {
   return (
@@ -706,25 +704,6 @@ function StudentMobileCard({
               <MessageSquare className="h-4 w-4" />
               <span className="ml-2">WhatsApp</span>
             </a>
-            <a
-              href={student.plan}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1 flex items-center justify-center py-2 rounded bg-blue-500 text-white hover:bg-blue-600 transition-colors"
-            >
-              <FileText className="h-4 w-4" />
-              <span className="ml-2">Plan</span>
-            </a>
-          </div>
-          <div className="flex gap-1.5">
-            <button
-              onClick={() => hasPlan && onPlanApp(student)}
-              disabled={!hasPlan}
-              className="flex-1 flex items-center justify-center py-2 rounded bg-violet-600 text-white hover:bg-violet-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <ClipboardList className="h-4 w-4" />
-              <span className="ml-2">Plan App</span>
-            </button>
             <button
               onClick={() => hasPlan && onProgreso(student)}
               disabled={!hasPlan}
@@ -742,7 +721,7 @@ function StudentMobileCard({
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
-export function StudentsTable({ onOpenPlan }: { onOpenPlan?: (alumnoNombre: string) => void }) {
+export function StudentsTable() {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
   const [isAddStudentOpen, setIsAddStudentOpen] = useState(false)
@@ -833,10 +812,6 @@ export function StudentsTable({ onOpenPlan }: { onOpenPlan?: (alumnoNombre: stri
   const handleEdit = (student: Student) => { setSelectedStudent(student); setIsEditStudentOpen(true) }
   const handleDelete = (student: Student) => { setSelectedStudent(student); setIsDeleteStudentOpen(true) }
   const handleProgreso = (student: Student) => { setSelectedStudent(student); setIsProgresoOpen(true) }
-  const handleOpenPlanApp = (student: Student) => {
-    // Llevar a la lista de planificaciones filtrada por el alumno (no abrir el builder directo)
-    if (alumnosConPlan.has(student.id)) onOpenPlan?.(student.nombre)
-  }
 
   // Ocultar columnas menos importantes en pantallas más chicas
   const columnVisibilityModel = useMemo(() => ({
@@ -912,34 +887,6 @@ export function StudentsTable({ onOpenPlan }: { onOpenPlan?: (alumnoNombre: stri
           </a>
         </span>
       ),
-    },
-    {
-      field: "plan", headerName: "Plan", width: 70, sortable: false,
-      renderCell: ({ value }) => (
-        <span className="flex items-center justify-center w-full h-full">
-          <a href={value} target="_blank" rel="noopener noreferrer"
-            className="flex items-center justify-center w-[85%] h-[75%] rounded-md bg-blue-500 text-white hover:bg-blue-600 transition-colors">
-            <FileText className="h-4 w-4" />
-          </a>
-        </span>
-      ),
-    },
-    {
-      field: "planApp", headerName: "Plan App", width: 90, sortable: false,
-      renderCell: ({ row }) => {
-        const enabled = alumnosConPlan.has(row.id)
-        return (
-          <span className="flex items-center justify-center w-full h-full">
-            <button
-              onClick={() => enabled && handleOpenPlanApp(row as Student)}
-              disabled={!enabled}
-              className="flex items-center justify-center w-[85%] h-[75%] rounded-md bg-violet-600 text-white hover:bg-violet-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <ClipboardList className="h-4 w-4" />
-            </button>
-          </span>
-        )
-      },
     },
     {
       field: "progreso", headerName: "Progreso", width: 90, sortable: false,
@@ -1036,7 +983,7 @@ export function StudentsTable({ onOpenPlan }: { onOpenPlan?: (alumnoNombre: stri
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:hidden">
             {sortedStudents.map((student) => (
-              <StudentMobileCard key={student.id} student={student} onEdit={handleEdit} onDelete={handleDelete} onProgreso={handleProgreso} onPlanApp={handleOpenPlanApp} hasPlan={alumnosConPlan.has(student.id)} />
+              <StudentMobileCard key={student.id} student={student} onEdit={handleEdit} onDelete={handleDelete} onProgreso={handleProgreso} hasPlan={alumnosConPlan.has(student.id)} />
             ))}
           </div>
           <div className="hidden lg:block">

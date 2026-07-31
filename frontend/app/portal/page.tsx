@@ -17,9 +17,10 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { FileText, LogOut, MessageSquare, ArrowLeft, Loader2, Download, Eye, TrendingUp, GitCompareArrows, Salad, Dumbbell, ArrowRight, X, CalendarDays, ChevronLeft } from "lucide-react"
+import { FileText, LogOut, MessageSquare, ArrowLeft, Loader2, Download, Eye, TrendingUp, GitCompareArrows, Salad, Dumbbell, ArrowRight, X, CalendarDays, ChevronLeft, BookOpen } from "lucide-react"
 import { ModeToggle } from "@/components/mode-toggle"
 import { StudentPlanificacionSection } from "@/components/portal/student-planificacion-section"
+import { ManualViewer } from "@/components/manual/manual-viewer"
 import { SaveStatusIndicator } from "@/components/portal/save-status-indicator"
 import { supabase } from "@/lib/supabase-client"
 import { determineSubscriptionStatus, formatDate, getStatusColor } from "@/lib/payment-utils"
@@ -203,6 +204,7 @@ function PortalPageInner() {
   const [showServicios, setShowServicios] = useState(false)
   const [expandedServicio, setExpandedServicio] = useState<number | null>(null)
   const [showMiPlan, setShowMiPlan] = useState(false)
+  const [showManual, setShowManual] = useState(false)
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [progresoOpen, setProgresoOpen] = useState(false)
   // Aviso de plan vencido: se muestra cada vez que el alumno entra (sin persistir dismiss).
@@ -650,6 +652,21 @@ function PortalPageInner() {
           )}
         </div>
 
+        {/* Manual de uso */}
+        <button
+          onClick={() => setShowManual(true)}
+          className="group flex items-center gap-3 px-4 py-3.5 rounded-xl bg-card border border-border dark:border-white/[0.06] hover:border-[var(--primary-color)]/50 hover:bg-muted/40 shadow-sm hover:shadow active:scale-[0.98] transition-all duration-200 w-full text-left"
+        >
+          <div className="h-9 w-9 shrink-0 rounded-full bg-[var(--primary-color)]/10 ring-1 ring-[var(--primary-color)]/30 flex items-center justify-center">
+            <BookOpen className="h-4 w-4 text-[var(--primary-color)]" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold tracking-tight">Manual de uso</p>
+            <p className="text-[11px] text-muted-foreground">Cómo usar el portal, paso a paso</p>
+          </div>
+          <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-[var(--primary-color)] transition-colors" />
+        </button>
+
         {/* Separador grupo salud/datos */}
         {hasSaludSection && (
           <div className="pt-10 mt-8 border-t-2 border-border/80 dark:border-white/[0.08]">
@@ -792,6 +809,34 @@ function PortalPageInner() {
         )}
 
       </main>
+
+      {/* Manual Sidebar */}
+      {showManual && (
+        <div className="fixed inset-0 z-50 flex">
+          <div
+            className="flex-1 bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowManual(false)}
+          />
+          <div className="w-full max-w-md bg-background dark:bg-[#0a0a0a] h-full flex flex-col animate-slide-in-right shadow-2xl border-l border-border dark:border-white/[0.06]">
+            <div className="border-b border-border dark:border-white/[0.06] bg-background/80 dark:bg-[#0a0a0a]/80 backdrop-blur-xl px-4 py-3.5 flex items-center justify-between gap-2 flex-shrink-0">
+              <div className="flex items-center gap-2">
+                <BookOpen className="h-4 w-4 text-[var(--primary-color)]" />
+                <span className="text-sm font-bold tracking-tight">Manual de uso</span>
+              </div>
+              <button
+                onClick={() => setShowManual(false)}
+                className="h-8 w-8 rounded-xl bg-muted dark:bg-white/[0.05] hover:bg-accent dark:hover:bg-white/[0.08] flex items-center justify-center transition-colors"
+                aria-label="Cerrar manual"
+              >
+                <X className="h-4 w-4 text-muted-foreground dark:text-zinc-400" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-4 py-6">
+              <ManualViewer />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Mi Plan Sidebar */}
       {showMiPlan && (

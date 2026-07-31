@@ -10,12 +10,16 @@ import axios from "axios"
 import { useQueryClient } from "@tanstack/react-query"
 import { queryKeys } from "@/lib/query-keys"
 import type { Planificacion } from "@/types/planificaciones"
-import { CATEGORIAS, CATEGORIA_COLORS, CATEGORIA_ROW_STYLE } from "@/types/planificaciones"
+import { CATEGORIA_ROW_STYLE } from "@/types/planificaciones"
 import type { PlanDia, PlanEjercicio } from "@/types/planificaciones"
 import type { EjercicioLocal, PendingEjercicio } from "./plan-builder"
 
 const SEMANAS = [1, 2, 3, 4, 5, 6]
 const CATEGORIA_ORDER = ["ACTIVADOR", "A", "B", "C", "D", "E"]
+
+const DOSIS_INPUT_CLASS = "h-7 text-xs text-center px-1 placeholder:text-gray-300 min-w-[60px] flex-1"
+const SERIES_SELECT_CLASS = "h-7 w-14 text-xs px-1 shrink-0 mx-auto"
+const RPE_SELECT_CLASS = "h-7 w-10 text-xs px-1 shrink-0"
 
 interface DayBlockProps {
   dia: PlanDia
@@ -104,7 +108,7 @@ export function DayBlock({
       const newPending: PendingEjercicio = {
         tempId: `tmp-${Date.now()}-${Math.random()}`,
         ejercicio,
-        categoria: "A",
+        categoria: "",
         notas_profesor: "",
         series: 3,
         dosis: {},
@@ -305,24 +309,25 @@ export function DayBlock({
       <div className={`grid transition-[grid-template-rows] duration-200 ease-out ${collapsed ? "[grid-template-rows:0fr]" : "[grid-template-rows:1fr]"}`}>
         <div className="overflow-hidden min-h-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-xs min-w-[850px] 2xl:min-w-[1050px]">
+            {/* table-fixed + anchos porcentuales: las columnas reparten el ancho
+                disponible en vez de quedar clavadas y dejar hueco a la derecha. */}
+            <table className="w-full table-fixed text-xs min-w-[1150px]">
               <thead>
                 <tr className="border-b bg-muted/30">
-                  <th className="px-2 py-2 text-left font-medium text-muted-foreground w-20">Cat.</th>
-                  <th className="px-3 py-2 text-left font-medium text-muted-foreground">Ejercicio</th>
-                  <th className="px-2 py-2 text-center font-medium text-muted-foreground w-16">Series</th>
+                  <th className="px-1 py-2 w-[112px]" />
+                  <th className="px-3 py-2 text-left font-medium text-muted-foreground w-[17%]">Ejercicio</th>
+                  <th className="px-2 py-2 text-center font-medium text-muted-foreground w-[68px]">Series</th>
                   {SEMANAS.map((s) => (
-                    <th key={s} className="px-2 py-2 text-center font-medium text-muted-foreground w-32 2xl:w-40">
+                    <th key={s} className="px-2 py-2 text-center font-medium text-muted-foreground">
                       Sem. {s}
                     </th>
                   ))}
-                  <th className="px-2 py-2 w-10" />
                 </tr>
               </thead>
               <tbody className="divide-y">
                     {totalCount === 0 && (
                       <tr>
-                        <td colSpan={10} className="px-3 py-6 text-center text-muted-foreground">
+                        <td colSpan={9} className="px-3 py-6 text-center text-muted-foreground">
                           {isActive ? "Hacé click en un ejercicio del panel para agregarlo." : "Seleccioná este día."}
                         </td>
                       </tr>
@@ -348,9 +353,21 @@ export function DayBlock({
 
                     {pending.map((p) => (
                       <React.Fragment key={p.tempId}>
-                      <tr className="border-l-2 border-l-[var(--primary-color)] animate-in fade-in slide-in-from-top-2 duration-200" style={CATEGORIA_ROW_STYLE[p.categoria]}>
+                      <tr className="border-l-2 border-l-[var(--primary-color)] bg-[var(--primary-color)]/[0.13] hover:bg-[var(--primary-color)]/[0.22] transition-colors animate-in fade-in slide-in-from-top-2 duration-200" style={CATEGORIA_ROW_STYLE[p.categoria]}>
+                        {/* Sin reordenar hasta que se guarde: solo el tacho, alineado
+                            con la columna de acciones de las filas guardadas. */}
                         <td className="px-1 py-1.5">
-                          <CategoriaSelect value={p.categoria} onChange={(v) => setPendingField(p.tempId, "categoria", null, v)} />
+                          <div className="flex items-center w-full">
+                            {/* Hueco del ancho de las flechas. */}
+                            <div className="w-7 md:w-6 shrink-0" />
+                            <div className="flex-1" />
+                            <Button size="sm" variant="ghost" className="h-7 w-7 md:h-6 md:w-6 p-0 text-destructive hover:text-destructive"
+                              onClick={() => removePending(p.tempId)}
+                              title="Quitar ejercicio">
+                              <Trash2 className="h-3.5 w-3.5 md:h-3 md:w-3" />
+                            </Button>
+                            <div className="flex-1" />
+                          </div>
                         </td>
                         <td className="px-3 py-1.5">
                           <div className="flex items-center gap-1.5 min-w-0">
@@ -360,7 +377,7 @@ export function DayBlock({
                                 <Youtube className="h-3.5 w-3.5" />
                               </a>
                             )}
-                            <span className="font-medium block max-w-[180px] truncate 2xl:max-w-none 2xl:overflow-visible 2xl:whitespace-normal 2xl:text-clip" title={p.ejercicio.nombre}>{p.ejercicio.nombre}</span>
+                            <span className="font-medium block min-w-0 flex-1 truncate" title={p.ejercicio.nombre}>{p.ejercicio.nombre}</span>
                           </div>
                         </td>
                         <td className="px-1 py-1.5 text-center">
@@ -375,7 +392,7 @@ export function DayBlock({
                                 value={p.dosis[s] ?? ""}
                                 onChange={(e) => setPendingField(p.tempId, "dosis", s, e.target.value)}
                                 placeholder="Dosis"
-                                className="h-7 text-xs text-center px-1 placeholder:text-gray-300 min-w-[80px] md:min-w-0 flex-1"
+                                className={DOSIS_INPUT_CLASS}
                               />
                               <RpeSelect
                                 value={pendingRpe}
@@ -386,12 +403,6 @@ export function DayBlock({
                           </td>
                           )
                         })}
-                        <td className="px-2 py-1.5 text-center">
-                          <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
-                            onClick={() => removePending(p.tempId)}>
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </td>
                       </tr>
                       </React.Fragment>
                     ))}
@@ -459,9 +470,10 @@ function ExerciseRow({
   const categoria = local?.categoria ?? ej.categoria
 
   return (
-    <tr style={CATEGORIA_ROW_STYLE[categoria]}>
+    // El verde va por clase: el inline style de ACTIVADOR lo pisa y conserva su color.
+    <tr className="bg-[var(--primary-color)]/[0.13] hover:bg-[var(--primary-color)]/[0.22] transition-colors" style={CATEGORIA_ROW_STYLE[categoria]}>
       <td className="px-1 py-1.5">
-        <div className="flex items-center gap-1">
+        <div className="flex items-center w-full">
           <div className="flex flex-col shrink-0">
             <button
               type="button"
@@ -482,7 +494,21 @@ function ExerciseRow({
               <ArrowDown className="h-4 w-4 md:h-3.5 md:w-3.5" />
             </button>
           </div>
-          <CategoriaSelect value={categoria} onChange={(v) => onCategoriaChange(ej.id, v)} />
+          {/* Spacers iguales: editar/borrar centrado entre las flechas y el ejercicio. */}
+          <div className="flex-1" />
+          <div className="flex flex-col shrink-0">
+            <Button size="sm" variant="ghost" className="h-7 w-7 md:h-6 md:w-6 p-0 text-muted-foreground hover:text-foreground"
+              onClick={() => onReplace(ej.id)}
+              title="Reemplazar ejercicio">
+              <Pencil className="h-3.5 w-3.5 md:h-3 md:w-3" />
+            </Button>
+            <Button size="sm" variant="ghost" className="h-7 w-7 md:h-6 md:w-6 p-0 text-destructive hover:text-destructive"
+              onClick={() => onDelete(ej.id)}
+              title="Eliminar ejercicio">
+              <Trash2 className="h-3.5 w-3.5 md:h-3 md:w-3" />
+            </Button>
+          </div>
+          <div className="flex-1" />
         </div>
       </td>
       <td className="px-3 py-1.5">
@@ -493,7 +519,7 @@ function ExerciseRow({
               <Youtube className="h-3.5 w-3.5" />
             </a>
           )}
-          <span className="font-medium block max-w-[100px] truncate 2xl:max-w-none 2xl:overflow-visible 2xl:whitespace-normal 2xl:text-clip" title={ej.ejercicios.nombre}>{ej.ejercicios.nombre}</span>
+          <span className="font-medium block min-w-0 flex-1 truncate" title={ej.ejercicios.nombre}>{ej.ejercicios.nombre}</span>
         </div>
       </td>
       <td className="px-1 py-1.5 text-center">
@@ -510,7 +536,7 @@ function ExerciseRow({
                 value={sem?.dosis ?? ""}
                 onChange={(e) => onSemanaChange(ej.id, s, "dosis", e.target.value)}
                 placeholder="Dosis"
-                className="h-7 text-xs text-center px-1 placeholder:text-gray-300 min-w-[80px] md:min-w-0 flex-1"
+                className={DOSIS_INPUT_CLASS}
               />
               <RpeSelect
                 value={rpeValue}
@@ -521,19 +547,6 @@ function ExerciseRow({
           </td>
         )
       })}
-      <td className="px-2 py-1.5 text-center">
-        <div className="flex items-center gap-0.5">
-          <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-            onClick={() => onReplace(ej.id)}
-            title="Reemplazar ejercicio">
-            <Pencil className="h-3 w-3" />
-          </Button>
-          <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive hover:text-destructive"
-            onClick={() => onDelete(ej.id)}>
-            <Trash2 className="h-3 w-3" />
-          </Button>
-        </div>
-      </td>
     </tr>
   )
 }
@@ -541,7 +554,7 @@ function ExerciseRow({
 function SeriesSelect({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   return (
     <Select value={String(value)} onValueChange={(v) => onChange(Number(v))}>
-      <SelectTrigger className="h-7 w-14 text-xs px-1 shrink-0 mx-auto">
+      <SelectTrigger className={SERIES_SELECT_CLASS}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
@@ -556,7 +569,7 @@ function SeriesSelect({ value, onChange }: { value: number; onChange: (v: number
 function RpeSelect({ value, onChange, exerciseName }: { value: string; onChange: (v: string) => void; exerciseName: string }) {
   return (
     <Select value={value || "none"} onValueChange={(v) => onChange(v === "none" ? "" : v)}>
-      <SelectTrigger className="h-7 w-10 text-xs px-1 shrink-0">
+      <SelectTrigger className={RPE_SELECT_CLASS}>
         <SelectValue placeholder="-" />
       </SelectTrigger>
       <SelectContent>
@@ -572,25 +585,3 @@ function RpeSelect({ value, onChange, exerciseName }: { value: string; onChange:
   )
 }
 
-function CategoriaSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  return (
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className="h-7 w-14 text-xs border-0 shadow-none px-1 bg-transparent">
-        <SelectValue>
-          <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${CATEGORIA_COLORS[value] ?? ""}`}>
-            {value}
-          </span>
-        </SelectValue>
-      </SelectTrigger>
-      <SelectContent>
-        {CATEGORIAS.map((cat) => (
-          <SelectItem key={cat} value={cat}>
-            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${CATEGORIA_COLORS[cat] ?? ""}`}>
-              {cat}
-            </span>
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  )
-}

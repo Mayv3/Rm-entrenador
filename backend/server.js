@@ -24,6 +24,7 @@ import { getPortalPlanificacion, getPortalSesion, upsertPortalSesion, getPortalS
 import {
   getPlantillas, getPlantillaById, createPlantilla, updatePlantilla, deletePlantilla, asignarPlantilla, syncPlantilla, hidratarPlantilla,
 } from "./controllers/plantillasController.js";
+import { getManual, saveManual, createCapitulo, updateCapitulo, deleteCapitulo } from "./controllers/manualController.js";
 
 import multer from "multer"
 import { parseAntropometriaPdf } from "./controllers/pdfAntroParser.js"
@@ -192,6 +193,13 @@ app.delete("/plantillas/:id", deletePlantilla);
 app.post("/plantillas/:id/asignar", asignarPlantilla);
 app.post("/plantillas/:id/sync", syncPlantilla);
 app.post("/plantillas/:id/hidratar", hidratarPlantilla);
+
+// Manual de uso (contenido editable por el entrenador)
+app.get("/manual", getManual);
+app.put("/manual", saveManual);
+app.post("/manual/capitulos", createCapitulo);
+app.put("/manual/capitulos/:id", updateCapitulo);
+app.delete("/manual/capitulos/:id", deleteCapitulo);
 
 // Portal alumno: planificacion + carga de entrenamiento (sin cache)
 const noStore = (_req, res, next) => {

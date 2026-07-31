@@ -12,11 +12,6 @@ const hex = (h: string) => {
 // Paleta de impresión por categoría (fondo suave + texto oscuro)
 const CAT_PRINT: Record<string, { bg: string; fg: string }> = {
   ACTIVADOR: { bg: "#fef9c3", fg: "#854d0e" },
-  A: { bg: "#dbeafe", fg: "#1e40af" },
-  B: { bg: "#f3e8ff", fg: "#6b21a8" },
-  C: { bg: "#ffedd5", fg: "#9a3412" },
-  D: { bg: "#dcfce7", fg: "#166534" },
-  E: { bg: "#fce7f3", fg: "#9d174d" },
 }
 const CAT_FALLBACK = { bg: "#f4f4f5", fg: "#3f3f46" }
 
@@ -163,13 +158,12 @@ export async function exportPlanToPdf({ plan, hoja, ...state }: ExportArgs) {
   const regular = await pdf.embedFont(StandardFonts.Helvetica)
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold)
 
-  // Columnas: Cat | Ejercicio | Series | Semana 1..6
+  // Columnas: Ejercicio | Series | Semana 1..6
   const contentW = PAGE_W - M * 2
-  const catW = 66
   const seriesW = 48
   const semW = 80
-  const ejW = contentW - catW - seriesW - semW * SEMANAS.length
-  const cols = [catW, ejW, seriesW, ...SEMANAS.map(() => semW)]
+  const ejW = contentW - seriesW - semW * SEMANAS.length
+  const cols = [ejW, seriesW, ...SEMANAS.map(() => semW)]
   const colX: number[] = []
   cols.reduce((x, w) => (colX.push(x), x + w), M)
 
@@ -242,10 +236,9 @@ export async function exportPlanToPdf({ plan, hoja, ...state }: ExportArgs) {
       borderWidth: 0.7,
     })
     const ty = boxY + 7
-    center(page, "CAT.", 0, ty, 9, bold, MUTED)
-    page.drawText("EJERCICIO", { x: colX[1] + 6, y: ty, size: 9, font: bold, color: MUTED })
-    center(page, "SERIES", 2, ty, 9, bold, MUTED)
-    SEMANAS.forEach((s, i) => center(page, `SEMANA ${s}`, 3 + i, ty, 9, bold, MUTED))
+    page.drawText("EJERCICIO", { x: colX[0] + 6, y: ty, size: 9, font: bold, color: MUTED })
+    center(page, "SERIES", 1, ty, 9, bold, MUTED)
+    SEMANAS.forEach((s, i) => center(page, `SEMANA ${s}`, 2 + i, ty, 9, bold, MUTED))
     y -= TABLE_HEAD_H + ROW_GAP
   }
 
@@ -256,32 +249,18 @@ export async function exportPlanToPdf({ plan, hoja, ...state }: ExportArgs) {
     const base = y - ROW_H
     roundedRect(page, { x: M, y: base, w: contentW, h: ROW_H, color: bg })
 
-    // Badge de categoría
-    const cat = clean(r.categoria)
-    const badgeW = bold.widthOfTextAtSize(cat, 9) + 16
-    roundedRect(page, {
-      x: colX[0] + (cols[0] - badgeW) / 2,
-      y: base + 6,
-      w: badgeW,
-      h: 15,
-      r: 7.5,
-      color: WHITE,
-      opacity: 0.6,
-    })
-    center(page, cat, 0, base + 10, 9, bold, fg)
-
-    page.drawText(fit(clean(r.nombre), bold, 10.5, cols[1] - 10), {
-      x: colX[1] + 6,
+    page.drawText(fit(clean(r.nombre), bold, 10.5, cols[0] - 10), {
+      x: colX[0] + 6,
       y: base + 9,
       size: 10.5,
       font: bold,
       color: fg,
     })
-    center(page, String(r.series), 2, base + 9, 10.5, regular, fg)
+    center(page, String(r.series), 1, base + 9, 10.5, regular, fg)
 
     SEMANAS.forEach((s, i) => {
       const { dosis, rpe } = r.semanas[s]
-      const col = 3 + i
+      const col = 2 + i
       if (!dosis && !rpe) {
         center(page, "—", col, base + 9, 10, regular, rgb(0.6, 0.6, 0.62))
         return

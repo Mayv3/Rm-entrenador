@@ -917,7 +917,7 @@ export async function addEjercicioADia(req, res) {
     .insert([{
       planificacion_dia_id: diaId,
       ejercicio_id,
-      categoria: categoria ?? "A",
+      categoria: categoria ?? "",
       orden: orden ?? 0,
       series: series ?? 3,
     }])
@@ -1057,7 +1057,7 @@ export async function addEjerciciosADiaBulk(req, res) {
   const ejRows = ejercicios.map((e, i) => ({
     planificacion_dia_id: diaId,
     ejercicio_id: e.ejercicio_id,
-    categoria: e.categoria ?? "A",
+    categoria: e.categoria ?? "",
     orden: e.orden ?? i,
     series: e.series ?? 3,
   }));
@@ -1168,7 +1168,7 @@ export async function saveAll(req, res) {
       const ejRows = ejercicios.map((e, i) => ({
         planificacion_dia_id: diaId,
         ejercicio_id: e.ejercicio_id,
-        categoria: e.categoria ?? "A",
+        categoria: e.categoria ?? "",
         orden: e.orden ?? i,
         series: e.series ?? 3,
         notas_profesor: e.notas_profesor ?? null,

@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { queryKeys } from "@/lib/query-keys"
 import { TrendingUp, AlertTriangle, StickyNote, Loader2, SkipForward, Undo2 } from "lucide-react"
 import type { Planificacion } from "@/types/planificaciones"
-import { CATEGORIA_COLORS, CATEGORIA_ROW_STYLE } from "@/types/planificaciones"
+import { CATEGORIA_ROW_STYLE } from "@/types/planificaciones"
 
 const SEMANAS_PREVIEW = [1, 2, 3, 4, 5, 6]
 
@@ -265,7 +265,6 @@ export function PlanProgresoDialog({
                         <tr className="border-b bg-muted/40">
                           <th className="px-4 py-2.5 text-left font-medium text-muted-foreground w-14">#</th>
                           <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Ejercicio</th>
-                          <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Cat.</th>
                           {SEMANAS_PREVIEW.map((s) => {
                             const sesion = sesionMap.get(`${dia.id}-${s}`)
                             const flags: { key: string; label: string; color: string; bg: string }[] = [
@@ -335,11 +334,6 @@ export function PlanProgresoDialog({
                             <tr key={ej.id} style={CATEGORIA_ROW_STYLE[categoria]} className="hover:brightness-95 transition-colors">
                               <td className="px-4 py-3 text-muted-foreground text-xs">{idx + 1}</td>
                               <td className="px-4 py-3 font-medium text-xs">{ej.ejercicios.nombre}</td>
-                              <td className="px-4 py-3">
-                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${CATEGORIA_COLORS[categoria] ?? ""}`}>
-                                  {categoria}
-                                </span>
-                              </td>
                               {SEMANAS_PREVIEW.map((semana) => {
                                 const sesion = sesionMap.get(`${dia.id}-${semana}`)
                                 const registro = sesion ? registroMap.get(`${sesion.id}-${ej.id}`) : null

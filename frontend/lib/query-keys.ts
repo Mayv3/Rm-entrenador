@@ -16,4 +16,5 @@ export const queryKeys = {
   planificacionById: (id: number) => ["planificacion", id] as const,
   plantillas: ["plantillas"] as const,
   plantillaById: (id: number) => ["plantilla", id] as const,
+  manual: ["manual"] as const,
 }

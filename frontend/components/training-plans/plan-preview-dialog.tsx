@@ -1,7 +1,7 @@
 "use client"
 
 import { Dialog, DialogContent } from "@/components/ui/dialog"
-import { CATEGORIA_COLORS, CATEGORIA_ROW_STYLE } from "@/types/planificaciones"
+import { CATEGORIA_ROW_STYLE } from "@/types/planificaciones"
 import type { Planificacion } from "@/types/planificaciones"
 
 interface PlanPreviewDialogProps {
@@ -68,9 +68,6 @@ export function PlanPreviewDialog({ open, onOpenChange, plan }: PlanPreviewDialo
                               <th className="border border-gray-300 bg-gray-100 dark:bg-gray-800 px-2 py-1 text-left font-semibold w-36">
                                 EJERCICIO
                               </th>
-                              <th className="border border-gray-300 bg-gray-100 dark:bg-gray-800 px-2 py-1 text-left font-semibold w-16">
-                                CAT.
-                              </th>
                               {SEMANAS.map((s) => (
                                 <th
                                   key={s}
@@ -85,7 +82,7 @@ export function PlanPreviewDialog({ open, onOpenChange, plan }: PlanPreviewDialo
                             {dia.ejercicios.length === 0 ? (
                               <tr>
                                 <td
-                                  colSpan={2 + SEMANAS.length}
+                                  colSpan={1 + SEMANAS.length}
                                   className="border border-gray-300 px-3 py-3 text-center text-muted-foreground italic"
                                 >
                                   Sin ejercicios
@@ -113,17 +110,6 @@ export function PlanPreviewDialog({ open, onOpenChange, plan }: PlanPreviewDialo
                                         )}
                                         <span className="leading-tight">{ej.ejercicios.nombre}</span>
                                       </div>
-                                    </td>
-
-                                    {/* Categoría */}
-                                    <td className="border border-gray-300 px-2 py-2 text-center align-middle">
-                                      <span
-                                        className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                                          CATEGORIA_COLORS[ej.categoria] ?? ""
-                                        }`}
-                                      >
-                                        {ej.categoria}
-                                      </span>
                                     </td>
 
                                     {/* Dosis por semana */}
