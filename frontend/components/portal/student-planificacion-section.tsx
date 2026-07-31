@@ -1495,27 +1495,24 @@ export function StudentPlanificacionSection({
     const wasNotEmpty = !!oldSerie.peso_kg || !!oldSerie.repeticiones || !!oldSerie.rpe
     const shouldSave = serieFilled || (serieEmpty && wasNotEmpty)
 
-    const advanceKey = `${planEjId}-${serieIdx}`
+    // El auto-avance solo salta de ejercicio: entre series el alumno se mueve
+    // solo (Enter o tocando el campo), así no le corre el foco entre sets.
+    const advanceKey = `${planEjId}`
     const pending = serieAdvanceDebounceRef.current.get(advanceKey)
     if (pending) clearTimeout(pending)
 
-    if (serieFilled) {
+    const ejercicioCompleto = newSeries
+      .slice(0, getSeriesCount(planEjId))
+      .every((s) => !!s.peso_kg && !!s.repeticiones && !!s.rpe)
+
+    if (ejercicioCompleto) {
       const t = setTimeout(() => {
         serieAdvanceDebounceRef.current.delete(advanceKey)
-        if (serieIdx < getSeriesCount(planEjId) - 1) {
-          // serie completa → scroll + foco al peso de la próxima serie
-          scrollToSerie(planEjId, serieIdx + 1)
-          console.log(`[idle] serie ${planEjId}-${serieIdx} completa → peso serie ${serieIdx + 1}`)
-          inputRefs.current.get(`${planEjId}-${serieIdx + 1}-peso_kg`)?.focus()
-        } else {
-          // última serie del ejercicio → scroll + foco al peso de la 1ª serie del próximo
-          const ejIdx = ejerciciosDelDia.findIndex((e) => e.id === planEjId)
-          if (ejIdx !== -1 && ejIdx < ejerciciosDelDia.length - 1) {
-            const nextEjId = ejerciciosDelDia[ejIdx + 1].id
-            exerciseCardRefs.current.get(nextEjId)?.scrollIntoView({ behavior: "smooth", block: "start" })
-            console.log(`[idle] ejercicio ${planEjId} completo → peso serie 0 de ${nextEjId}`)
-            inputRefs.current.get(`${nextEjId}-0-peso_kg`)?.focus()
-          }
+        const ejIdx = ejerciciosDelDia.findIndex((e) => e.id === planEjId)
+        if (ejIdx !== -1 && ejIdx < ejerciciosDelDia.length - 1) {
+          const nextEjId = ejerciciosDelDia[ejIdx + 1].id
+          exerciseCardRefs.current.get(nextEjId)?.scrollIntoView({ behavior: "smooth", block: "start" })
+          inputRefs.current.get(`${nextEjId}-0-peso_kg`)?.focus()
         }
       }, FIELD_IDLE_MS)
       serieAdvanceDebounceRef.current.set(advanceKey, t)
