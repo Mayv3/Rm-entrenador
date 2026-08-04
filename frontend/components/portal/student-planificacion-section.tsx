@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { CATEGORIA_ROW_STYLE } from "@/types/planificaciones"
 import { setSaveStatus } from "@/lib/save-status"
-import { CardSaveBadge } from "@/components/portal/card-save-badge"
+import { CardSaveBar } from "@/components/portal/card-save-badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Loader2,
@@ -47,6 +47,7 @@ interface PlanEjercicioPortal {
   categoria: string
   orden: number
   series?: number | null
+  es_aerobico?: boolean
   ejercicios: {
     id: number
     nombre: string
@@ -107,6 +108,7 @@ interface SerieRegistro {
   peso_kg: number | null
   repeticiones: number | null
   rpe: number | null
+  hecho?: boolean
 }
 
 interface RegistroSesion {
@@ -134,6 +136,7 @@ type SerieRow = {
 type FormRow = {
   series: SerieRow[]
   notas: string
+  hecho?: boolean // solo aeróbico: lo hizo o no
 }
 
 const EMPTY_SERIE: SerieRow = { peso_kg: "", repeticiones: "", rpe: "" }
@@ -151,6 +154,19 @@ const EMPTY_FORM_ROW = (count: number = DEFAULT_SERIES): FormRow => ({
 // Ajusta un array de series a `count` (pad con vacías / trunca)
 const padSeries = (arr: SerieRow[] | undefined, count: number): SerieRow[] =>
   Array.from({ length: count }, (_, i) => arr?.[i] ?? { ...EMPTY_SERIE })
+
+// Aeróbico: "completo" = checkbox marcado. Ejercicio normal: las 3 columnas de todas las series.
+const esRowCompleto = (esAerobico: boolean | undefined, row: FormRow | undefined): boolean => {
+  if (!row) return false
+  if (esAerobico) return !!row.hecho
+  return row.series.length > 0 && row.series.every((s) => !!s.peso_kg && !!s.repeticiones && !!s.rpe)
+}
+// Hay algún dato cargado (aunque no esté completo): aeróbico = hecho tildado; normal = alguna serie con algo.
+const esRowConDatos = (esAerobico: boolean | undefined, row: FormRow | undefined): boolean => {
+  if (!row) return false
+  if (esAerobico) return !!row.hecho
+  return row.series.some((s) => !!s.peso_kg || !!s.repeticiones || !!s.rpe)
+}
 
 // Color del RPE por intensidad: ≤6 verde, 7 amarillo, 8 naranja, 9/10 rojo.
 const rpeColorClass = (rpe: number | null | undefined) => {
@@ -510,7 +526,7 @@ export function StudentPlanificacionSection({
 
   // Sem > 1: pesos de la ÚLTIMA semana anterior CON datos reales (salta semanas vacías).
   // Si el alumno hizo sem1 y saltó a sem3, en sem3 muestra los pesos de sem1.
-  const { data: semanaAnteriorData } = useQuery<{ registros: Record<string, SerieRegistro & { series?: SerieRegistro[]; _semana?: number }> }>({
+  const { data: semanaAnteriorData } = useQuery<{ registros: Record<string, RegistroSesion & { _semana?: number }> }>({
     queryKey: ["portalSemanaAnteriorPesos", planificacion?.id ?? 0, studentId, hojaActiva?.id ?? 0, diaSeleccionado?.id ?? 0, semanaSeleccionada ?? 0],
     queryFn: async () => {
       const res = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/portal/planificaciones/${planificacion!.id}/sesiones/semana-anterior`, {
@@ -536,7 +552,7 @@ export function StudentPlanificacionSection({
   )
 
   // Semana 1: pesos de la última semana de la hoja anterior, por ejercicio_id
-  const { data: hojaAnteriorData } = useQuery<{ registros: Record<string, SerieRegistro & { series?: SerieRegistro[]; _semana?: number }> }>({
+  const { data: hojaAnteriorData } = useQuery<{ registros: Record<string, RegistroSesion & { _semana?: number }> }>({
     queryKey: ["portalHojaAnteriorPesos", planificacion?.id ?? 0, studentId, hojaAnterior?.id ?? 0],
     queryFn: async () => {
       const res = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/portal/planificaciones/${planificacion!.id}/sesiones/hoja-anterior`, {
@@ -557,7 +573,7 @@ export function StudentPlanificacionSection({
 
   // Fallback entre planes: último peso real de cada ejercicio en OTROS planes (por ejercicio_id).
   // Sirve cuando el plan actual aún no tiene datos previos (ej: plan nuevo) para mantener progresión.
-  const { data: globalData } = useQuery<{ registros: Record<string, SerieRegistro & { series?: SerieRegistro[]; _ord?: string }> }>({
+  const { data: globalData } = useQuery<{ registros: Record<string, RegistroSesion & { _ord?: string }> }>({
     queryKey: ["portalUltimoPesoGlobal", planificacion?.id ?? 0, studentId],
     queryFn: async () => {
       const res = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/portal/planificaciones/${planificacion!.id}/sesiones/ultimo-global`, {
@@ -615,6 +631,12 @@ export function StudentPlanificacionSection({
         saltados.add(ej.id)
       }
 
+      if (ej.es_aerobico) {
+        const hecho = !tieneMarcadorSaltado && (savedSeries[0] as any)?.hecho === true
+        next[ej.id] = { series: [], notas: existing?.notas ?? "", hecho }
+        continue
+      }
+
       const count = clampSeries(ej.series)
       const series: SerieRow[] = Array.from({ length: count }, (_, i) => {
         const s = savedSeries[i]
@@ -647,9 +669,14 @@ export function StudentPlanificacionSection({
             for (const [ejIdStr, row] of Object.entries(parsed.form)) {
               const ejId = Number(ejIdStr)
               const localRow = row as FormRow
-              const hasLocalData = (localRow.series ?? []).some((s) => s.peso_kg !== "" || s.repeticiones !== "" || s.rpe !== "") || (localRow.notas ?? "") !== ""
+              const ejLocal = ejerciciosDelDia.find((e) => e.id === ejId)
+              const hasLocalData = ejLocal?.es_aerobico
+                ? !!localRow.hecho || (localRow.notas ?? "") !== ""
+                : (localRow.series ?? []).some((s) => s.peso_kg !== "" || s.repeticiones !== "" || s.rpe !== "") || (localRow.notas ?? "") !== ""
               if (hasLocalData) {
-                next[ejId] = { series: padSeries(localRow.series, getSeriesCount(ejId)), notas: localRow.notas ?? "" }
+                next[ejId] = ejLocal?.es_aerobico
+                  ? { series: [], notas: localRow.notas ?? "", hecho: !!localRow.hecho }
+                  : { series: padSeries(localRow.series, getSeriesCount(ejId)), notas: localRow.notas ?? "" }
                 dirtyEjIds.current.add(ejId)
                 isDirty.current = true
               }
@@ -696,12 +723,15 @@ export function StudentPlanificacionSection({
     let fallbackSerieIdx = 0
     const hasAnyData = ejerciciosDelDia.some((ej) => {
       if (saltados.has(ej.id)) return false
-      const row = next[ej.id]
-      return (row?.series ?? []).some((s) => !!s.peso_kg || !!s.repeticiones || !!s.rpe)
+      return esRowConDatos(ej.es_aerobico, next[ej.id])
     })
     if (hasAnyData) {
       for (const ej of ejerciciosDelDia) {
         if (saltados.has(ej.id)) continue
+        if (ej.es_aerobico) {
+          if (!next[ej.id]?.hecho) { fallbackEjId = ej.id; fallbackSerieIdx = 0; break }
+          continue
+        }
         const series = next[ej.id]?.series ?? []
         const incompleteIdx = series.findIndex((s) => !s.peso_kg || !s.repeticiones || !s.rpe)
         if (incompleteIdx !== -1) {
@@ -783,10 +813,8 @@ export function StudentPlanificacionSection({
     if (ejerciciosDelDia.length === 0) return false
     return ejerciciosDelDia.every((ej) => {
       if (saltadoEjIds.has(ej.id)) return true
-      const row = registrosForm[ej.id]
       // Sin fila en el form (aún no cargó) ≠ completo: evita falsos "completado".
-      if (!row) return false
-      return row.series.every((s) => !!s.peso_kg && !!s.repeticiones && !!s.rpe)
+      return esRowCompleto(ej.es_aerobico, registrosForm[ej.id])
     })
   }, [ejerciciosDelDia, registrosForm, saltadoEjIds])
 
@@ -800,6 +828,7 @@ export function StudentPlanificacionSection({
           if (saltadoEjIds.has(ej.id)) return false
           const row = registrosForm[ej.id]
           if (!row) return false
+          if (ej.es_aerobico) return !row.hecho && row.notas === ""
           return row.notas === "" && row.series.every((s) => !s.peso_kg && !s.repeticiones && !s.rpe)
         })
         .map((ej) => ej.id),
@@ -808,11 +837,12 @@ export function StudentPlanificacionSection({
 
   // Ejercicios empezados a los que les falta alguna serie (olvidó cargar una serie).
   // No salteados, con al menos una serie completa y al menos una serie incompleta.
+  // Aeróbico es binario (hecho/no) — nunca queda "parcial".
   const parcialesDelDia = useMemo(
     () =>
       ejerciciosDelDia
         .filter((ej) => {
-          if (saltadoEjIds.has(ej.id)) return false
+          if (saltadoEjIds.has(ej.id) || ej.es_aerobico) return false
           const row = registrosForm[ej.id]
           if (!row) return false
           const series = row.series ?? []
@@ -852,16 +882,13 @@ export function StudentPlanificacionSection({
   const readyExceptUntouched = useMemo(() => {
     if (ejerciciosDelDia.length === 0 || untouchedEjIds.length === 0) return false
     const untouched = new Set(untouchedEjIds)
-    const isComplete = (id: number) => {
-      const row = registrosForm[id]
-      return !!row && row.series.every((s) => !!s.peso_kg && !!s.repeticiones && !!s.rpe)
-    }
+    const isComplete = (ej: PlanEjercicioPortal) => esRowCompleto(ej.es_aerobico, registrosForm[ej.id])
     const todosResueltos = ejerciciosDelDia.every(
-      (ej) => saltadoEjIds.has(ej.id) || untouched.has(ej.id) || isComplete(ej.id)
+      (ej) => saltadoEjIds.has(ej.id) || untouched.has(ej.id) || isComplete(ej)
     )
     if (!todosResueltos) return false
     const lastEj = [...ejerciciosDelDia].reverse().find((ej) => !saltadoEjIds.has(ej.id))
-    return !!lastEj && isComplete(lastEj.id)
+    return !!lastEj && isComplete(lastEj)
   }, [ejerciciosDelDia, untouchedEjIds, registrosForm, saltadoEjIds])
 
   // Prompt "¿lo salteaste?": una vez por visita al día, y solo si el alumno editó algo en esta visita
@@ -1186,6 +1213,34 @@ export function StudentPlanificacionSection({
           continue
         }
 
+        if (ej.es_aerobico) {
+          if (row.hecho || row.notas !== "") {
+            registros.push({
+              planificacion_ejercicio_id: ej.id,
+              peso_kg: null,
+              repeticiones: null,
+              rpe: null,
+              notas: row.notas || null,
+              series: [{ hecho: !!row.hecho }],
+            })
+          } else {
+            const sesionKey = queryKeySesion(planificacion.id, studentId, hojaActiva.id, diaSeleccionado.id, semanaSeleccionada)
+            const cached = queryClient.getQueryData<SsnData>(sesionKey) ?? sessionData
+            const priorRegistro = (cached?.registros ?? []).find((r) => r.planificacion_ejercicio_id === ej.id)
+            if (priorRegistro) {
+              registros.push({
+                planificacion_ejercicio_id: ej.id,
+                peso_kg: null,
+                repeticiones: null,
+                rpe: null,
+                notas: null,
+                series: [{ hecho: false }],
+              })
+            }
+          }
+          continue
+        }
+
         const serieCompleta = row.series.some((s) => !!s.peso_kg && !!s.repeticiones && !!s.rpe)
         const hasAnyData = row.notas !== "" || serieCompleta
 
@@ -1288,11 +1343,22 @@ export function StudentPlanificacionSection({
           }
           const formRow = registrosForm[r.planificacion_ejercicio_id]
           if (!formRow) return r
+          const ejMeta = ejerciciosDelDia.find((e) => e.id === r.planificacion_ejercicio_id)
+          if (ejMeta?.es_aerobico) {
+            return {
+              ...r,
+              peso_kg: null,
+              repeticiones: null,
+              rpe: null,
+              notas: formRow.notas || null,
+              series: [{ peso_kg: null, repeticiones: null, rpe: null, hecho: !!formRow.hecho }],
+            }
+          }
           return {
             ...r,
-            peso_kg: formRow.series[0].peso_kg === "" ? null : Number(formRow.series[0].peso_kg),
-            repeticiones: formRow.series[0].repeticiones === "" ? null : Number(formRow.series[0].repeticiones),
-            rpe: formRow.series[0].rpe === "" ? null : Number(formRow.series[0].rpe),
+            peso_kg: formRow.series[0]?.peso_kg === "" ? null : Number(formRow.series[0]?.peso_kg),
+            repeticiones: formRow.series[0]?.repeticiones === "" ? null : Number(formRow.series[0]?.repeticiones),
+            rpe: formRow.series[0]?.rpe === "" ? null : Number(formRow.series[0]?.rpe),
             notas: formRow.notas || null,
             series: formRow.series.map((s) => ({
               peso_kg: s.peso_kg === "" ? null : Number(s.peso_kg),
@@ -1519,6 +1585,23 @@ export function StudentPlanificacionSection({
     }
 
     if (shouldSave) scheduleSave()
+  }
+
+  // Aeróbico: checkbox único "lo hice" — sin series, sin peso/reps/rpe.
+  const handleToggleHecho = (planEjId: number) => {
+    userEditedDayRef.current = `${diaSeleccionado?.id}-${semanaSeleccionada}`
+    isDirty.current = true
+    dirtyEjIds.current.add(planEjId)
+    if (saveIsPendingRef.current) dirtyDuringSaveRef.current.add(planEjId)
+    setSaveMessage("")
+    setSavedSuccess(false)
+
+    const old = registrosFormRef.current[planEjId] ?? EMPTY_FORM_ROW(getSeriesCount(planEjId))
+    const updated = { ...registrosFormRef.current, [planEjId]: { ...old, hecho: !old.hecho } }
+    registrosFormRef.current = updated
+    setRegistrosForm(updated)
+    persistFormLocal(updated, saltadoEjIds)
+    scheduleSave()
   }
 
   const handleToggleEstado = (field: "durmioMal" | "fatiga" | "desmotivacion" | "dolor" | "excelente") => {
@@ -2182,9 +2265,10 @@ export function StudentPlanificacionSection({
             const effectiveNota = semanaPlan?.notas_profesor ?? semanaPlanPrev?.notas_profesor ?? null
             const seriesCount = clampSeries(ej.series)
             const row = registrosForm[ej.id] ?? EMPTY_FORM_ROW(seriesCount)
-            const isFilled = row.series.length > 0 && row.series.every((s) => !!s.peso_kg && !!s.repeticiones && !!s.rpe)
+            const isFilled = esRowCompleto(ej.es_aerobico, row)
             // Incompleto: hay al menos una serie con datos pero no están todas completas → tarjeta en amarillo
-            const algunaSerieConDatos = row.series.some((s) => !!s.peso_kg || !!s.repeticiones || !!s.rpe)
+            // (aeróbico es binario hecho/no-hecho, nunca queda a mitad)
+            const algunaSerieConDatos = ej.es_aerobico ? false : row.series.some((s) => !!s.peso_kg || !!s.repeticiones || !!s.rpe)
             const parcialIncompleto = algunaSerieConDatos && !isFilled
             // Referencia por prioridad: (1) mismo plan sem/hoja previa; (2) fallback otro plan (por ejercicio_id).
             // Semana 1 → última semana del bloque anterior (match por ejercicio_id). Sem>1 → semana previa (match por planificacion_ejercicio_id)
@@ -2225,19 +2309,26 @@ export function StudentPlanificacionSection({
                 }`}
               >
                 {/* Header: nombre + acciones — verde (amarillo si quedó incompleto por una serie) */}
-                <div className={`flex items-center gap-3 px-4 py-3 ${parcialIncompleto ? "bg-amber-500/15 dark:bg-amber-500/[0.12]" : "bg-primary/10 dark:bg-primary/[0.12]"}`}>
+                <div className={`relative flex items-center gap-3 px-4 py-3 ${parcialIncompleto ? "bg-amber-500/15 dark:bg-amber-500/[0.12]" : "bg-primary/10 dark:bg-primary/[0.12]"}`}>
                   <div className="flex-1 min-w-0">
-                    <p className={`text-[17px] font-bold leading-tight ${parcialIncompleto ? "text-amber-600 dark:text-amber-400" : "text-primary"}`}>
-                      {ej.ejercicios?.nombre ?? "Ejercicio"}
-                    </p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className={`text-[17px] font-bold leading-tight ${parcialIncompleto ? "text-amber-600 dark:text-amber-400" : "text-primary"}`}>
+                        {ej.ejercicios?.nombre ?? "Ejercicio"}
+                      </p>
+                      {ej.es_aerobico && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-sky-500/15 border border-sky-500/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-sky-600 dark:text-sky-400 flex-shrink-0">
+                          <Activity className="h-3 w-3" />
+                          Aeróbico
+                        </span>
+                      )}
+                    </div>
                     {parcialIncompleto && (
                       <span className="text-[10px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400">Incompleto · faltan series</span>
                     )}
                   </div>
 
-                  {/* Video + guardado (der) */}
+                  {/* Video (der) */}
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    {!previewPlan && <CardSaveBadge ejId={ej.id} />}
                     {ej.ejercicios?.video_url && (
                       <button
                         onClick={() => setVideoModal({ nombre: ej.ejercicios!.nombre, url: ej.ejercicios!.video_url! })}
@@ -2247,6 +2338,7 @@ export function StudentPlanificacionSection({
                       </button>
                     )}
                   </div>
+                  {!previewPlan && <CardSaveBar ejId={ej.id} />}
                 </div>
 
                 {/* Prescripción: Reps (3/4) · RPE (1/4, solo número) — panel debajo del header */}
@@ -2286,7 +2378,31 @@ export function StudentPlanificacionSection({
                   <div className="pb-3" />
                 ) : (
                 <div className="px-3.5 pt-3 pb-4">
-                  {(() => {
+                  {ej.es_aerobico ? (
+                    <label
+                      className={`w-full flex items-center gap-3 rounded-2xl border-2 px-4 py-4 transition-colors active:scale-[0.99] cursor-pointer ${
+                        row.hecho
+                          ? "border-green-500/60 bg-green-500/[0.08] text-green-600 dark:text-green-400"
+                          : "border-border dark:border-white/[0.1] bg-muted/30 dark:bg-white/[0.02] text-muted-foreground dark:text-zinc-400"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={!!row.hecho}
+                        onChange={() => handleToggleHecho(ej.id)}
+                        className="sr-only"
+                      />
+                      <span
+                        className={`h-7 w-7 rounded-lg border-2 flex items-center justify-center flex-shrink-0 ${
+                          row.hecho ? "border-green-500 bg-green-500 text-white" : "border-border dark:border-white/[0.25]"
+                        }`}
+                      >
+                        {row.hecho && <CheckCircle2 className="h-5 w-5" />}
+                      </span>
+                      <span className="text-base font-bold">{row.hecho ? "Lo hice" : "Marcar como hecho"}</span>
+                    </label>
+                  ) : (
+                  (() => {
                     const inputCls = "bg-transparent border-0 focus-visible:ring-0 focus:ring-0 focus:border-0 text-foreground dark:text-white placeholder:text-foreground/40 dark:placeholder:text-zinc-600 h-14 !text-xl !font-black text-right rounded-none shadow-none p-0 min-w-0"
                     return (
                       /* Carrusel de la tarjeta: Panel 1 = las series (inputs) · Panel 2 = las mismas series de la sesión anterior. Deslizar → las 3 juntas y alineadas fila por fila */
@@ -2394,6 +2510,12 @@ export function StudentPlanificacionSection({
                                 </div>
                               )
                             })}
+                            {regAnterior?.notas && (
+                              <div className="rounded-xl bg-violet-500/[0.07] dark:bg-violet-500/[0.06] px-3 py-2">
+                                <p className="text-[9px] font-bold uppercase tracking-widest text-violet-600 dark:text-violet-400 mb-1">Nota anterior</p>
+                                <p className="text-xs text-violet-700 dark:text-violet-300 whitespace-pre-wrap">{regAnterior.notas}</p>
+                              </div>
+                            )}
                             <div className="flex justify-center pt-3">
                               <div className="rounded-full bg-violet-500/15 dark:bg-violet-500/20 px-3 py-1.5">
                                 <span className="text-[9px] font-bold uppercase tracking-widest text-violet-600 dark:text-violet-400">Registros de la sesión anterior</span>
@@ -2404,7 +2526,8 @@ export function StudentPlanificacionSection({
                       </div>
                       </div>
                     )
-                  })()}
+                  })()
+                  )}
 
                   {/* Notas */}
                   <div className="pt-3 space-y-1.5">
@@ -2470,9 +2593,8 @@ export function StudentPlanificacionSection({
                   <p className="flex-1 min-w-0 text-lg font-bold text-foreground dark:text-white leading-snug text-center">
                     {ej.ejercicios?.nombre ?? "Ejercicio"}
                   </p>
-                  {/* Video + guardado (der) */}
+                  {/* Video (der) */}
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    {!previewPlan && <CardSaveBadge ejId={ej.id} />}
                     {ej.ejercicios?.video_url && (
                       <button
                         onClick={() => setVideoModal({ nombre: ej.ejercicios!.nombre, url: ej.ejercicios!.video_url! })}
@@ -2661,6 +2783,15 @@ export function StudentPlanificacionSection({
                       )
                     })}
                   </div>
+
+                  {mostrarAnterior && regAnterior?.notas && (
+                    <div className="px-4 pt-3">
+                      <div className="rounded-xl border border-violet-500/15 bg-violet-500/[0.07] dark:bg-violet-500/[0.06] px-3 py-2">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-violet-600 dark:text-violet-400 mb-1">Nota anterior · {anteriorLabelPrefix}</p>
+                        <p className="text-sm text-violet-700 dark:text-violet-300 whitespace-pre-wrap">{regAnterior.notas}</p>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Notas */}
                   <div className="px-4 pt-14 space-y-1.5">

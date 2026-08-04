@@ -37,6 +37,7 @@ export interface PlanEjercicio {
   categoria: string
   orden: number
   series: number
+  es_aerobico: boolean
   notas_profesor: string | null
   ejercicios: Ejercicio
   semanas: PlanSemana[]

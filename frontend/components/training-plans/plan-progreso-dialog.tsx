@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader } from "@/components/ui/loader"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { queryKeys } from "@/lib/query-keys"
-import { TrendingUp, AlertTriangle, StickyNote, Loader2, SkipForward, Undo2 } from "lucide-react"
+import { TrendingUp, AlertTriangle, StickyNote, Loader2, SkipForward, Undo2, CheckCircle2, Activity } from "lucide-react"
 import type { Planificacion } from "@/types/planificaciones"
 import { CATEGORIA_ROW_STYLE } from "@/types/planificaciones"
 
@@ -171,12 +171,15 @@ export function PlanProgresoDialog({
   })
 
   // Saltado = marcador explícito _saltado, o sin dato real (reps>0). NO usar peso==0
-  // (dominadas/peso corporal van sin peso).
-  const registroEsSaltado = (registro: any) => {
+  // (dominadas/peso corporal van sin peso). Aeróbico (sentinel {hecho}) nunca cuenta
+  // como salto por reps=0 — solo el marcador explícito.
+  const registroEsSaltado = (registro: any, esAerobico?: boolean) => {
     if (!registro) return false
     const series: any[] = registro.series ?? []
+    if (series.length > 0 && series[0]?._saltado === true) return true
+    if (esAerobico) return false
     return series.length > 0
-      ? (series[0]?._saltado === true || series.every((s: any) => (s.repeticiones ?? 0) === 0))
+      ? series.every((s: any) => (s.repeticiones ?? 0) === 0)
       : (registro.repeticiones ?? 0) === 0
   }
 
@@ -189,11 +192,11 @@ export function PlanProgresoDialog({
       (e: any) => !esActivador(localData[e.id]?.categoria ?? e.categoria)
     )
     if (ejs.length === 0) return false
-    return ejs.every((e: any) => registroEsSaltado(registroMap.get(`${sesion.id}-${e.id}`)))
+    return ejs.every((e: any) => registroEsSaltado(registroMap.get(`${sesion.id}-${e.id}`), e.es_aerobico))
   }
 
-  // Compara dos arrays de series (peso/reps/rpe en orden). Vacíos o distinto largo => no iguales.
-  const serieClave = (s: any) => `${s?.peso_kg ?? ""}|${s?.repeticiones ?? ""}|${s?.rpe ?? ""}`
+  // Compara dos arrays de series (peso/reps/rpe en orden, + hecho para aeróbico). Vacíos o distinto largo => no iguales.
+  const serieClave = (s: any) => `${s?.peso_kg ?? ""}|${s?.repeticiones ?? ""}|${s?.rpe ?? ""}|${s?.hecho ?? ""}`
   const seriesIguales = (a: any[], b: any[]) => {
     if (!Array.isArray(a) || !Array.isArray(b) || a.length === 0 || a.length !== b.length) return false
     return a.every((s, i) => serieClave(s) === serieClave(b[i]))
@@ -333,7 +336,17 @@ export function PlanProgresoDialog({
                           return (
                             <tr key={ej.id} style={CATEGORIA_ROW_STYLE[categoria]} className="hover:brightness-95 transition-colors">
                               <td className="px-4 py-3 text-muted-foreground text-xs">{idx + 1}</td>
-                              <td className="px-4 py-3 font-medium text-xs">{ej.ejercicios.nombre}</td>
+                              <td className="px-4 py-3 font-medium text-xs">
+                                <span className="flex items-center gap-1.5">
+                                  {ej.ejercicios.nombre}
+                                  {ej.es_aerobico && (
+                                    <span className="inline-flex items-center gap-0.5 rounded-full bg-sky-500/15 text-sky-500 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide">
+                                      <Activity className="h-2.5 w-2.5" />
+                                      Aeróbico
+                                    </span>
+                                  )}
+                                </span>
+                              </td>
                               {SEMANAS_PREVIEW.map((semana) => {
                                 const sesion = sesionMap.get(`${dia.id}-${semana}`)
                                 const registro = sesion ? registroMap.get(`${sesion.id}-${ej.id}`) : null
@@ -440,12 +453,7 @@ export function PlanProgresoDialog({
                                 }
 
                                 const series: any[] = registro.series ?? []
-
-                                // Saltado = marcador explícito _saltado, o sin dato real (reps>0).
-                                // NO usar peso==0: ejercicios de peso corporal (dominadas) van sin peso.
-                                const esSaltado = series.length > 0
-                                  ? (series[0]?._saltado === true || series.every((s: any) => (s.repeticiones ?? 0) === 0))
-                                  : (registro.repeticiones ?? 0) === 0
+                                const esSaltado = registroEsSaltado(registro, ej.es_aerobico)
 
                                 if (esSaltado) {
                                   const savingCell = skipKey === cellKey(dia.id, semana, ej.id)
@@ -501,6 +509,34 @@ export function PlanProgresoDialog({
                                 }
 
                                 const nota = registro.notas as string | null
+
+                                if (ej.es_aerobico) {
+                                  const hecho = series[0]?.hecho === true
+                                  return (
+                                    <td key={semana} className={`p-0 text-center align-top ${borderSemana}`}>
+                                      {prescripcionStrip}
+                                      <div className="flex items-center justify-center py-3">
+                                        {hecho ? (
+                                          <span className="inline-flex items-center gap-1 text-emerald-500 text-xs font-bold">
+                                            <CheckCircle2 className="h-3.5 w-3.5" /> Hecho
+                                          </span>
+                                        ) : (
+                                          <span className="text-muted-foreground/50 text-xs">No hecho</span>
+                                        )}
+                                      </div>
+                                      {nota && (
+                                        <button
+                                          onClick={(e) => { e.stopPropagation(); setComentarioModal({ ejercicio: ej.ejercicios.nombre, comentario: nota }) }}
+                                          className="px-1 pb-1 text-[11px] text-blue-400 hover:text-blue-300 italic flex items-center justify-center gap-0.5 w-full"
+                                        >
+                                          <StickyNote className="h-2.5 w-2.5" />
+                                          Comentario
+                                        </button>
+                                      )}
+                                    </td>
+                                  )
+                                }
+
                                 return (
                                   <td key={semana} className={`p-0 text-center align-top ${borderSemana}`}>
                                     {prescripcionStrip}

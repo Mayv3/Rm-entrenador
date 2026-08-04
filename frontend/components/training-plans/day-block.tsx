@@ -3,7 +3,8 @@
 import React, { useState, useEffect, startTransition } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Trash2, Youtube, ChevronDown, ChevronUp, Loader2, GripVertical, Pencil, Plus, ArrowUp, ArrowDown, Copy } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import axios from "axios"
@@ -15,11 +16,19 @@ import type { PlanDia, PlanEjercicio } from "@/types/planificaciones"
 import type { EjercicioLocal, PendingEjercicio } from "./plan-builder"
 
 const SEMANAS = [1, 2, 3, 4, 5, 6]
-const CATEGORIA_ORDER = ["ACTIVADOR", "A", "B", "C", "D", "E"]
 
 const DOSIS_INPUT_CLASS = "h-7 text-xs text-center px-1 placeholder:text-gray-300 min-w-[60px] flex-1"
 const SERIES_SELECT_CLASS = "h-7 w-14 text-xs px-1 shrink-0 mx-auto"
 const RPE_SELECT_CLASS = "h-7 w-10 text-xs px-1 shrink-0"
+
+// Nombres de más de 2 palabras colapsan a 2 renglones — solo en mobile (<md).
+// La tabla es table-fixed con min-w-[1150px]: la columna mide ~195px fijos aunque el
+// viewport sea chico, así que el nombre entra en una línea y line-clamp no cortaría nada.
+// El max-w mobile fuerza el wrap; en md+ se libera y vuelve a una sola línea truncada.
+const nombreEjClass = (nombre: string) =>
+  nombre.trim().split(/\s+/).length > 2
+    ? "font-medium min-w-0 flex-1 max-w-[110px] line-clamp-2 leading-tight break-words md:max-w-none md:line-clamp-none md:block md:truncate"
+    : "font-medium block min-w-0 flex-1 truncate"
 
 interface DayBlockProps {
   dia: PlanDia
@@ -33,6 +42,7 @@ interface DayBlockProps {
   onCategoriaChange: (planEjId: number, categoria: string) => void
   onNotasProfesorChange: (planEjId: number, value: string) => void
   onSeriesChange: (planEjId: number, series: number) => void
+  onEsAerobicoChange: (planEjId: number, es_aerobico: boolean) => void
   onPendingChange: (pending: PendingEjercicio[]) => void
   onOrderChange: (orderedIds: number[]) => void
   onDeleteEj: (planEjId: number) => void
@@ -48,7 +58,7 @@ interface DayBlockProps {
 
 export function DayBlock({
   dia, planId, localData, pending, isActive, onActivate, onDeleted,
-  onSemanaChange, onCategoriaChange, onNotasProfesorChange, onSeriesChange, onPendingChange, onOrderChange, onDeleteEj, onReplaceEj, onOpenLibrary,
+  onSemanaChange, onCategoriaChange, onNotasProfesorChange, onSeriesChange, onEsAerobicoChange, onPendingChange, onOrderChange, onDeleteEj, onReplaceEj, onOpenLibrary,
   canMoveUp, canMoveDown, onMoveUp, onMoveDown, onDuplicate, duplicating,
 }: DayBlockProps) {
   const queryClient = useQueryClient()
@@ -111,6 +121,7 @@ export function DayBlock({
         categoria: "",
         notas_profesor: "",
         series: 3,
+        es_aerobico: false,
         dosis: {},
         rpe: {},
         notas: {},
@@ -172,16 +183,6 @@ export function DayBlock({
     onDeleteEj(planEjId)
   }
 
-  const handleCategoriaForRow = (planEjId: number, categoria: string) => {
-    onCategoriaChange(planEjId, categoria)
-    if (categoria !== "ACTIVADOR") {
-      const idx = orderedEjs.findIndex((e) => e.id === planEjId)
-      if (idx !== -1 && idx + 1 < orderedEjs.length) {
-        onCategoriaChange(orderedEjs[idx + 1].id, categoria)
-      }
-    }
-  }
-
   const setPendingField = (tempId: string, field: "categoria" | "dosis" | "rpe" | "notas_profesor" | "notas_semana" | "series", semana: number | null, value: string) => {
     if (field === "series") {
       const n = Math.max(1, Math.min(8, parseInt(value) || 3))
@@ -189,12 +190,7 @@ export function DayBlock({
       return
     }
     if (field === "categoria") {
-      const idx = pending.findIndex((p) => p.tempId === tempId)
-      onPendingChange(pending.map((p, i) => {
-        if (p.tempId === tempId) return { ...p, categoria: value }
-        if (value !== "ACTIVADOR" && i === idx + 1) return { ...p, categoria: value }
-        return p
-      }))
+      onPendingChange(pending.map((p) => (p.tempId === tempId ? { ...p, categoria: value } : p)))
       return
     }
     onPendingChange(pending.map((p) => {
@@ -232,9 +228,22 @@ export function DayBlock({
     }))
   }
 
+  const setPendingEsAerobico = (tempId: string, es_aerobico: boolean) => {
+    onPendingChange(pending.map((p) => (p.tempId === tempId ? { ...p, es_aerobico } : p)))
+  }
+
   const removePending = (tempId: string) => onPendingChange(pending.filter((p) => p.tempId !== tempId))
 
   const totalCount = dia.ejercicios.length + pending.length
+
+  const allAerobico = totalCount > 0 &&
+    orderedEjs.every((e) => localData[e.id]?.es_aerobico ?? e.es_aerobico ?? false) &&
+    pending.every((p) => p.es_aerobico)
+
+  const handleToggleAllAerobico = (value: boolean) => {
+    orderedEjs.forEach((e) => onEsAerobicoChange(e.id, value))
+    if (pending.length > 0) onPendingChange(pending.map((p) => ({ ...p, es_aerobico: value })))
+  }
 
   return (
     <>
@@ -316,6 +325,17 @@ export function DayBlock({
                 <tr className="border-b bg-muted/30">
                   <th className="px-1 py-2 w-[112px]" />
                   <th className="px-3 py-2 text-left font-medium text-muted-foreground w-[17%]">Ejercicio</th>
+                  <th className="px-1 py-2 text-center font-medium text-muted-foreground w-[44px]" title="Marcar todos como aeróbico">
+                    <div className="flex items-center justify-center gap-1">
+                      <Checkbox
+                        checked={allAerobico}
+                        disabled={totalCount === 0}
+                        onCheckedChange={(v) => handleToggleAllAerobico(v === true)}
+                        className="rounded-[3px]"
+                      />
+                      <span>Aer.</span>
+                    </div>
+                  </th>
                   <th className="px-2 py-2 text-center font-medium text-muted-foreground w-[68px]">Series</th>
                   {SEMANAS.map((s) => (
                     <th key={s} className="px-2 py-2 text-center font-medium text-muted-foreground">
@@ -327,7 +347,7 @@ export function DayBlock({
               <tbody className="divide-y">
                     {totalCount === 0 && (
                       <tr>
-                        <td colSpan={9} className="px-3 py-6 text-center text-muted-foreground">
+                        <td colSpan={10} className="px-3 py-6 text-center text-muted-foreground">
                           {isActive ? "Hacé click en un ejercicio del panel para agregarlo." : "Seleccioná este día."}
                         </td>
                       </tr>
@@ -339,9 +359,10 @@ export function DayBlock({
                         ej={ej}
                         localData={localData}
                         onSemanaChange={onSemanaChange}
-                        onCategoriaChange={handleCategoriaForRow}
+                        onCategoriaChange={onCategoriaChange}
                         onNotasProfesorChange={onNotasProfesorChange}
                         onSeriesChange={onSeriesChange}
+                        onEsAerobicoChange={onEsAerobicoChange}
                         onDelete={handleDeleteSaved}
                         onReplace={onReplaceEj}
                         canMoveUp={idx > 0}
@@ -377,11 +398,23 @@ export function DayBlock({
                                 <Youtube className="h-3.5 w-3.5" />
                               </a>
                             )}
-                            <span className="font-medium block min-w-0 flex-1 truncate" title={p.ejercicio.nombre}>{p.ejercicio.nombre}</span>
+                            <span className={nombreEjClass(p.ejercicio.nombre)} title={p.ejercicio.nombre}>{p.ejercicio.nombre}</span>
                           </div>
                         </td>
+                        <td className="px-1 py-1.5 text-center" title="Aeróbico">
+                          <Checkbox
+                            checked={p.es_aerobico}
+                            onCheckedChange={(v) => setPendingEsAerobico(p.tempId, v === true)}
+                            className="mx-auto rounded-[3px]"
+                          />
+                        </td>
                         <td className="px-1 py-1.5 text-center">
-                          <SeriesSelect value={p.series ?? 3} onChange={(v) => setPendingField(p.tempId, "series", null, String(v))} />
+                          <SeriesSelect
+                            series={p.series ?? 3}
+                            categoria={p.categoria}
+                            onSeriesChange={(v) => setPendingField(p.tempId, "series", null, String(v))}
+                            onCategoriaChange={(v) => setPendingField(p.tempId, "categoria", null, v)}
+                          />
                         </td>
                         {SEMANAS.map((s) => {
                           const pendingRpe = p.rpe[s] || (s % 2 === 0 ? (p.rpe[s - 1] ?? "") : "")
@@ -450,7 +483,7 @@ export function DayBlock({
 }
 
 function ExerciseRow({
-  ej, localData, onSemanaChange, onCategoriaChange, onNotasProfesorChange, onSeriesChange, onDelete, onReplace,
+  ej, localData, onSemanaChange, onCategoriaChange, onNotasProfesorChange, onSeriesChange, onEsAerobicoChange, onDelete, onReplace,
   canMoveUp, canMoveDown, onMoveUp, onMoveDown,
 }: {
   ej: PlanEjercicio
@@ -459,6 +492,7 @@ function ExerciseRow({
   onCategoriaChange: (planEjId: number, categoria: string) => void
   onNotasProfesorChange: (planEjId: number, value: string) => void
   onSeriesChange: (planEjId: number, series: number) => void
+  onEsAerobicoChange: (planEjId: number, es_aerobico: boolean) => void
   onDelete: (planEjId: number) => void
   onReplace: (planEjId: number) => void
   canMoveUp: boolean
@@ -468,6 +502,7 @@ function ExerciseRow({
 }) {
   const local = localData[ej.id]
   const categoria = local?.categoria ?? ej.categoria
+  const esAerobico = local?.es_aerobico ?? ej.es_aerobico ?? false
 
   return (
     // El verde va por clase: el inline style de ACTIVADOR lo pisa y conserva su color.
@@ -519,11 +554,23 @@ function ExerciseRow({
               <Youtube className="h-3.5 w-3.5" />
             </a>
           )}
-          <span className="font-medium block min-w-0 flex-1 truncate" title={ej.ejercicios.nombre}>{ej.ejercicios.nombre}</span>
+          <span className={nombreEjClass(ej.ejercicios.nombre)} title={ej.ejercicios.nombre}>{ej.ejercicios.nombre}</span>
         </div>
       </td>
+      <td className="px-1 py-1.5 text-center" title="Aeróbico">
+        <Checkbox
+          checked={esAerobico}
+          onCheckedChange={(v) => onEsAerobicoChange(ej.id, v === true)}
+          className="mx-auto rounded-[3px]"
+        />
+      </td>
       <td className="px-1 py-1.5 text-center">
-        <SeriesSelect value={local?.series ?? ej.series ?? 3} onChange={(v) => onSeriesChange(ej.id, v)} />
+        <SeriesSelect
+          series={local?.series ?? ej.series ?? 3}
+          categoria={categoria}
+          onSeriesChange={(v) => onSeriesChange(ej.id, v)}
+          onCategoriaChange={(v) => onCategoriaChange(ej.id, v)}
+        />
       </td>
       {SEMANAS.map((s) => {
         const sem = local?.semanas?.[s]
@@ -551,14 +598,36 @@ function ExerciseRow({
   )
 }
 
-function SeriesSelect({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+function SeriesSelect({
+  series, categoria, onSeriesChange, onCategoriaChange,
+}: {
+  series: number
+  categoria: string
+  onSeriesChange: (v: number) => void
+  onCategoriaChange: (v: string) => void
+}) {
+  const isActivador = categoria === "ACTIVADOR"
+  const value = isActivador ? "ACTIVADOR" : String(series)
+
   return (
-    <Select value={String(value)} onValueChange={(v) => onChange(Number(v))}>
-      <SelectTrigger className={SERIES_SELECT_CLASS}>
-        <SelectValue />
+    <Select
+      value={value}
+      onValueChange={(v) => {
+        if (v === "ACTIVADOR") {
+          onCategoriaChange("ACTIVADOR")
+        } else {
+          if (isActivador) onCategoriaChange("")
+          onSeriesChange(Number(v))
+        }
+      }}
+    >
+      <SelectTrigger className={`${SERIES_SELECT_CLASS} ${isActivador ? "font-bold" : ""}`}>
+        <SelectValue>{isActivador ? "ACT" : series}</SelectValue>
       </SelectTrigger>
       <SelectContent>
-        {[2, 3, 4].map((n) => (
+        <SelectItem value="ACTIVADOR">ACTIVADOR</SelectItem>
+        <SelectSeparator />
+        {[1,2, 3, 4].map((n) => (
           <SelectItem key={n} value={String(n)}>{n}</SelectItem>
         ))}
       </SelectContent>

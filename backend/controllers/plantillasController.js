@@ -66,6 +66,7 @@ async function buildDataFromHoja(hojaId) {
             categoria: e.categoria,
             orden: e.orden,
             notas_profesor: e.notas_profesor ?? null,
+            es_aerobico: e.es_aerobico ?? false,
             semanas: semanas
               .filter((s) => s.planificacion_ejercicio_id === e.id)
               .map((s) => ({ semana: s.semana, dosis: s.dosis, rpe: s.rpe, notas_profesor: s.notas_profesor ?? null })),
@@ -473,6 +474,7 @@ async function insertHojaTree(planificacionId, hojaNode, semanasTotal, numero, n
         categoria: e.categoria ?? "A",
         orden: e.orden ?? 0,
         notas_profesor: e.notas_profesor ?? null,
+        es_aerobico: e.es_aerobico ?? false,
       })
       ejNodes.push(e)
     })
