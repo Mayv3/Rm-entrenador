@@ -7,17 +7,15 @@ export const dynamic = "force-dynamic"
 import { useSession, signOut } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useRef, useState, Suspense } from "react"
-import Link from "next/link"
 import { useTheme } from "next-themes"
 import { useQuery } from "@tanstack/react-query"
 import axios from "axios"
 import Image from "next/image"
 import logoRodrigoEntrenador from "../../assets/LOGO-RODRIGO-VERDE.png"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { FileText, LogOut, MessageSquare, ArrowLeft, Loader2, Download, Eye, TrendingUp, GitCompareArrows, Salad, Dumbbell, ArrowRight, X, CalendarDays, ChevronLeft, BookOpen } from "lucide-react"
+import { FileText, LogOut, MessageSquare, ArrowLeft, Loader2, Download, Eye, TrendingUp, GitCompareArrows, Salad, Dumbbell, ArrowRight, X, CalendarDays, ChevronLeft, BookOpen, Heart, Sparkles } from "lucide-react"
 import { ModeToggle } from "@/components/mode-toggle"
 import { StudentPlanificacionSection } from "@/components/portal/student-planificacion-section"
 import { ManualViewer } from "@/components/manual/manual-viewer"
@@ -33,6 +31,7 @@ import { AntroAnualChart } from "@/components/antropometrias/antro-anual-chart"
 import { AntroCompareDialog } from "@/components/antropometrias/antro-compare-dialog"
 import { PlanCalendarioDialog } from "@/components/training-plans/plan-calendario-dialog"
 import { PlanProgresoDialog } from "@/components/training-plans/plan-progreso-dialog"
+import type { Planificacion } from "@/types/planificaciones"
 
 interface Student {
   id: number
@@ -67,33 +66,23 @@ interface AntroRecord {
   habitos_link?: string | null
 }
 
-function DaysSquares({ dias }: { dias: string }) {
-  const diasStr = (dias || "").split(" - ")[0]
-  const horario = (dias || "").split(" - ")[1] || ""
-  const countMatch = diasStr.match(/^(\d+)\s*días?/)
-  const count = countMatch
-    ? parseInt(countMatch[1])
-    : diasStr.split(",").filter((d) => d.trim()).length
+// Tema especial pedido para esta alumna puntual: rosa pastel + decoración cute.
+const PINK_THEME_STUDENT_ID = 115
 
+function CutePinkDecor() {
   return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex gap-1.5">
-        {[1, 2, 3, 4, 5].map((n) => (
-          <span
-            key={n}
-            className={`flex-1 h-8 rounded-md border ${
-              n <= count
-                ? "bg-[var(--primary-color)] border-[var(--primary-color)]"
-                : "bg-muted border-border"
-            }`}
-          />
-        ))}
-      </div>
-      {horario && (
-        <span className="text-xs text-muted-foreground">
-          {count} {count === 1 ? "día" : "días"} — {horario}
-        </span>
-      )}
+    <div className="pointer-events-none fixed inset-0 overflow-hidden z-0" aria-hidden="true">
+      <div className="absolute -top-24 -left-20 h-72 w-72 rounded-full bg-pink-300/30 blur-3xl" />
+      <div className="absolute top-1/3 -right-24 h-80 w-80 rounded-full bg-rose-200/30 blur-3xl" />
+      <div className="absolute bottom-0 left-1/4 h-64 w-64 rounded-full bg-fuchsia-200/20 blur-3xl" />
+      <Sparkles className="absolute top-20 right-8 h-5 w-5 text-pink-300/70 animate-pulse" />
+      <Heart className="absolute top-44 left-6 h-4 w-4 text-pink-300/60 fill-pink-200/40" />
+      <Sparkles
+        className="absolute bottom-28 right-10 h-4 w-4 text-rose-300/60 animate-pulse"
+        style={{ animationDelay: "1s" }}
+      />
+      <Heart className="absolute bottom-44 left-10 h-5 w-5 text-rose-300/50 fill-rose-200/30" />
+      <Sparkles className="absolute top-1/2 left-1/2 h-3.5 w-3.5 text-fuchsia-300/50 animate-pulse" style={{ animationDelay: "2s" }} />
     </div>
   )
 }
@@ -253,14 +242,14 @@ function PortalPageInner() {
             })
         : axios.get<Student>(`${process.env.NEXT_PUBLIC_URL_BACKEND}/student/by-email?email=${encodeURIComponent(email)}`).then(r => r.data),
     enabled: isPreview ? !!previewId : !!email,
-    retry: (failureCount, err: any) => {
-      const httpStatus = err?.response?.status
+    retry: (failureCount, error) => {
+      const httpStatus = axios.isAxiosError(error) ? error.response?.status : undefined
       if (httpStatus === 403 || httpStatus === 404) return false
       return failureCount < 2
     },
   })
 
-  const { data: payments = [], isLoading: loadingPayments } = useQuery({
+  const { data: payments = [] } = useQuery({
     queryKey: ["portalPayments", student?.id],
     queryFn: () =>
       axios.get<Payment[]>(`${process.env.NEXT_PUBLIC_URL_BACKEND}/getAllPayments`).then(r =>
@@ -289,7 +278,7 @@ function PortalPageInner() {
   // Misma queryKey que StudentPlanificacionSection (queryKeyPlan) y mi-plan-app: así este fetch
   // temprano (para saber si hay plan) precarga la caché y la sección abre el plan al instante,
   // sin volver a pedir el mismo endpoint.
-  const { data: appPlanResp, isLoading: loadingAppPlan } = useQuery<{ planificacion: any | null }>({
+  const { data: appPlanResp, isLoading: loadingAppPlan } = useQuery<{ planificacion: Planificacion | null }>({
     queryKey: ["portalPlanificacion", student?.id],
     queryFn: () =>
       axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/portal/alumnos/${student!.id}/planificacion`).then(r => r.data),
@@ -365,9 +354,13 @@ function PortalPageInner() {
     )
   }
 
-  if ((studentError as any)?.response?.data?.code === "MEMBERSHIP_EXPIRED") {
+  const membershipError = axios.isAxiosError<{ code?: string; message?: string }>(studentError)
+    ? studentError.response?.data
+    : undefined
+
+  if (membershipError?.code === "MEMBERSHIP_EXPIRED") {
     const msg =
-      (studentError as any)?.response?.data?.message ??
+      membershipError.message ??
       "Tu membresía venció hace más de un mes. Contactá a tu entrenador para reactivar tu acceso."
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-4 text-center">
@@ -454,8 +447,20 @@ function PortalPageInner() {
   const hasHabitos = isRealHabitsLink(student.habitos_link)
   const hasSaludSection = hasAntros || hasNutricion || hasHabitos
 
+  const isJessica = student.id === PINK_THEME_STUDENT_ID
+  const pinkThemeVars = isJessica
+    ? ({
+        "--primary-color": "#f472b6",
+        "--primary": "330 81% 60%",
+        "--ring": "330 81% 60%",
+        "--sidebar-primary": "330 81% 60%",
+        "--sidebar-ring": "330 81% 60%",
+      } as React.CSSProperties)
+    : undefined
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background relative" style={pinkThemeVars}>
+      {isJessica && <CutePinkDecor />}
       {/* Aviso de plan vencido — aparece cada vez que el alumno entra */}
       <Dialog open={showVencidoAlert} onOpenChange={setShowVencidoAlert}>
         <DialogContent className="max-w-sm text-center">
@@ -591,7 +596,7 @@ function PortalPageInner() {
             href="https://wa.me/543516671026"
             target="_blank"
             rel="noopener noreferrer"
-            className="group relative overflow-hidden flex flex-col items-center justify-center gap-2 py-5 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.97] transition-all duration-200 border border-white/10"
+            className={`group relative overflow-hidden flex flex-col items-center justify-center gap-2 py-5 rounded-xl bg-gradient-to-br ${isJessica ? "from-pink-400 to-rose-600" : "from-emerald-500 to-emerald-700"} text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.97] transition-all duration-200 border border-white/10`}
           >
             <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             <div className="relative flex flex-col items-center gap-1.5">
@@ -628,7 +633,7 @@ function PortalPageInner() {
               href={student.plan}
               target="_blank"
               rel="noopener noreferrer"
-              className="group relative overflow-hidden flex flex-col items-center justify-center gap-2 py-5 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-700 text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.97] transition-all duration-200 border border-white/10"
+              className={`group relative overflow-hidden flex flex-col items-center justify-center gap-2 py-5 rounded-xl bg-gradient-to-br ${isJessica ? "from-pink-400 to-fuchsia-600" : "from-sky-500 to-indigo-700"} text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.97] transition-all duration-200 border border-white/10`}
             >
               <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
               <div className="relative flex flex-col items-center gap-1.5">
@@ -729,10 +734,10 @@ function PortalPageInner() {
                 <button
                   onClick={() => setShowCompare(true)}
                   disabled={antros.length < 2}
-                  className="group flex-1 flex items-center justify-center gap-2 px-3 py-3 rounded-xl bg-card border border-purple-500/40 hover:border-purple-500 hover:bg-muted/40 text-xs font-bold text-foreground shadow-sm hover:shadow active:scale-[0.97] transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className={`group flex-1 flex items-center justify-center gap-2 px-3 py-3 rounded-xl bg-card border ${isJessica ? "border-pink-500/40 hover:border-pink-500" : "border-purple-500/40 hover:border-purple-500"} hover:bg-muted/40 text-xs font-bold text-foreground shadow-sm hover:shadow active:scale-[0.97] transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed`}
                 >
-                  <div className="h-7 w-7 rounded-full bg-purple-500/10 ring-1 ring-purple-500/30 flex items-center justify-center">
-                    <GitCompareArrows className="h-3.5 w-3.5 text-purple-600" />
+                  <div className={`h-7 w-7 rounded-full ${isJessica ? "bg-pink-500/10 ring-pink-500/30" : "bg-purple-500/10 ring-purple-500/30"} ring-1 flex items-center justify-center`}>
+                    <GitCompareArrows className={`h-3.5 w-3.5 ${isJessica ? "text-pink-600" : "text-purple-600"}`} />
                   </div>
                   <span>Comparar</span>
                 </button>
@@ -797,10 +802,10 @@ function PortalPageInner() {
               href={student.habitos_link!}
               target="_blank"
               rel="noopener noreferrer"
-              className="group flex flex-col items-center justify-center gap-2 py-5 rounded-xl bg-card border border-emerald-500/40 hover:border-emerald-500 hover:bg-muted/40 shadow-sm hover:shadow active:scale-[0.97] transition-all duration-200 w-full"
+              className={`group flex flex-col items-center justify-center gap-2 py-5 rounded-xl bg-card border ${isJessica ? "border-pink-500/40 hover:border-pink-500" : "border-emerald-500/40 hover:border-emerald-500"} hover:bg-muted/40 shadow-sm hover:shadow active:scale-[0.97] transition-all duration-200 w-full`}
             >
-              <div className="h-10 w-10 rounded-full bg-emerald-500/10 ring-1 ring-emerald-500/30 flex items-center justify-center">
-                <Salad className="h-5 w-5 text-emerald-600" />
+              <div className={`h-10 w-10 rounded-full ${isJessica ? "bg-pink-500/10 ring-pink-500/30" : "bg-emerald-500/10 ring-emerald-500/30"} ring-1 flex items-center justify-center`}>
+                <Salad className={`h-5 w-5 ${isJessica ? "text-pink-600" : "text-emerald-600"}`} />
               </div>
               <span className="text-sm font-bold tracking-tight text-foreground">Ver mis hábitos</span>
               <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Abrir</span>
@@ -918,7 +923,7 @@ function PortalPageInner() {
                 planId={appPlanResp.planificacion.id}
                 plan={appPlanResp.planificacion}
                 activeHoja={
-                  appPlanResp.planificacion.hojas?.find((h: any) => h.id === appPlanResp.planificacion.hoja_activa_id)
+                  appPlanResp.planificacion.hojas?.find((h) => h.id === appPlanResp.planificacion!.hoja_activa_id)
                   ?? appPlanResp.planificacion.hojas?.[0]
                 }
                 readOnly
@@ -1129,16 +1134,3 @@ export default function PortalPage() {
   )
 }
 
-function InfoCard({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
-  return (
-    <div className="relative rounded-2xl border border-border bg-card px-4 py-3.5 flex flex-col gap-1 overflow-hidden">
-      {accent && (
-        <div className="absolute top-0 left-0 right-0 h-[2px] bg-[var(--primary-color)]" />
-      )}
-      <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest">{label}</span>
-      <span className={`text-sm font-semibold truncate ${accent ? "text-[var(--primary-color)]" : ""}`}>
-        {value || "No definido"}
-      </span>
-    </div>
-  )
-}
