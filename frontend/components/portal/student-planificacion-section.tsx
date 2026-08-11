@@ -2262,7 +2262,8 @@ export function StudentPlanificacionSection({
               : undefined
             const effectiveRpe = semanaPlan?.rpe ?? semanaPlanPrev?.rpe ?? null
             const effectiveDosis = semanaPlan?.dosis ?? semanaPlanPrev?.dosis ?? null
-            const effectiveNota = semanaPlan?.notas_profesor ?? semanaPlanPrev?.notas_profesor ?? null
+            // La nota NO hereda de la semana impar previa: pertenece solo a su semana (dosis/RPE sí heredan por bloques de 2)
+            const effectiveNota = semanaPlan?.notas_profesor ?? null
             const seriesCount = clampSeries(ej.series)
             const row = registrosForm[ej.id] ?? EMPTY_FORM_ROW(seriesCount)
             const isFilled = esRowCompleto(ej.es_aerobico, row)
