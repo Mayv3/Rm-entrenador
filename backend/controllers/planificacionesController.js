@@ -750,23 +750,7 @@ export async function deleteDia(req, res) {
 
   const sesionIds = (sesiones ?? []).map((s) => s.id);
   if (sesionIds.length > 0) {
-    // Dato real = algún registro con repeticiones > 0.
-    const { data: regsReales, error: regsError } = await supabase
-      .from("entrenamiento_registros")
-      .select("sesion_id")
-      .in("sesion_id", sesionIds)
-      .gt("repeticiones", 0);
-    if (regsError) return res.status(500).json({ error: regsError.message });
-
-    const sesionesConDato = new Set((regsReales ?? []).map((r) => r.sesion_id));
-    if (sesionesConDato.size > 0) {
-      return res.status(409).json({
-        error:
-          "No se puede eliminar el día: tiene sesiones de entrenamiento con datos reales cargados por el alumno.",
-      });
-    }
-
-    // Todas las sesiones son huérfanas (sin reps). Borrar registros + sesiones.
+    // Borra registros + sesiones aunque tengan datos reales cargados por el alumno.
     const { error: delRegsError } = await supabase
       .from("entrenamiento_registros")
       .delete()
