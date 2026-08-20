@@ -192,22 +192,37 @@ function StudentProgresoDialog({
     })
   }
 
-  const savePrescripcion = async (ejId: number, semana: number) => {
-    const key = prescripcionKey(ejId, semana)
+  const savePrescripcion = async (ej: PlanEjercicio, semana: number) => {
+    const key = prescripcionKey(ej.id, semana)
     const edit = prescripcionEdits[key]
-    if (!edit || !planId) return
+    if (!edit || !planId || !plan) return
     setSavingKey(key)
     try {
-      await axios.put(
-        `${process.env.NEXT_PUBLIC_URL_BACKEND}/planificaciones/ejercicios/${ejId}/semanas/${semana}`,
-        { dosis: edit.dosis || null, rpe: edit.rpe ? Number(edit.rpe) : null, notas_profesor: edit.notas || null }
-      )
-      const planRes = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/planificaciones/${planId}`)
+      const notaOriginal = ej.semanas?.find((sw) => sw.semana === semana)?.notas_profesor ?? ""
+      const semanasDestino = edit.notas !== notaOriginal
+        ? Array.from({ length: plan.semanas - semana + 1 }, (_, index) => semana + index)
+        : [semana]
+
+      await Promise.all(semanasDestino.map((semanaDestino) => {
+        const destinoKey = prescripcionKey(ej.id, semanaDestino)
+        const destino = semanaDestino === semana
+          ? edit
+          : prescripcionEdits[destinoKey] ?? getPrescripcion(ej, semanaDestino)
+        return axios.put(
+          process.env.NEXT_PUBLIC_URL_BACKEND + "/planificaciones/ejercicios/" + ej.id + "/semanas/" + semanaDestino,
+          {
+            dosis: destino.dosis || null,
+            rpe: destino.rpe ? Number(destino.rpe) : null,
+            notas_profesor: edit.notas || null,
+          }
+        )
+      }))
+      const planRes = await axios.get(process.env.NEXT_PUBLIC_URL_BACKEND + "/planificaciones/" + planId)
       setPlan(planRes.data)
       queryClient.invalidateQueries({ queryKey: queryKeys.planificacionById(planId) })
       setPrescripcionEdits((prev) => {
         const next = { ...prev }
-        delete next[key]
+        semanasDestino.forEach((semanaDestino) => delete next[prescripcionKey(ej.id, semanaDestino)])
         return next
       })
     } catch (err) {
@@ -469,7 +484,7 @@ function StudentProgresoDialog({
                                     {isDirty && (
                                       <Button
                                         size="sm"
-                                        onClick={() => savePrescripcion(ej.id, semana)}
+                                        onClick={() => savePrescripcion(ej, semana)}
                                         disabled={isSaving}
                                         className="h-7 text-[11px] px-2 bg-[var(--primary-color)] hover:bg-[var(--primary-color)]/90 text-white"
                                       >
