@@ -66,6 +66,12 @@ interface AntroRecord {
   habitos_link?: string | null
 }
 
+interface TurnoAlumno {
+  id: number
+  fecha: string
+  hora: string
+}
+
 // Tema especial pedido para esta alumna puntual: rosa pastel + decoración cute.
 const PINK_THEME_STUDENT_ID = 115
 
@@ -265,6 +271,14 @@ function PortalPageInner() {
     enabled: !!student?.id,
   })
 
+  const { data: turnos = [] } = useQuery<TurnoAlumno[]>({
+    queryKey: ["portalTurnos", student?.id],
+    queryFn: () =>
+      axios.get<TurnoAlumno[]>(`${process.env.NEXT_PUBLIC_URL_BACKEND}/turnos/alumno/${student!.id}`).then(r => r.data),
+    enabled: !!student?.id,
+    staleTime: 30_000,
+  })
+
   const { data: planes = [] } = usePlanes()
   const { data: servicios = [] } = useServicios()
 
@@ -296,6 +310,8 @@ function PortalPageInner() {
     .sort((a, b) => new Date(b.fecha_de_pago).getTime() - new Date(a.fecha_de_pago).getTime())[0]
 
   const subscriptionStatus = latestPayment ? determineSubscriptionStatus(latestPayment) : "Indefinido"
+  const hoyISO = format(new Date(), "yyyy-MM-dd")
+  const turnosProximos = turnos.filter((turno) => turno.fecha >= hoyISO)
 
   // Al entrar, si el plan está vencido → abrir el cartel de aviso (una vez por carga).
   // También en modo preview, para poder verificarlo.
@@ -533,6 +549,27 @@ function PortalPageInner() {
               <p className="text-xs text-muted-foreground mt-0.5 truncate">{student.email}</p>
             </div>
           </div>
+
+          {turnosProximos.length > 0 && (
+            <div className="border-b border-border px-5 py-3">
+              <div className="mb-1.5 flex items-center gap-2">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Mis turnos</span>
+              </div>
+              <div className="divide-y divide-border/60">
+                {turnosProximos.map((turno) => (
+                  <div key={turno.id} className="flex items-center gap-3 py-2">
+                    <span className="w-10 shrink-0 text-center text-xs font-bold tabular-nums text-[var(--primary-color)]">
+                      {turno.hora.slice(0, 5)}
+                    </span>
+                    <span className="min-w-0 flex-1 text-xs capitalize text-foreground">
+                      {format(new Date(`${turno.fecha}T12:00:00`), "EEEE d 'de' MMMM", { locale: es })}
+                    </span>
+                    <span className="shrink-0 text-[10px] font-medium text-muted-foreground">Antropometría</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Estado del plan */}
           {latestPayment && (

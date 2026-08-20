@@ -17,4 +17,5 @@ export const queryKeys = {
   plantillas: ["plantillas"] as const,
   plantillaById: (id: number) => ["plantilla", id] as const,
   manual: ["manual"] as const,
+  turnos: ["turnos"] as const,
 }

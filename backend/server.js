@@ -19,6 +19,7 @@ import {
   saltarEjercicioProgreso, deshacerSaltoProgreso,
 } from "./controllers/planificacionesController.js";
 import { getAntrosByAlumno, getAllAntrosCounts, createAntro, deleteAntro, updateAntroNombre, updateAntroFecha, getParsedAntro } from "./controllers/antropometriasController.js";
+import { getTurnos, getTurnosByAlumno, createTurno, deleteTurno } from "./controllers/turnosController.js";
 import { getNutricionByAlumno, getAllNutricionCounts, createNutricion, deleteNutricion, updateNutricionNombre, updateNutricionHabitos } from "./controllers/nutricionController.js";
 import { getPortalPlanificacion, getPortalSesion, upsertPortalSesion, getPortalSesionesSemana, getPortalSesionesResumen, getPortalHojaAnteriorPesos, getPortalSemanaAnteriorPesos, getPortalUltimoPesoGlobal, revertirPortalSaltadoDia } from "./controllers/portalPlanController.js";
 import {
@@ -89,6 +90,11 @@ app.delete("/antropometrias/:id", deleteAntro);
 app.patch("/antropometrias/:id/nombre", updateAntroNombre);
 app.patch("/antropometrias/:id/fecha", updateAntroFecha);
 app.get("/antropometrias/:id/parsed", getParsedAntro);
+
+app.get("/turnos", getTurnos);
+app.get("/turnos/alumno/:alumnoId", getTurnosByAlumno);
+app.post("/turnos", createTurno);
+app.delete("/turnos/:id", deleteTurno);
 
 // Nutricion
 app.get("/nutricion/counts", getAllNutricionCounts);

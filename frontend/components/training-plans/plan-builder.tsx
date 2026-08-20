@@ -244,7 +244,9 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
           newSemanas[semana] = { ...newSemanas[semana], rpe: value }
         }
       } else {
-        newSemanas[semana] = { ...newSemanas[semana], notas: value }
+        for (let s = semana; s <= 6; s++) {
+          newSemanas[s] = { ...newSemanas[s], notas: value }
+        }
       }
       return { ...prev, [planEjId]: { ...prev[planEjId], semanas: newSemanas } }
     })

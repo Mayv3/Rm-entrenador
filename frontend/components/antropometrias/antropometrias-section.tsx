@@ -5,10 +5,12 @@ import { useQuery } from "@tanstack/react-query"
 import axios from "axios"
 import { queryKeys } from "@/lib/query-keys"
 import { Input } from "@/components/ui/input"
-import { FileText, Search, User, Calendar } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { FileText, Search, User, Calendar, CalendarClock } from "lucide-react"
 import { format, differenceInCalendarMonths } from "date-fns"
 import { es } from "date-fns/locale"
 import { AntroUploadDialog } from "./antro-upload-dialog"
+import { AntroAgendaDialog } from "./antro-agenda-dialog"
 import { Loader } from "@/components/ui/loader"
 
 interface Student {
@@ -16,6 +18,7 @@ interface Student {
   nombre: string
   modalidad?: string
   ultima_antro?: string | null
+  telefono?: string | null
 }
 
 function AlumnoCard({ alumno, count, onClick }: { alumno: Student; count: number; onClick: () => void }) {
@@ -66,6 +69,7 @@ function AlumnoCard({ alumno, count, onClick }: { alumno: Student; count: number
 export function AntropometriasSection() {
   const [search, setSearch] = useState("")
   const [selected, setSelected] = useState<Student | null>(null)
+  const [showAgenda, setShowAgenda] = useState(false)
 
   const { data: students = [], isLoading: loadingStudents } = useQuery<Student[]>({
     queryKey: queryKeys.students,
@@ -94,17 +98,22 @@ export function AntropometriasSection() {
   if (loadingStudents) return <Loader />
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <h2 className="text-lg font-semibold shrink-0">Antropometría</h2>
-        <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
-          <Input
-            placeholder="Buscar alumno..."
-            className="pl-8"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+    <div className="space-y-4 sm:space-y-6">
+      <div className="space-y-3">
+        <h2 className="text-xl font-semibold tracking-tight">Antropometría</h2>
+        <div className="flex w-full items-center gap-2 sm:max-w-[34rem]">
+          <div className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Buscar alumno"
+              className="h-11 rounded-xl border-0 bg-muted/50 pl-10 shadow-none focus-visible:bg-background"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <Button onClick={() => setShowAgenda(true)} className="h-11 shrink-0 rounded-xl px-3.5 shadow-none">
+            <CalendarClock className="h-4 w-4" /> Agenda
+          </Button>
         </div>
       </div>
 
@@ -147,6 +156,8 @@ export function AntropometriasSection() {
           alumno={selected}
         />
       )}
+
+      <AntroAgendaDialog open={showAgenda} onOpenChange={setShowAgenda} students={students} />
     </div>
   )
 }

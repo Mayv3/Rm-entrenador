@@ -12,6 +12,9 @@ import {
   Dumbbell,
   Clock,
 } from "lucide-react"
+import { format, parseISO } from "date-fns"
+import { es } from "date-fns/locale"
+import { queryKeys } from "@/lib/query-keys"
 import {
   EntrenamientoHoy,
   ESTADO_FLAGS,
@@ -24,6 +27,13 @@ import {
   formatHora,
 } from "./shared"
 import { HoyDetalle } from "./hoy-detalle"
+
+interface TurnoProximo {
+  id: number
+  fecha: string
+  hora: string
+  alumnos: { nombre: string } | null
+}
 
 export function HoySection() {
   const hoy = fechaLocalISO(new Date())
@@ -41,17 +51,30 @@ export function HoySection() {
   })
 
   const entrenamientos = useMemo(() => data?.entrenamientos ?? [], [data])
+  const limiteTurnos = addDays(hoy, 7)
+  const { data: turnos = [] } = useQuery<TurnoProximo[]>({
+    queryKey: queryKeys.turnos,
+    queryFn: async () => {
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_URL_BACKEND}/turnos`)
+      return res.data
+    },
+    staleTime: 30_000,
+  })
+  const proximosTurnos = useMemo(
+    () => turnos.filter((turno) => turno.fecha >= hoy && turno.fecha <= limiteTurnos),
+    [turnos, hoy, limiteTurnos]
+  )
 
   return (
-    <div className="max-w-3xl mx-auto space-y-4">
+    <div className="mx-auto w-full min-w-0 max-w-3xl space-y-4 overflow-x-hidden">
       {/* Header con navegación de fecha */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <CalendarDays className="h-5 w-5 text-[var(--primary-color)]" />
-          <h2 className="text-lg font-semibold capitalize">{labelFecha(fecha, hoy)}</h2>
-          <span className="text-xs text-muted-foreground mt-0.5">{fecha.split("-").reverse().join("/")}</span>
+      <div className="flex min-w-0 items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <CalendarDays className="h-5 w-5 shrink-0 text-[var(--primary-color)]" />
+          <h2 className="truncate text-lg font-semibold capitalize">{labelFecha(fecha, hoy)}</h2>
+          <span className="mt-0.5 hidden shrink-0 text-xs text-muted-foreground sm:inline">{fecha.split("-").reverse().join("/")}</span>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex shrink-0 items-center gap-1">
           <button
             onClick={() => setFecha(addDays(fecha, -1))}
             className="h-8 w-8 rounded-md border flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
@@ -75,6 +98,35 @@ export function HoySection() {
           )}
         </div>
       </div>
+
+      {proximosTurnos.length > 0 && (
+        <section className="space-y-2" aria-labelledby="proximos-turnos">
+          <div className="flex items-center gap-2 px-1">
+            <h3 id="proximos-turnos" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Próximos turnos
+            </h3>
+          </div>
+          <div className="divide-y divide-border/50">
+            {proximosTurnos.map((turno) => (
+              <div
+                key={turno.id}
+                className="flex items-center gap-3 py-2.5"
+              >
+                <span className="w-11 shrink-0 text-center text-xs font-semibold tabular-nums text-[var(--primary-color)]">
+                  {turno.hora.slice(0, 5)}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium">{turno.alumnos?.nombre ?? "Alumno"}</span>
+                  <span className="block truncate text-xs capitalize text-muted-foreground">
+                    {turno.fecha === hoy ? "Hoy" : format(parseISO(turno.fecha), "EEEE d 'de' MMMM", { locale: es })}
+                  </span>
+                </span>
+                <span className="hidden shrink-0 text-[11px] font-medium text-[var(--primary-color)] sm:inline">Antropometría</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {isLoading ? (
         <div className="flex items-center justify-center py-16">
