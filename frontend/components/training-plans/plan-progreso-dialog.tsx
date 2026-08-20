@@ -10,7 +10,7 @@ import { Loader } from "@/components/ui/loader"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { queryKeys } from "@/lib/query-keys"
 import { TrendingUp, AlertTriangle, StickyNote, Loader2, SkipForward, Undo2, CheckCircle2, Activity } from "lucide-react"
-import type { Planificacion } from "@/types/planificaciones"
+import type { PlanEjercicio, Planificacion, PlanSemana } from "@/types/planificaciones"
 import { CATEGORIA_ROW_STYLE } from "@/types/planificaciones"
 
 const SEMANAS_PREVIEW = [1, 2, 3, 4, 5, 6]
@@ -101,20 +101,35 @@ export function PlanProgresoDialog({
     })
   }
 
-  const savePrescripcion = async (ejId: number, semana: number) => {
-    const key = prescripcionKey(ejId, semana)
+  const savePrescripcion = async (ej: PlanEjercicio, semana: number) => {
+    const key = prescripcionKey(ej.id, semana)
     const edit = prescripcionEdits[key]
     if (!edit) return
     setSavingKey(key)
     try {
-      await axios.put(
-        `${process.env.NEXT_PUBLIC_URL_BACKEND}/planificaciones/ejercicios/${ejId}/semanas/${semana}`,
-        { dosis: edit.dosis || null, rpe: edit.rpe ? Number(edit.rpe) : null, notas_profesor: edit.notas || null }
-      )
+      const notaOriginal = ej.semanas?.find((sw: PlanSemana) => sw.semana === semana)?.notas_profesor ?? ""
+      const semanasDestino = edit.notas !== notaOriginal
+        ? Array.from({ length: plan.semanas - semana + 1 }, (_, index) => semana + index)
+        : [semana]
+
+      await Promise.all(semanasDestino.map((semanaDestino) => {
+        const destinoKey = prescripcionKey(ej.id, semanaDestino)
+        const destino = semanaDestino === semana
+          ? edit
+          : prescripcionEdits[destinoKey] ?? getPrescripcion(ej, semanaDestino)
+        return axios.put(
+          process.env.NEXT_PUBLIC_URL_BACKEND + "/planificaciones/ejercicios/" + ej.id + "/semanas/" + semanaDestino,
+          {
+            dosis: destino.dosis || null,
+            rpe: destino.rpe ? Number(destino.rpe) : null,
+            notas_profesor: edit.notas || null,
+          }
+        )
+      }))
       queryClient.invalidateQueries({ queryKey: queryKeys.planificacionById(planId) })
       setPrescripcionEdits((prev) => {
         const next = { ...prev }
-        delete next[key]
+        semanasDestino.forEach((semanaDestino) => delete next[prescripcionKey(ej.id, semanaDestino)])
         return next
       })
     } catch (err) {
@@ -408,7 +423,7 @@ export function PlanProgresoDialog({
                                     {isDirty && (
                                       <Button
                                         size="sm"
-                                        onClick={() => savePrescripcion(ej.id, semana)}
+                                        onClick={() => savePrescripcion(ej, semana)}
                                         disabled={isSaving}
                                         className="h-7 text-[11px] px-2 bg-[var(--primary-color)] hover:bg-[var(--primary-color)]/90 text-white"
                                       >
