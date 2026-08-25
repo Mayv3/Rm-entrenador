@@ -284,6 +284,52 @@ test.describe("Portal alumno - planificaciones", () => {
     await expect(page.getByText(/Seleccioná una semana/i)).toBeVisible()
   })
 
+  // Regresión: el flag "recién guardado" (justSavedRef) sobrevivía a la salida del día y, al
+  // reentrar al MISMO día, bloqueaba la re-hidratación → pantalla sin ningún registro.
+  // El GET de la sesión se congela a propósito: si el día se pinta, salió del cache del front.
+  test("salir del día y volver conserva los registros cargados (sin depender de la red)", async ({ page }) => {
+    test.setTimeout(60_000)
+    const ctx = await gotoPortal(page)
+    await selectSemanaDia(page)
+    await pasarCheckinExcelente(page)
+
+    const card = page.locator("div").filter({ has: page.getByText("Press plano barra") }).first()
+    const peso = card.locator('input[placeholder="0"]').nth(0)
+    await peso.fill("60")
+    await card.locator('input[placeholder="0"]').nth(1).fill("8")
+    await card.locator('input[placeholder="0"]').nth(2).fill("7.5")
+    await card.locator('input[placeholder="0"]').nth(2).blur()
+
+    // Guardado #1: el debounce de 1.5s dispara el PUT solo. Cambia el cache → el effect de
+    // hidratación vuelve a correr y consume el flag "recién guardado".
+    await expect.poll(() => ctx.savedPayloads.length, { timeout: 15_000 }).toBeGreaterThan(0)
+
+    // Guardado #2 re-tipeando el MISMO valor (dentro del debounce, un solo PUT): el update
+    // optimista queda deep-equal, react-query conserva la referencia, el effect no vuelve a
+    // correr y el flag sobrevive. Es el estado en el que salir y volver dejaba todo vacío.
+    await peso.fill("")
+    await peso.fill("60")
+    await peso.blur()
+    await expect.poll(() => ctx.savedPayloads.length, { timeout: 15_000 }).toBeGreaterThan(1)
+
+    await page.route("**/test-api.local/**", async (route) => {
+      const url = new URL(route.request().url())
+      const esGetSesion =
+        /\/portal\/planificaciones\/\d+\/sesiones$/.test(url.pathname) && route.request().method() === "GET"
+      if (esGetSesion) await new Promise((r) => setTimeout(r, 10_000))
+      await route.fallback()
+    })
+
+    await page.goBack()
+    await expect(page.getByText("Elegí un día")).toBeVisible()
+    await page.getByRole("button", { name: /Día\s+1/i }).click()
+
+    const cardVuelta = page.locator("div").filter({ has: page.getByText("Press plano barra") }).first()
+    await expect(cardVuelta.locator('input[placeholder="0"]').nth(0)).toHaveValue("60", { timeout: 3_000 })
+    await expect(cardVuelta.locator('input[placeholder="0"]').nth(1)).toHaveValue("8")
+    await expect(cardVuelta.locator('input[placeholder="0"]').nth(2)).toHaveValue("7.5")
+  })
+
   test("video link presente para ejercicio con video_url", async ({ page }) => {
     await gotoPortal(page)
     await selectSemanaDia(page)

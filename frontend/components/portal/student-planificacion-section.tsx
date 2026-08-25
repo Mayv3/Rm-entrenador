@@ -109,6 +109,7 @@ interface SerieRegistro {
   repeticiones: number | null
   rpe: number | null
   hecho?: boolean
+  _saltado?: boolean
 }
 
 interface RegistroSesion {
@@ -144,6 +145,9 @@ const DEFAULT_SERIES = 3
 // Paso 3: el envío a red se debounce para coalescer la ráfaga de saves por-serie.
 // La persistencia local (persistFormLocal) sigue siendo inmediata en cada tecla.
 const SAVE_DEBOUNCE_MS = 1500
+const POS_TTL_MS = 24 * 60 * 60 * 1000
+// Vida del snapshot local de lo YA guardado (fallback si el server no responde / no trae nada).
+const SNAPSHOT_TTL_MS = 14 * 24 * 60 * 60 * 1000
 // Pendiente 11: ms de inactividad en un input antes de saltar al próximo
 const FIELD_IDLE_MS = 2000
 const clampSeries = (v: unknown) => Math.min(8, Math.max(1, Number(v) || DEFAULT_SERIES))
@@ -167,6 +171,75 @@ const esRowConDatos = (esAerobico: boolean | undefined, row: FormRow | undefined
   if (esAerobico) return !!row.hecho
   return row.series.some((s) => !!s.peso_kg || !!s.repeticiones || !!s.rpe)
 }
+
+type RegistroPayload = {
+  peso_kg: number | null
+  repeticiones: number | null
+  rpe: number | null
+  notas: string | null
+  series: SerieRegistro[]
+}
+
+// Fila tal cual la va a guardar el server. Se usa en el PUT y en el update optimista del cache,
+// para que el cache nunca "mienta" respecto de lo persistido. `null` = el ejercicio no tiene datos.
+// Regla: solo se persisten series con los 3 valores; las incompletas van null/null/null.
+const registroDesdeForm = (
+  esAerobico: boolean | undefined,
+  row: FormRow | undefined,
+  count: number
+): RegistroPayload | null => {
+  if (!row) return null
+  if (esAerobico) {
+    if (!row.hecho && (row.notas ?? "") === "") return null
+    return {
+      peso_kg: null,
+      repeticiones: null,
+      rpe: null,
+      notas: row.notas || null,
+      series: [{ peso_kg: null, repeticiones: null, rpe: null, hecho: !!row.hecho }],
+    }
+  }
+  const serieCompleta = row.series.some((s) => !!s.peso_kg && !!s.repeticiones && !!s.rpe)
+  if ((row.notas ?? "") === "" && !serieCompleta) return null
+  const cleanSeries = padSeries(row.series, count).map((s) => {
+    const complete = !!s.peso_kg && !!s.repeticiones && !!s.rpe
+    return complete
+      ? { peso_kg: Number(s.peso_kg), repeticiones: Number(s.repeticiones), rpe: Number(s.rpe) }
+      : { peso_kg: null, repeticiones: null, rpe: null }
+  })
+  return {
+    peso_kg: cleanSeries[0].peso_kg,
+    repeticiones: cleanSeries[0].repeticiones,
+    rpe: cleanSeries[0].rpe,
+    notas: row.notas || null,
+    series: cleanSeries,
+  }
+}
+
+// Salteado: marcador `_saltado` solo en la serie 1 (invariante compartido con backend/RPC).
+const registroSaltado = (count: number): RegistroPayload => ({
+  peso_kg: 0,
+  repeticiones: 0,
+  rpe: 0,
+  notas: null,
+  series: Array.from({ length: count }, (_, i) =>
+    i === 0
+      ? { peso_kg: 0, repeticiones: 0, rpe: 0, _saltado: true }
+      : { peso_kg: 0, repeticiones: 0, rpe: 0 }
+  ),
+})
+
+// El ejercicio tenía datos y el alumno los borró: se manda vaciado (no se elimina la fila).
+const registroVacio = (esAerobico: boolean | undefined, count: number): RegistroPayload =>
+  esAerobico
+    ? { peso_kg: null, repeticiones: null, rpe: null, notas: null, series: [{ peso_kg: null, repeticiones: null, rpe: null, hecho: false }] }
+    : {
+        peso_kg: null,
+        repeticiones: null,
+        rpe: null,
+        notas: null,
+        series: Array.from({ length: count }, () => ({ peso_kg: null, repeticiones: null, rpe: null })),
+      }
 
 // Color del RPE por intensidad: ≤6 verde, 7 amarillo, 8 naranja, 9/10 rojo.
 const rpeColorClass = (rpe: number | null | undefined) => {
@@ -290,7 +363,10 @@ export function StudentPlanificacionSection({
   const formStorageKeyRef = useRef<string | null>(null)
   formStorageKeyRef.current = formStorageKey
 
-  const persistFormLocal = (form: Record<number, FormRow>, saltados: Set<number>) => {
+  // `saved: true` marca un SNAPSHOT de lo ya confirmado por el server (no un borrador sucio).
+  // Se usa solo como fallback de lectura cuando el server/cache no trae nada para ese ejercicio,
+  // y nunca se marca dirty → no se re-envía ni pisa datos del profe.
+  const persistFormLocal = (form: Record<number, FormRow>, saltados: Set<number>, saved = false) => {
     const key = formStorageKeyRef.current
     if (!key) return
     try {
@@ -298,22 +374,16 @@ export function StudentPlanificacionSection({
         form,
         saltados: Array.from(saltados),
         ts: Date.now(),
+        saved,
       }))
     } catch {}
-  }
-
-  const clearFormLocal = () => {
-    const key = formStorageKeyRef.current
-    if (!key) return
-    try { localStorage.removeItem(key) } catch {}
   }
 
   // Posición de scroll/serie. Antes vivía en sessionStorage, que se BORRA cuando el SO
   // mata la PWA en segundo plano (celulares con poca RAM, ej. A16). localStorage sobrevive
   // al cierre del proceso → al reabrir queda "suspendido" en el mismo lugar. TTL 24h para
   // no restaurar una posición vieja de días atrás.
-  const POS_TTL_MS = 24 * 60 * 60 * 1000
-  const readPos = (key: string | null): Record<string, any> | null => {
+  const readPos = useCallback((key: string | null): Record<string, unknown> | null => {
     if (!key) return null
     try {
       const raw = localStorage.getItem(key)
@@ -325,14 +395,14 @@ export function StudentPlanificacionSection({
       }
       return p
     } catch { return null }
-  }
-  const writePos = (key: string | null, patch: Record<string, unknown>) => {
+  }, [])
+  const writePos = useCallback((key: string | null, patch: Record<string, unknown>) => {
     if (!key) return
     try {
       const cur = readPos(key) ?? {}
       localStorage.setItem(key, JSON.stringify({ ...cur, ...patch, ts: Date.now() }))
     } catch {}
-  }
+  }, [readPos])
 
   const scrollToSerie = (ejId: number, idx: number) => {
     const el = serieScrollRefs.current.get(ejId)
@@ -381,7 +451,7 @@ export function StudentPlanificacionSection({
       if (raf) cancelAnimationFrame(raf)
       if ("scrollRestoration" in history) history.scrollRestoration = "auto"
     }
-  }, [posStorageKey])
+  }, [posStorageKey, writePos])
 
   const { data: planData, isLoading: loadingPlan, isError: errorPlan } = useQuery<{ planificacion: PlanificacionPortal | null }>({
     queryKey: queryKeyPlan(studentId),
@@ -601,6 +671,10 @@ export function StudentPlanificacionSection({
       dirtyEjIds.current.clear()
       pendingSerieRestoreRef.current = {}
       setPreviewPlan(false)
+      // Al salir del día el form queda vacío: el flag "recién guardado" ya no aplica a nada.
+      // Si sobrevivía, al reentrar al MISMO día bloqueaba la hidratación y la pantalla
+      // quedaba sin ningún registro (bug "no carga lo que ya había cargado").
+      justSavedRef.current = null
       return
     }
 
@@ -610,7 +684,9 @@ export function StudentPlanificacionSection({
     if (justSavedRef.current) {
       const esMismoDia = justSavedRef.current === sesionKeyStr
       justSavedRef.current = null
-      if (esMismoDia) return
+      // Y solo si el form TODAVÍA tiene las filas en pantalla: un form vacío nunca debe
+      // ganarle al cache. Cubre cualquier race que deje el flag puesto con el form limpio.
+      if (esMismoDia && Object.keys(registrosFormRef.current).length > 0) return
     }
 
     const registrosMap = new Map(
@@ -626,13 +702,13 @@ export function StudentPlanificacionSection({
         : []
 
       // Detect skip via explicit _saltado marker (never auto-detect from all-zeros)
-      const tieneMarcadorSaltado = savedSeries.length > 0 && (savedSeries[0] as any)?._saltado === true
+      const tieneMarcadorSaltado = savedSeries.length > 0 && savedSeries[0]?._saltado === true
       if (tieneMarcadorSaltado) {
         saltados.add(ej.id)
       }
 
       if (ej.es_aerobico) {
-        const hecho = !tieneMarcadorSaltado && (savedSeries[0] as any)?.hecho === true
+        const hecho = !tieneMarcadorSaltado && savedSeries[0]?.hecho === true
         next[ej.id] = { series: [], notas: existing?.notas ?? "", hecho }
         continue
       }
@@ -658,14 +734,19 @@ export function StudentPlanificacionSection({
       })
       next[ej.id] = { series, notas: existing?.notas ?? "" }
     }
-    // Overlay cualquier dato sin guardar persistido en localStorage
+    // Overlay del localStorage. Dos casos distintos:
+    // - BORRADOR (saved !== true): ediciones que nunca llegaron al server → pisan y quedan dirty.
+    // - SNAPSHOT (saved === true): copia de lo ya confirmado → solo rellena lo que el server NO
+    //   trajo, y NUNCA marca dirty (así no re-envía ni pisa una edición del profe).
     let localSaltados = saltados
     if (formStorageKey) {
       try {
         const raw = localStorage.getItem(formStorageKey)
         if (raw) {
-          const parsed = JSON.parse(raw) as { form?: Record<number, FormRow>; saltados?: number[] }
-          if (parsed.form) {
+          const parsed = JSON.parse(raw) as { form?: Record<number, FormRow>; saltados?: number[]; ts?: number; saved?: boolean }
+          const esSnapshot = parsed.saved === true
+          const vencido = esSnapshot && typeof parsed.ts === "number" && Date.now() - parsed.ts > SNAPSHOT_TTL_MS
+          if (parsed.form && !vencido) {
             for (const [ejIdStr, row] of Object.entries(parsed.form)) {
               const ejId = Number(ejIdStr)
               const localRow = row as FormRow
@@ -715,8 +796,10 @@ export function StudentPlanificacionSection({
     const savedY = typeof pos?.scrollY === "number" ? pos.scrollY : NaN
     const hasUsefulScrollY = !Number.isNaN(savedY) && savedY > 0
 
-    const savedMap: Record<number, number> | null = pos?.activeSerieMap ?? null
-    const savedLastEjId: number | null = pos?.lastEjId ?? null
+    const savedMap = typeof pos?.activeSerieMap === "object" && pos.activeSerieMap !== null
+      ? pos.activeSerieMap as Record<number, number>
+      : null
+    const savedLastEjId = typeof pos?.lastEjId === "number" ? pos.lastEjId : null
 
     // Compute first-incomplete fallback target (used when no useful saved position)
     let fallbackEjId: number | null = null
@@ -1078,7 +1161,7 @@ export function StudentPlanificacionSection({
       if (saveStatusResetRef.current) clearTimeout(saveStatusResetRef.current)
       setSaveStatus("idle")
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [])  
 
   // History API: push state on mount, handle back button
   useEffect(() => {
@@ -1188,93 +1271,31 @@ export function StudentPlanificacionSection({
       if (!planificacion || !hojaActiva || !diaSeleccionado || !semanaSeleccionada) return
 
       const dirtyIds = new Set(dirtyEjIds.current)
-      const registros: any[] = []
+      const registros: Array<RegistroPayload & { planificacion_ejercicio_id: number }> = []
 
       for (const ej of ejerciciosDelDia) {
         if (!dirtyIds.has(ej.id)) continue
 
-        const row = registrosFormRef.current[ej.id] ?? EMPTY_FORM_ROW(getSeriesCount(ej.id))
-        const esSaltado = saltadoEjIds.has(ej.id)
+        const count = getSeriesCount(ej.id)
+        const row = registrosFormRef.current[ej.id] ?? EMPTY_FORM_ROW(count)
 
-        if (esSaltado) {
-          const count = getSeriesCount(ej.id)
-          registros.push({
-            planificacion_ejercicio_id: ej.id,
-            peso_kg: 0,
-            repeticiones: 0,
-            rpe: 0,
-            notas: null,
-            series: Array.from({ length: count }, (_, i) =>
-              i === 0
-                ? { peso_kg: 0, repeticiones: 0, rpe: 0, _saltado: true }
-                : { peso_kg: 0, repeticiones: 0, rpe: 0 }
-            ),
-          })
+        if (saltadoEjIds.has(ej.id)) {
+          registros.push({ planificacion_ejercicio_id: ej.id, ...registroSaltado(count) })
           continue
         }
 
-        if (ej.es_aerobico) {
-          if (row.hecho || row.notas !== "") {
-            registros.push({
-              planificacion_ejercicio_id: ej.id,
-              peso_kg: null,
-              repeticiones: null,
-              rpe: null,
-              notas: row.notas || null,
-              series: [{ hecho: !!row.hecho }],
-            })
-          } else {
-            const sesionKey = queryKeySesion(planificacion.id, studentId, hojaActiva.id, diaSeleccionado.id, semanaSeleccionada)
-            const cached = queryClient.getQueryData<SsnData>(sesionKey) ?? sessionData
-            const priorRegistro = (cached?.registros ?? []).find((r) => r.planificacion_ejercicio_id === ej.id)
-            if (priorRegistro) {
-              registros.push({
-                planificacion_ejercicio_id: ej.id,
-                peso_kg: null,
-                repeticiones: null,
-                rpe: null,
-                notas: null,
-                series: [{ hecho: false }],
-              })
-            }
-          }
+        const built = registroDesdeForm(ej.es_aerobico, row, count)
+        if (built) {
+          registros.push({ planificacion_ejercicio_id: ej.id, ...built })
           continue
         }
 
-        const serieCompleta = row.series.some((s) => !!s.peso_kg && !!s.repeticiones && !!s.rpe)
-        const hasAnyData = row.notas !== "" || serieCompleta
-
-        if (hasAnyData) {
-          // Nunca persistir valores individuales: solo series con los 3 valores (peso+reps+rpe).
-          // Series parciales se mandan como null/null/null.
-          const cleanSeries = row.series.map((s) => {
-            const complete = !!s.peso_kg && !!s.repeticiones && !!s.rpe
-            return complete
-              ? { peso_kg: Number(s.peso_kg), repeticiones: Number(s.repeticiones), rpe: Number(s.rpe) }
-              : { peso_kg: null, repeticiones: null, rpe: null }
-          })
-          registros.push({
-            planificacion_ejercicio_id: ej.id,
-            peso_kg: cleanSeries[0].peso_kg,
-            repeticiones: cleanSeries[0].repeticiones,
-            rpe: cleanSeries[0].rpe,
-            notas: row.notas,
-            series: cleanSeries,
-          })
-        } else {
-          const sesionKey = queryKeySesion(planificacion.id, studentId, hojaActiva.id, diaSeleccionado.id, semanaSeleccionada)
-          const cached = queryClient.getQueryData<SsnData>(sesionKey) ?? sessionData
-          const priorRegistro = (cached?.registros ?? []).find((r) => r.planificacion_ejercicio_id === ej.id)
-          if (priorRegistro) {
-            registros.push({
-              planificacion_ejercicio_id: ej.id,
-              peso_kg: null,
-              repeticiones: null,
-              rpe: null,
-              notas: null,
-              series: Array.from({ length: getSeriesCount(ej.id) }, () => ({ peso_kg: null, repeticiones: null, rpe: null })),
-            })
-          }
+        // Sin datos: solo mandar el vaciado si ya existía un registro previo (si no, no hay nada que borrar).
+        const sesionKey = queryKeySesion(planificacion.id, studentId, hojaActiva.id, diaSeleccionado.id, semanaSeleccionada)
+        const cached = queryClient.getQueryData<SsnData>(sesionKey) ?? sessionData
+        const priorRegistro = (cached?.registros ?? []).find((r) => r.planificacion_ejercicio_id === ej.id)
+        if (priorRegistro) {
+          registros.push({ planificacion_ejercicio_id: ej.id, ...registroVacio(ej.es_aerobico, count) })
         }
       }
 
@@ -1301,7 +1322,7 @@ export function StudentPlanificacionSection({
       }
       await axios.put(`${process.env.NEXT_PUBLIC_URL_BACKEND}/portal/planificaciones/${planificacion.id}/sesiones`, payload)
     },
-    onSuccess: async (_data: any) => {
+    onSuccess: async () => {
       // SAVE-001: borrar SOLO lo que se envió y NO se volvió a editar durante el save in-flight.
       // El clear() ciego anterior, junto al guard `pendingResaveRef && isDirty` (con isDirty
       // forzado a false acá mismo), cancelaba el re-save de esas ediciones → pérdida de dato.
@@ -1310,8 +1331,12 @@ export function StudentPlanificacionSection({
       }
       if (savingEstadoRef.current && !estadoDirtyDuringSaveRef.current) estadoDirty.current = false
       isDirty.current = dirtyEjIds.current.size > 0 || estadoDirty.current
-      // Conservar el backup local si quedó algo pendiente; solo limpiarlo cuando todo está guardado.
-      if (dirtyEjIds.current.size === 0 && !estadoDirty.current) clearFormLocal()
+      // Si quedó algo pendiente, el backup local sigue siendo un borrador sucio (se conserva tal cual).
+      // Si ya está todo guardado, en vez de borrarlo lo degradamos a SNAPSHOT (`saved: true`):
+      // red de seguridad para reload / app matada por el SO / sin señal, sin ensuciar el form.
+      if (dirtyEjIds.current.size === 0 && !estadoDirty.current) {
+        persistFormLocal(registrosFormRef.current, saltadoEjIds, true)
+      }
       setSavedSuccess(true)
       setSaveMessage("")
       if (!currentSaveIsSilentRef.current) {
@@ -1325,52 +1350,44 @@ export function StudentPlanificacionSection({
       const sesionKey = queryKeySesion(planificacion.id, studentId, hojaActiva.id, diaSeleccionado.id, semanaSeleccionada)
 
       queryClient.setQueryData<SsnData>(sesionKey, (old) => {
-        if (!old) return undefined
-        const registrosActualizados = (old.registros ?? []).map((r) => {
-          if (saltadoEjIds.has(r.planificacion_ejercicio_id)) {
-            return {
-              ...r,
-              peso_kg: 0,
-              repeticiones: 0,
-              rpe: 0,
-              notas: null,
-              series: Array.from({ length: getSeriesCount(r.planificacion_ejercicio_id) }, (_, i) =>
-                i === 0
-                  ? { peso_kg: 0, repeticiones: 0, rpe: 0, _saltado: true }
-                  : { peso_kg: 0, repeticiones: 0, rpe: 0 }
-              ),
-            }
+        // Antes esto solo mapeaba las filas YA existentes en el cache: en el primer guardado del día
+        // (sesión nueva, registros: []) el cache quedaba vacío y al reentrar no se veía nada.
+        // Ahora se reconstruye desde el form, con las mismas reglas que el payload del PUT.
+        const prevRegistros = old?.registros ?? []
+        const prevPorEjercicio = new Map(prevRegistros.map((r) => [r.planificacion_ejercicio_id, r]))
+        const registrosActualizados: RegistroSesion[] = []
+
+        for (const ej of ejerciciosDelDia) {
+          const prev = prevPorEjercicio.get(ej.id)
+          const count = getSeriesCount(ej.id)
+          const base = { id: prev?.id ?? 0, planificacion_ejercicio_id: ej.id }
+
+          if (saltadoEjIds.has(ej.id)) {
+            registrosActualizados.push({ ...base, ...registroSaltado(count) })
+            continue
           }
-          const formRow = registrosForm[r.planificacion_ejercicio_id]
-          if (!formRow) return r
-          const ejMeta = ejerciciosDelDia.find((e) => e.id === r.planificacion_ejercicio_id)
-          if (ejMeta?.es_aerobico) {
-            return {
-              ...r,
-              peso_kg: null,
-              repeticiones: null,
-              rpe: null,
-              notas: formRow.notas || null,
-              series: [{ peso_kg: null, repeticiones: null, rpe: null, hecho: !!formRow.hecho }],
-            }
+          const built = registroDesdeForm(ej.es_aerobico, registrosFormRef.current[ej.id], count)
+          if (built) {
+            registrosActualizados.push({ ...base, ...built })
+            continue
           }
-          return {
-            ...r,
-            peso_kg: formRow.series[0]?.peso_kg === "" ? null : Number(formRow.series[0]?.peso_kg),
-            repeticiones: formRow.series[0]?.repeticiones === "" ? null : Number(formRow.series[0]?.repeticiones),
-            rpe: formRow.series[0]?.rpe === "" ? null : Number(formRow.series[0]?.rpe),
-            notas: formRow.notas || null,
-            series: formRow.series.map((s) => ({
-              peso_kg: s.peso_kg === "" ? null : Number(s.peso_kg),
-              repeticiones: s.repeticiones === "" ? null : Number(s.repeticiones),
-              rpe: s.rpe === "" ? null : Number(s.rpe),
-            })),
-          }
-        })
-        const sesionActualizada = old.sesion
+          // Sin datos: la fila solo sigue existiendo si ya existía (vaciada), igual que en el PUT.
+          if (prev) registrosActualizados.push({ ...base, ...registroVacio(ej.es_aerobico, count) })
+        }
+        // Defensivo: conservar filas de ejercicios que ya no están en el día (plan editado).
+        for (const r of prevRegistros) {
+          if (!ejerciciosDelDia.some((e) => e.id === r.planificacion_ejercicio_id)) registrosActualizados.push(r)
+        }
+
+        const sesionActualizada = old?.sesion
           ? { ...old.sesion, estado: allCompleted ? "completado" : old.sesion.estado ?? "abierta" }
           : { id: 0, estado: allCompleted ? "completado" : "abierta" }
-        return { ...old, sesion: sesionActualizada, estado_diario: { durmio_mal: durmioMal, fatiga, desmotivacion, dolor, excelente }, registros: registrosActualizados }
+        return {
+          ...(old ?? { sesion: null, estado_diario: null, registros: [] }),
+          sesion: sesionActualizada,
+          estado_diario: { durmio_mal: durmioMal, fatiga, desmotivacion, dolor, excelente },
+          registros: registrosActualizados,
+        }
       })
 
       const semanaKey = ["portalSesionesSemana", planificacion.id, studentId, hojaActiva.id, semanaSeleccionada] as const
