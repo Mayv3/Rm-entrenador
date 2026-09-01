@@ -12,7 +12,11 @@ const ACCEPTED_AVATAR_TYPES: Record<string, string> = {
 const MAX_AVATAR_SIZE = 2 * 1024 * 1024
 
 export async function PATCH(req: NextRequest) {
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
+  // El cookie de sesión está forzado a "next-auth.session-token" (sin el prefijo
+  // __Secure-) en app/api/auth/[...nextauth]/route.ts incluso en producción, así que
+  // hay que pasarle el mismo nombre acá: getToken() por defecto busca el nombre con
+  // prefijo __Secure- cuando detecta HTTPS y nunca encontraría el token.
+  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET, cookieName: "next-auth.session-token" })
   const email = token?.email
   if (!email) {
     return NextResponse.json({ message: "No autenticado." }, { status: 401 })
