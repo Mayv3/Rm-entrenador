@@ -12,11 +12,13 @@ import { Loader } from "@/components/ui/loader"
 import { StudentPlanificacionSection } from "@/components/portal/student-planificacion-section"
 import { ModeToggle } from "@/components/mode-toggle"
 import { PlanCalendarioDialog } from "@/components/training-plans/plan-calendario-dialog"
+import { DEFAULT_THEME_COLOR } from "@/lib/theme-color"
 
 interface Student {
   id: number
   nombre: string
   email: string
+  theme_color?: string | null
 }
 
 export default function MiPlanAppPage() {
@@ -71,8 +73,8 @@ export default function MiPlanAppPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background dark:bg-[#0a0a0a]">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-green-500/10 flex items-center justify-center">
-            <Dumbbell className="h-5 w-5 text-green-400 animate-pulse" />
+          <div className="h-10 w-10 rounded-xl bg-[var(--primary-color)]/10 flex items-center justify-center">
+            <Dumbbell className="h-5 w-5 text-[var(--primary-color)] animate-pulse" />
           </div>
           <Loader />
         </div>
@@ -96,7 +98,7 @@ export default function MiPlanAppPage() {
             href="https://wa.me/543516671026"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold shadow hover:bg-emerald-700 active:scale-[0.97] transition-all"
+            className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-[var(--primary-color)] text-white text-sm font-bold shadow hover:bg-[var(--primary-color)]/90 active:scale-[0.97] transition-all"
           >
             Contactar a mi entrenador
           </a>
@@ -118,8 +120,10 @@ export default function MiPlanAppPage() {
     )
   }
 
+  const themeVars = { "--primary-color": student.theme_color || DEFAULT_THEME_COLOR } as React.CSSProperties
+
   return (
-    <div className="min-h-screen bg-background dark:bg-[#0a0a0a]">
+    <div className="min-h-screen bg-background dark:bg-[#0a0a0a]" style={themeVars}>
       <header className="border-b border-border dark:border-white/[0.06] bg-background/80 dark:bg-background dark:bg-[#0a0a0a]/80 backdrop-blur-xl sticky top-0 z-10">
         <div className="max-w-lg mx-auto flex items-center justify-between px-4 py-3.5">
           <div className="flex items-center gap-2">
@@ -153,8 +157,8 @@ export default function MiPlanAppPage() {
             </button>
           </div>
           <div className="flex items-center gap-2">
-            <div className="h-6 w-6 rounded-lg bg-green-500/15 flex items-center justify-center">
-              <Dumbbell className="h-3.5 w-3.5 text-green-400" />
+            <div className="h-6 w-6 rounded-lg bg-[var(--primary-color)]/15 flex items-center justify-center">
+              <Dumbbell className="h-3.5 w-3.5 text-[var(--primary-color)]" />
             </div>
             <span className="text-sm font-semibold text-foreground dark:text-white">Mi plan app</span>
           </div>

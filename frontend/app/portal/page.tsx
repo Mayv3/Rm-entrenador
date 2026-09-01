@@ -8,7 +8,7 @@ import { useSession, signOut } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useRef, useState, Suspense } from "react"
 import { useTheme } from "next-themes"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import axios from "axios"
 import Image from "next/image"
 import logoRodrigoEntrenador from "../../assets/LOGO-RODRIGO-VERDE.png"
@@ -20,8 +20,10 @@ import { ModeToggle } from "@/components/mode-toggle"
 import { StudentPlanificacionSection } from "@/components/portal/student-planificacion-section"
 import { ManualViewer } from "@/components/manual/manual-viewer"
 import { SaveStatusIndicator } from "@/components/portal/save-status-indicator"
+import { StudentProfileCustomizer } from "@/components/portal/student-profile-customizer"
 import { supabase } from "@/lib/supabase-client"
 import { determineSubscriptionStatus, formatDate, getStatusColor } from "@/lib/payment-utils"
+import { DEFAULT_THEME_COLOR } from "@/lib/theme-color"
 import { usePlanes, Plan } from "@/hooks/use-planes"
 import { useServicios } from "@/hooks/use-servicios"
 import { format } from "date-fns"
@@ -45,6 +47,8 @@ interface Student {
   telefono: string
   plan: string
   habitos_link?: string | null
+  theme_color?: string | null
+  avatar_path?: string | null
 }
 
 interface Payment {
@@ -173,6 +177,7 @@ function isRealHabitsLink(link?: string | null): boolean {
 function PortalPageInner() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const queryClient = useQueryClient()
   const searchParams = useSearchParams()
   // Modo preview admin: /portal?asStudent=<id> muestra el portal de ese alumno
   // sin sesión de alumno. Solo para uso interno del entrenador.
@@ -389,7 +394,7 @@ function PortalPageInner() {
           href="https://wa.me/543516671026"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold shadow hover:bg-emerald-700 active:scale-[0.97] transition-all"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--primary-color)] text-white text-sm font-bold shadow hover:bg-[var(--primary-color)]/90 active:scale-[0.97] transition-all"
         >
           <MessageSquare className="h-4 w-4" />
           Contactar a mi entrenador
@@ -434,7 +439,7 @@ function PortalPageInner() {
           href="https://wa.me/543516671026"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold shadow hover:bg-emerald-700 active:scale-[0.97] transition-all"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--primary-color)] text-white text-sm font-bold shadow hover:bg-[var(--primary-color)]/90 active:scale-[0.97] transition-all"
         >
           <MessageSquare className="h-4 w-4" />
           Contactar a mi entrenador
@@ -473,9 +478,16 @@ function PortalPageInner() {
         "--sidebar-ring": "330 81% 60%",
       } as React.CSSProperties)
     : undefined
+  const accentThemeVars = { "--primary-color": student.theme_color || DEFAULT_THEME_COLOR } as React.CSSProperties
+
+  async function handleProfileSaved() {
+    await queryClient.invalidateQueries({
+      queryKey: isPreview ? ["portalStudentPreview", previewId] : ["portalStudent", email],
+    })
+  }
 
   return (
-    <div className="min-h-screen bg-background relative" style={pinkThemeVars}>
+    <div className="min-h-screen bg-background relative" style={pinkThemeVars ?? accentThemeVars}>
       {isJessica && <CutePinkDecor />}
       {/* Aviso de plan vencido — aparece cada vez que el alumno entra */}
       <Dialog open={showVencidoAlert} onOpenChange={setShowVencidoAlert}>
@@ -492,7 +504,7 @@ function PortalPageInner() {
               href="https://wa.me/543516671026"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold shadow hover:bg-emerald-700 active:scale-[0.97] transition-all"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--primary-color)] text-white text-sm font-bold shadow hover:bg-[var(--primary-color)]/90 active:scale-[0.97] transition-all"
             >
               <MessageSquare className="h-4 w-4" />
               Contactar a mi entrenador
@@ -538,11 +550,7 @@ function PortalPageInner() {
         <div className="rounded-xl overflow-hidden border border-[var(--primary-color)]/40 bg-card shadow-sm">
           {/* Perfil */}
           <div className="px-5 py-4 flex items-center gap-4 border-b border-border">
-            <div className="h-12 w-12 rounded-full bg-[var(--primary-color)]/10 flex items-center justify-center ring-1 ring-[var(--primary-color)]/30 flex-shrink-0">
-              <span className="text-lg font-black text-[var(--primary-color)]">
-                {(student.nombre ?? "?").trim().charAt(0).toUpperCase()}
-              </span>
-            </div>
+            <StudentProfileCustomizer student={student} disabled={isPreview} onSaved={handleProfileSaved} />
             <div className="flex flex-col min-w-0 flex-1">
               <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--primary-color)]">Alumno</span>
               <h1 className="font-bold text-lg leading-tight truncate text-foreground">{student.nombre}</h1>
@@ -579,7 +587,6 @@ function PortalPageInner() {
                 style={{ backgroundColor: `${getStatusColor(subscriptionStatus)}10`, borderBottom: `1px solid ${getStatusColor(subscriptionStatus)}25` }}
               >
                 <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full animate-pulse" style={{ backgroundColor: getStatusColor(subscriptionStatus) }} />
                   <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Estado del plan</span>
                 </div>
                 <span
@@ -633,7 +640,7 @@ function PortalPageInner() {
             href="https://wa.me/543516671026"
             target="_blank"
             rel="noopener noreferrer"
-            className={`group relative overflow-hidden flex flex-col items-center justify-center gap-2 py-5 rounded-xl bg-gradient-to-br ${isJessica ? "from-pink-400 to-rose-600" : "from-emerald-500 to-emerald-700"} text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.97] transition-all duration-200 border border-white/10`}
+            className={`group relative overflow-hidden flex flex-col items-center justify-center gap-2 py-5 rounded-xl bg-gradient-to-br ${isJessica ? "from-pink-400 to-rose-600" : "from-[var(--primary-color)] to-[color-mix(in_srgb,var(--primary-color)_55%,black)]"} text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.97] transition-all duration-200 border border-white/10`}
           >
             <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             <div className="relative flex flex-col items-center gap-1.5">
@@ -839,10 +846,10 @@ function PortalPageInner() {
               href={student.habitos_link!}
               target="_blank"
               rel="noopener noreferrer"
-              className={`group flex flex-col items-center justify-center gap-2 py-5 rounded-xl bg-card border ${isJessica ? "border-pink-500/40 hover:border-pink-500" : "border-emerald-500/40 hover:border-emerald-500"} hover:bg-muted/40 shadow-sm hover:shadow active:scale-[0.97] transition-all duration-200 w-full`}
+              className={`group flex flex-col items-center justify-center gap-2 py-5 rounded-xl bg-card border ${isJessica ? "border-pink-500/40 hover:border-pink-500" : "border-[var(--primary-color)]/40 hover:border-[var(--primary-color)]"} hover:bg-muted/40 shadow-sm hover:shadow active:scale-[0.97] transition-all duration-200 w-full`}
             >
-              <div className={`h-10 w-10 rounded-full ${isJessica ? "bg-pink-500/10 ring-pink-500/30" : "bg-emerald-500/10 ring-emerald-500/30"} ring-1 flex items-center justify-center`}>
-                <Salad className={`h-5 w-5 ${isJessica ? "text-pink-600" : "text-emerald-600"}`} />
+              <div className={`h-10 w-10 rounded-full ${isJessica ? "bg-pink-500/10 ring-pink-500/30" : "bg-[var(--primary-color)]/10 ring-[var(--primary-color)]/30"} ring-1 flex items-center justify-center`}>
+                <Salad className={`h-5 w-5 ${isJessica ? "text-pink-600" : "text-[var(--primary-color)]"}`} />
               </div>
               <span className="text-sm font-bold tracking-tight text-foreground">Ver mis hábitos</span>
               <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Abrir</span>
@@ -1045,7 +1052,7 @@ function PortalPageInner() {
                                       {v.duracion_meses ? `${v.duracion_meses} meses` : v.nombre}
                                     </span>
                                     {v.descuento > 0 && (
-                                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-500">
+                                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-[var(--primary-color)]/15 text-[var(--primary-color)]">
                                         -{v.descuento}%
                                       </span>
                                     )}

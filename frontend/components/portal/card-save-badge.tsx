@@ -9,7 +9,7 @@ export function CardSaveBadge({ ejId }: { ejId: number }) {
   if (status === "idle" || status === "saving") return null
 
   const cfg = {
-    saved: { icon: CheckCircle2, text: "Guardado", cls: "bg-green-500/15 border-green-500/30 text-green-500 dark:text-green-400" },
+    saved: { icon: CheckCircle2, text: "Guardado", cls: "bg-[var(--primary-color)]/15 border-[var(--primary-color)]/30 text-[var(--primary-color)] dark:text-[var(--primary-color)]" },
     error: { icon: AlertCircle, text: "Error", cls: "bg-red-500/15 border-red-500/30 text-red-500 dark:text-red-400" },
   }[status]
   const Icon = cfg.icon

@@ -244,7 +244,7 @@ const registroVacio = (esAerobico: boolean | undefined, count: number): Registro
 // Color del RPE por intensidad: ≤6 verde, 7 amarillo, 8 naranja, 9/10 rojo.
 const rpeColorClass = (rpe: number | null | undefined) => {
   if (rpe == null) return "text-muted-foreground dark:text-zinc-500"
-  if (rpe <= 6) return "text-green-600 dark:text-green-400"
+  if (rpe <= 6) return "text-[var(--primary-color)] dark:text-[var(--primary-color)]"
   if (rpe === 7) return "text-yellow-500 dark:text-yellow-400"
   if (rpe === 8) return "text-orange-500 dark:text-orange-400"
   return "text-red-500 dark:text-red-400"
@@ -1771,8 +1771,8 @@ export function StudentPlanificacionSection({
       <div className="space-y-5">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <div className="h-7 w-7 rounded-lg bg-green-500/15 flex items-center justify-center">
-              <Trophy className="h-3.5 w-3.5 text-green-400" />
+            <div className="h-7 w-7 rounded-lg bg-[var(--primary-color)]/15 flex items-center justify-center">
+              <Trophy className="h-3.5 w-3.5 text-[var(--primary-color)]" />
             </div>
             <h2 className="text-base font-bold text-foreground dark:text-white">{planificacion.nombre}</h2>
           </div>
@@ -1804,28 +1804,28 @@ export function StudentPlanificacionSection({
                     bloqueada
                       ? "border-border dark:border-white/[0.05] bg-muted/40 dark:bg-white/[0.02] cursor-not-allowed active:scale-100"
                       : completada
-                      ? "border-green-500 dark:border-green-500/40 bg-green-100 dark:bg-green-500/[0.07] hover:bg-green-200 dark:hover:bg-green-500/[0.11]"
-                      : "border-border bg-card dark:bg-white/[0.03] hover:bg-muted dark:hover:bg-white/[0.06] hover:border-green-500/60 dark:hover:border-green-500/30 active:bg-green-200 dark:active:bg-green-500/20 active:border-green-500"
+                      ? "border-[var(--primary-color)] dark:border-[var(--primary-color)]/40 bg-[var(--primary-color)]/10 dark:bg-[var(--primary-color)]/[0.07] hover:bg-[var(--primary-color)]/20 dark:hover:bg-[var(--primary-color)]/[0.11]"
+                      : "border-border bg-card dark:bg-white/[0.03] hover:bg-muted dark:hover:bg-white/[0.06] hover:border-[var(--primary-color)]/60 dark:hover:border-[var(--primary-color)]/30 active:bg-[var(--primary-color)]/20 dark:active:bg-[var(--primary-color)]/20 active:border-[var(--primary-color)]"
                   }`}
                 >
                   {/* Relleno proporcional a días completos (sube desde abajo) */}
                   {parcial && (
                     <div
-                      className="absolute inset-x-0 bottom-0 bg-green-500/20 dark:bg-green-500/[0.14] transition-all duration-500 ease-out pointer-events-none"
+                      className="absolute inset-x-0 bottom-0 bg-[var(--primary-color)]/20 dark:bg-[var(--primary-color)]/[0.14] transition-all duration-500 ease-out pointer-events-none"
                       style={{ height: `${pct}%` }}
                     />
                   )}
-                  {!bloqueada && <div className="absolute inset-0 bg-gradient-to-br from-green-500/0 group-hover:from-green-500/5 to-transparent transition-all duration-200" />}
-                  <span className={`absolute top-3 left-3 text-[10px] font-semibold uppercase tracking-widest transition-colors ${bloqueada ? "text-muted-foreground/50 dark:text-zinc-600" : completada ? "text-green-500/70" : "text-muted-foreground dark:text-zinc-500 group-hover:text-green-500/70"}`}>Semana</span>
-                  <span className={`absolute inset-0 flex items-center justify-center text-4xl font-black transition-colors ${bloqueada ? "text-muted-foreground/40 dark:text-zinc-700" : completada ? "text-green-700 dark:text-green-400" : "text-foreground dark:text-white"}`}>{semana}</span>
+                  {!bloqueada && <div className="absolute inset-0 bg-gradient-to-br from-[var(--primary-color)]/0 group-hover:from-[var(--primary-color)]/5 to-transparent transition-all duration-200" />}
+                  <span className={`absolute top-3 left-3 text-[10px] font-semibold uppercase tracking-widest transition-colors ${bloqueada ? "text-muted-foreground/50 dark:text-zinc-600" : completada ? "text-[var(--primary-color)]/70" : "text-muted-foreground dark:text-zinc-500 group-hover:text-[var(--primary-color)]/70"}`}>Semana</span>
+                  <span className={`absolute inset-0 flex items-center justify-center text-4xl font-black transition-colors ${bloqueada ? "text-muted-foreground/40 dark:text-zinc-700" : completada ? "text-[var(--primary-color)] dark:text-[var(--primary-color)]" : "text-foreground dark:text-white"}`}>{semana}</span>
                   {parcial && (
-                    <span className="absolute bottom-3 left-3 text-[10px] font-semibold tabular-nums text-green-600 dark:text-green-400">{prog.done}/{prog.total}</span>
+                    <span className="absolute bottom-3 left-3 text-[10px] font-semibold tabular-nums text-[var(--primary-color)] dark:text-[var(--primary-color)]">{prog.done}/{prog.total}</span>
                   )}
                   {bloqueada
                     ? <Lock className="absolute right-3 bottom-3 h-4 w-4 text-muted-foreground/50 dark:text-zinc-600" />
                     : completada
-                    ? <CheckCircle2 className="absolute right-3 bottom-3 h-4 w-4 text-green-600 dark:text-green-400" />
-                    : <ChevronRight className="absolute right-3 bottom-3 h-4 w-4 text-muted-foreground/70 dark:text-zinc-600 group-hover:text-green-500/50 transition-colors" />
+                    ? <CheckCircle2 className="absolute right-3 bottom-3 h-4 w-4 text-[var(--primary-color)] dark:text-[var(--primary-color)]" />
+                    : <ChevronRight className="absolute right-3 bottom-3 h-4 w-4 text-muted-foreground/70 dark:text-zinc-600 group-hover:text-[var(--primary-color)]/50 transition-colors" />
                   }
                 </button>
               )
@@ -1875,30 +1875,30 @@ export function StudentPlanificacionSection({
                     }}
                     className={`group w-full relative aspect-square rounded-2xl border ${saltado ? "cursor-not-allowed" : "active:scale-95"} transition-all duration-150 p-4 text-left overflow-hidden ${
                       completado
-                        ? "border-green-500/40 bg-green-500/[0.07] hover:bg-green-500/[0.11]"
+                        ? "border-[var(--primary-color)]/40 bg-[var(--primary-color)]/[0.07] hover:bg-[var(--primary-color)]/[0.11]"
                         : incompleto
                         ? "border-amber-500/40 bg-amber-500/[0.07] hover:bg-amber-500/[0.11]"
-                        : "border-border dark:border-white/[0.07] bg-muted/40 dark:bg-white/[0.03] hover:bg-muted/60 dark:bg-white/[0.06] hover:border-green-500/30 active:bg-green-500/20 active:border-green-500/60"
+                        : "border-border dark:border-white/[0.07] bg-muted/40 dark:bg-white/[0.03] hover:bg-muted/60 dark:bg-white/[0.06] hover:border-[var(--primary-color)]/30 active:bg-[var(--primary-color)]/20 active:border-[var(--primary-color)]/60"
                     }`}
                   >
                     {/* Relleno proporcional a ejercicios resueltos (sube desde abajo) */}
                     {parcialDia && (
                       <div
-                        className={`absolute inset-x-0 bottom-0 transition-all duration-500 ease-out pointer-events-none ${incompleto ? "bg-amber-500/[0.16]" : "bg-green-500/[0.16]"}`}
+                        className={`absolute inset-x-0 bottom-0 transition-all duration-500 ease-out pointer-events-none ${incompleto ? "bg-amber-500/[0.16]" : "bg-[var(--primary-color)]/[0.16]"}`}
                         style={{ height: `${pctDia}%` }}
                       />
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-br from-green-500/0 group-hover:from-green-500/5 to-transparent transition-all duration-200" />
-                    <span className={`absolute top-3 left-3 text-[10px] font-semibold uppercase tracking-widest transition-colors ${saltado ? "text-muted-foreground dark:text-zinc-400" : completado ? "text-green-500/70" : incompleto ? "text-amber-500/80" : "text-muted-foreground dark:text-zinc-500 group-hover:text-green-500/70"}`}>{saltado ? "Saltado" : `Día${parcialDia ? ` · ${doneEj}/${totalEj}` : ""}`}</span>
-                    {!saltado && <span className={`absolute inset-0 flex items-center justify-center text-4xl font-black transition-colors ${completado ? "text-green-700 dark:text-green-400" : incompleto ? "text-amber-600 dark:text-amber-400" : "text-foreground dark:text-white"}`}>{dia.numero_dia}</span>}
+                    <div className="absolute inset-0 bg-gradient-to-br from-[var(--primary-color)]/0 group-hover:from-[var(--primary-color)]/5 to-transparent transition-all duration-200" />
+                    <span className={`absolute top-3 left-3 text-[10px] font-semibold uppercase tracking-widest transition-colors ${saltado ? "text-muted-foreground dark:text-zinc-400" : completado ? "text-[var(--primary-color)]/70" : incompleto ? "text-amber-500/80" : "text-muted-foreground dark:text-zinc-500 group-hover:text-[var(--primary-color)]/70"}`}>{saltado ? "Saltado" : `Día${parcialDia ? ` · ${doneEj}/${totalEj}` : ""}`}</span>
+                    {!saltado && <span className={`absolute inset-0 flex items-center justify-center text-4xl font-black transition-colors ${completado ? "text-[var(--primary-color)] dark:text-[var(--primary-color)]" : incompleto ? "text-amber-600 dark:text-amber-400" : "text-foreground dark:text-white"}`}>{dia.numero_dia}</span>}
                     <span className="absolute bottom-3 left-3 right-8 text-[10px] text-muted-foreground dark:text-zinc-400 truncate">{dia.nombre}</span>
                     {saltado
-                      ? <SkipForward className="absolute right-3 bottom-3 h-4 w-4 text-green-600/80 dark:text-green-400/80" />
+                      ? <SkipForward className="absolute right-3 bottom-3 h-4 w-4 text-[var(--primary-color)]/80 dark:text-[var(--primary-color)]/80" />
                       : completado
-                      ? <CheckCircle2 className="absolute right-3 bottom-3 h-4 w-4 text-green-600 dark:text-green-400" />
+                      ? <CheckCircle2 className="absolute right-3 bottom-3 h-4 w-4 text-[var(--primary-color)] dark:text-[var(--primary-color)]" />
                       : incompleto
                       ? <AlertTriangle className="absolute right-3 bottom-3 h-4 w-4 text-amber-500 dark:text-amber-400" />
-                      : <ChevronRight className="absolute right-3 bottom-3 h-4 w-4 text-muted-foreground/70 dark:text-zinc-600 group-hover:text-green-500/50 transition-colors" />
+                      : <ChevronRight className="absolute right-3 bottom-3 h-4 w-4 text-muted-foreground/70 dark:text-zinc-600 group-hover:text-[var(--primary-color)]/50 transition-colors" />
                     }
                   </button>
                   {puedeSaltar && (
@@ -1919,7 +1919,7 @@ export function StudentPlanificacionSection({
                       onClick={(e) => { e.stopPropagation(); revertDayMutation.mutate(dia) }}
                       title="Revertir salto"
                       aria-label="Revertir salto"
-                      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 h-12 w-12 rounded-full flex items-center justify-center bg-background/80 dark:bg-black/50 border border-green-500/40 text-green-700 dark:text-green-400 hover:bg-green-500/10 active:scale-90 transition-all disabled:opacity-50"
+                      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 h-12 w-12 rounded-full flex items-center justify-center bg-background/80 dark:bg-black/50 border border-[var(--primary-color)]/40 text-[var(--primary-color)] dark:text-[var(--primary-color)] hover:bg-[var(--primary-color)]/10 active:scale-90 transition-all disabled:opacity-50"
                     >
                       {revertDayMutation.isPending && revertDayMutation.variables?.id === dia.id
                         ? <Loader2 className="h-5 w-5 animate-spin" />
@@ -1992,8 +1992,8 @@ export function StudentPlanificacionSection({
         {cargandoSesionInicial
           ? <Skeleton className="h-8 w-24 rounded-xl flex-shrink-0" />
           : (allCompleted && !previewPlan) ? (
-            <span className="flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-semibold border bg-green-500/15 border-green-500/30 text-green-400 flex-shrink-0">
-              <CheckCircle2 className="h-4 w-4 text-green-400" />
+            <span className="flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-semibold border bg-[var(--primary-color)]/15 border-[var(--primary-color)]/30 text-[var(--primary-color)] flex-shrink-0">
+              <CheckCircle2 className="h-4 w-4 text-[var(--primary-color)]" />
               Completado
             </span>
           ) : null
@@ -2076,7 +2076,7 @@ export function StudentPlanificacionSection({
 
           <button
             onClick={durmioMal || fatiga || desmotivacion || dolor ? handleConfirmar : handleEstoyPerfecto}
-            className="w-full max-w-sm py-4 rounded-2xl bg-green-500/15 border border-green-500/30 text-green-400 text-base font-bold hover:bg-green-500/20 transition-all active:scale-[0.98]"
+            className="w-full max-w-sm py-4 rounded-2xl bg-[var(--primary-color)]/15 border border-[var(--primary-color)]/30 text-[var(--primary-color)] text-base font-bold hover:bg-[var(--primary-color)]/20 transition-all active:scale-[0.98]"
           >
             {durmioMal || fatiga || desmotivacion || dolor ? "Confirmar" : "¡Estoy excelente!"}
           </button>
@@ -2097,7 +2097,7 @@ export function StudentPlanificacionSection({
           <div className="space-y-2">
             <div className={`grid gap-1.5 ${(durmioMal || fatiga || desmotivacion || dolor) ? "grid-cols-4" : "grid-cols-5"}`}>
               {([
-                { field: "excelente" as const, label: "Excelente", Icon: CheckCircle2, active: excelente, on: "bg-green-500/20 border-green-500/40 text-green-300" },
+                { field: "excelente" as const, label: "Excelente", Icon: CheckCircle2, active: excelente, on: "bg-[var(--primary-color)]/20 border-[var(--primary-color)]/40 text-[var(--primary-color)]" },
                 { field: "durmioMal" as const, label: "Sueño", Icon: Moon, active: durmioMal, on: "bg-indigo-500/20 border-indigo-500/40 text-indigo-300" },
                 { field: "fatiga" as const, label: "Fatiga", Icon: BatteryWarning, active: fatiga, on: "bg-amber-500/20 border-amber-500/40 text-amber-300" },
                 { field: "desmotivacion" as const, label: "Ánimo", Icon: Frown, active: desmotivacion, on: "bg-cyan-500/20 border-cyan-500/40 text-cyan-300" },
@@ -2131,7 +2131,7 @@ export function StudentPlanificacionSection({
                     setEstadoLocalDirty(false)
                   }}
                   disabled={saveMutation.isPending}
-                  className="w-full py-2.5 rounded-2xl bg-green-500/15 border border-green-500/30 text-green-400 text-xs font-bold hover:bg-green-500/20 transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="w-full py-2.5 rounded-2xl bg-[var(--primary-color)]/15 border border-[var(--primary-color)]/30 text-[var(--primary-color)] text-xs font-bold hover:bg-[var(--primary-color)]/20 transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {saveMutation.isPending
                     ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Guardando…</>
@@ -2400,7 +2400,7 @@ export function StudentPlanificacionSection({
                     <label
                       className={`w-full flex items-center gap-3 rounded-2xl border-2 px-4 py-4 transition-colors active:scale-[0.99] cursor-pointer ${
                         row.hecho
-                          ? "border-green-500/60 bg-green-500/[0.08] text-green-600 dark:text-green-400"
+                          ? "border-[var(--primary-color)]/60 bg-[var(--primary-color)]/[0.08] text-[var(--primary-color)] dark:text-[var(--primary-color)]"
                           : "border-border dark:border-white/[0.1] bg-muted/30 dark:bg-white/[0.02] text-muted-foreground dark:text-zinc-400"
                       }`}
                     >
@@ -2412,7 +2412,7 @@ export function StudentPlanificacionSection({
                       />
                       <span
                         className={`h-7 w-7 rounded-lg border-2 flex items-center justify-center flex-shrink-0 ${
-                          row.hecho ? "border-green-500 bg-green-500 text-white" : "border-border dark:border-white/[0.25]"
+                          row.hecho ? "border-[var(--primary-color)] bg-[var(--primary-color)] text-white" : "border-border dark:border-white/[0.25]"
                         }`}
                       >
                         {row.hecho && <CheckCircle2 className="h-5 w-5" />}
@@ -2436,10 +2436,10 @@ export function StudentPlanificacionSection({
                             const serieFilled = !!serie.peso_kg && !!serie.repeticiones && !!serie.rpe
                             return (
                               <div key={serieIdx}>
-                                <span className={`block mb-1 px-0.5 text-xs font-bold uppercase tracking-widest ${serieFilled ? "text-green-600 dark:text-green-400" : "text-muted-foreground dark:text-zinc-500"}`}>
+                                <span className={`block mb-1 px-0.5 text-xs font-bold uppercase tracking-widest ${serieFilled ? "text-[var(--primary-color)] dark:text-[var(--primary-color)]" : "text-muted-foreground dark:text-zinc-500"}`}>
                                   Serie {serieIdx + 1}
                                 </span>
-                                <div className={`rounded-2xl overflow-hidden transition-colors grid grid-cols-3 divide-x divide-border dark:divide-white/[0.08] ${serieFilled ? "bg-green-500/[0.07]" : "bg-muted/30 dark:bg-white/[0.02]"}`}>
+                                <div className={`rounded-2xl overflow-hidden transition-colors grid grid-cols-3 divide-x divide-border dark:divide-white/[0.08] ${serieFilled ? "bg-[var(--primary-color)]/[0.07]" : "bg-muted/30 dark:bg-white/[0.02]"}`}>
                                   <div className="flex items-baseline justify-center gap-0.5 px-1">
                                     <Input
                                       ref={(el) => { if (el) inputRefs.current.set(`${ej.id}-${serieIdx}-peso_kg`, el) }}
@@ -2556,7 +2556,7 @@ export function StudentPlanificacionSection({
                     <Textarea
                       placeholder="Opcional…"
                       maxLength={100}
-                      className="min-h-14 resize-none bg-card/80 dark:bg-card dark:bg-zinc-900/80 border-border dark:border-white/[0.08] focus:border-green-500/50 focus:ring-green-500/20 text-foreground dark:text-white placeholder:text-muted-foreground/70 dark:text-zinc-600 text-base rounded-xl"
+                      className="min-h-14 resize-none bg-card/80 dark:bg-card dark:bg-zinc-900/80 border-border dark:border-white/[0.08] focus:border-[var(--primary-color)]/50 focus:ring-[var(--primary-color)]/20 text-foreground dark:text-white placeholder:text-muted-foreground/70 dark:text-zinc-600 text-base rounded-xl"
                       value={row.notas}
                       onChange={(e) => handleNotasChange(ej.id, e.target.value)}
                     />
@@ -2576,7 +2576,7 @@ export function StudentPlanificacionSection({
                       Saltado
                     </button>
                   ) : isFilled ? (
-                    <div className="flex items-center justify-center gap-2 px-4 py-3.5 border-t border-green-500/30 bg-green-500/15 text-base font-bold text-green-600 dark:text-green-400">
+                    <div className="flex items-center justify-center gap-2 px-4 py-3.5 border-t border-[var(--primary-color)]/30 bg-[var(--primary-color)]/15 text-base font-bold text-[var(--primary-color)] dark:text-[var(--primary-color)]">
                       <CheckCircle2 className="h-5 w-5" />
                       Completado
                     </div>
@@ -2668,15 +2668,15 @@ export function StudentPlanificacionSection({
                           onClick={() => scrollToSerie(ej.id, i)}
                           className={`relative flex items-center justify-center gap-2 py-3.5 rounded-xl text-base font-bold transition-all border ${
                             active
-                              ? "bg-muted dark:bg-white/[0.12] border-green-400/60 text-foreground dark:text-white shadow-[0_0_12px_rgba(74,222,128,0.25)] scale-[1.03] z-10"
+                              ? "bg-muted dark:bg-white/[0.12] border-[var(--primary-color)]/60 text-foreground dark:text-white shadow-[0_0_12px_color-mix(in_srgb,var(--primary-color)_25%,transparent)] scale-[1.03] z-10"
                               : filled
-                              ? "bg-green-500/15 border-green-500/30 text-foreground/80 dark:text-foreground dark:text-white/80"
+                              ? "bg-[var(--primary-color)]/15 border-[var(--primary-color)]/30 text-foreground/80 dark:text-foreground dark:text-white/80"
                               : "bg-transparent border-border dark:border-white/[0.05] text-muted-foreground/70 dark:text-zinc-600"
                           }`}
                         >
                           Serie {i + 1}
                           {filled && (
-                            <span className={`h-2 w-2 rounded-full flex-shrink-0 ${active ? "bg-green-300" : "bg-green-500"}`} />
+                            <span className="h-2 w-2 rounded-full flex-shrink-0 bg-[var(--primary-color)]" />
                           )}
                         </button>
                       )
@@ -2719,7 +2719,7 @@ export function StudentPlanificacionSection({
                                 value={serie.peso_kg}
                                 onChange={(e) => handleSerieChange(ej.id, serieIdx, "peso_kg", e.target.value)}
                                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNextInput(ej.id, serieIdx, "peso_kg") } }}
-                                className="bg-card/80 dark:bg-zinc-900/80 border-border dark:border-white/[0.08] focus:border-green-500/50 focus:ring-green-500/20 text-foreground dark:text-white placeholder:text-foreground/60 dark:placeholder:text-zinc-300 h-14 text-xl font-bold text-center rounded-xl"
+                                className="bg-card/80 dark:bg-zinc-900/80 border-border dark:border-white/[0.08] focus:border-[var(--primary-color)]/50 focus:ring-[var(--primary-color)]/20 text-foreground dark:text-white placeholder:text-foreground/60 dark:placeholder:text-zinc-300 h-14 text-xl font-bold text-center rounded-xl"
                               />
                             </div>
                             <div className="space-y-1.5">
@@ -2736,7 +2736,7 @@ export function StudentPlanificacionSection({
                                 value={serie.repeticiones}
                                 onChange={(e) => handleSerieChange(ej.id, serieIdx, "repeticiones", e.target.value)}
                                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNextInput(ej.id, serieIdx, "repeticiones") } }}
-                                className="bg-card/80 dark:bg-zinc-900/80 border-border dark:border-white/[0.08] focus:border-green-500/50 focus:ring-green-500/20 text-foreground dark:text-white placeholder:text-foreground/60 dark:placeholder:text-zinc-300 h-14 text-xl font-bold text-center rounded-xl"
+                                className="bg-card/80 dark:bg-zinc-900/80 border-border dark:border-white/[0.08] focus:border-[var(--primary-color)]/50 focus:ring-[var(--primary-color)]/20 text-foreground dark:text-white placeholder:text-foreground/60 dark:placeholder:text-zinc-300 h-14 text-xl font-bold text-center rounded-xl"
                               />
                             </div>
                             <div className="space-y-1.5">
@@ -2752,7 +2752,7 @@ export function StudentPlanificacionSection({
                                 value={serie.rpe}
                                 onChange={(e) => handleSerieChange(ej.id, serieIdx, "rpe", e.target.value)}
                                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNextInput(ej.id, serieIdx, "rpe") } }}
-                                className="bg-card/80 dark:bg-zinc-900/80 border-border dark:border-white/[0.08] focus:border-green-500/50 focus:ring-green-500/20 text-foreground dark:text-white placeholder:text-foreground/60 dark:placeholder:text-zinc-300 h-14 text-xl font-bold text-center rounded-xl"
+                                className="bg-card/80 dark:bg-zinc-900/80 border-border dark:border-white/[0.08] focus:border-[var(--primary-color)]/50 focus:ring-[var(--primary-color)]/20 text-foreground dark:text-white placeholder:text-foreground/60 dark:placeholder:text-zinc-300 h-14 text-xl font-bold text-center rounded-xl"
                               />
                             </div>
                           </div>
@@ -2820,7 +2820,7 @@ export function StudentPlanificacionSection({
                     <Textarea
                       placeholder="Opcional…"
                       maxLength={100}
-                      className="min-h-16 resize-none bg-card/80 dark:bg-card dark:bg-zinc-900/80 border-border dark:border-white/[0.08] focus:border-green-500/50 focus:ring-green-500/20 text-foreground dark:text-white placeholder:text-muted-foreground/70 dark:text-zinc-600 text-base rounded-xl"
+                      className="min-h-16 resize-none bg-card/80 dark:bg-card dark:bg-zinc-900/80 border-border dark:border-white/[0.08] focus:border-[var(--primary-color)]/50 focus:ring-[var(--primary-color)]/20 text-foreground dark:text-white placeholder:text-muted-foreground/70 dark:text-zinc-600 text-base rounded-xl"
                       value={row.notas}
                       onChange={(e) => handleNotasChange(ej.id, e.target.value)}
                     />
@@ -2840,7 +2840,7 @@ export function StudentPlanificacionSection({
                       Saltado
                     </button>
                   ) : isFilled ? (
-                    <div className="flex items-center justify-center gap-2 px-4 py-3.5 border-t border-green-500/30 bg-green-500/15 text-base font-bold text-green-600 dark:text-green-400">
+                    <div className="flex items-center justify-center gap-2 px-4 py-3.5 border-t border-[var(--primary-color)]/30 bg-[var(--primary-color)]/15 text-base font-bold text-[var(--primary-color)] dark:text-[var(--primary-color)]">
                       <CheckCircle2 className="h-5 w-5" />
                       Completado
                     </div>
@@ -2928,14 +2928,14 @@ export function StudentPlanificacionSection({
             }
           `}</style>
           <div
-            className="h-28 w-28 rounded-full bg-green-500/20 border-2 border-green-500/50 flex items-center justify-center shadow-2xl"
+            className="h-28 w-28 rounded-full bg-[var(--primary-color)]/20 border-2 border-[var(--primary-color)]/50 flex items-center justify-center shadow-2xl"
             style={{ animation: "rm-trophy-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards" }}
           >
-            <Trophy className="h-14 w-14 text-green-400" />
+            <Trophy className="h-14 w-14 text-[var(--primary-color)]" />
           </div>
           <p className="mt-6 text-2xl font-black text-white min-h-[2rem]">
             {tipeado}
-            <span className="inline-block w-[2px] h-6 ml-0.5 bg-green-400 align-middle animate-pulse" />
+            <span className="inline-block w-[2px] h-6 ml-0.5 bg-[var(--primary-color)] align-middle animate-pulse" />
           </p>
           <p className="mt-1 text-sm text-white/70 min-h-[1.25rem]">
             {tipeadoSub}

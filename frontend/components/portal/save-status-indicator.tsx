@@ -9,7 +9,7 @@ export function SaveStatusIndicator() {
   if (status === "idle" || status === "saving") return null
 
   const cfg = {
-    saved: { icon: CheckCircle2, text: "Guardado", cls: "text-green-500 dark:text-green-400" },
+    saved: { icon: CheckCircle2, text: "Guardado", cls: "text-[var(--primary-color)] dark:text-[var(--primary-color)]" },
     error: { icon: AlertCircle, text: "Error al guardar", cls: "text-red-500 dark:text-red-400" },
   }[status]
   const Icon = cfg.icon
