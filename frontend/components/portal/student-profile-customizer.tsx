@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { ColorPicker } from "@/components/portal/color-picker"
 import { compressProfileImage } from "@/lib/compress-profile-image"
 import { supabase } from "@/lib/supabase-client"
 import { DEFAULT_THEME_COLOR, THEME_COLOR_PATTERN } from "@/lib/theme-color"
@@ -60,8 +61,10 @@ export function StudentProfileCustomizer({ student, disabled = false, onSaved }:
   const [saving, setSaving] = useState(false)
   const [processingImage, setProcessingImage] = useState(false)
   const [error, setError] = useState("")
+  const [customOpen, setCustomOpen] = useState(false)
 
   const savedAvatarUrl = useSignedAvatarUrl(student.avatar_path)
+  const isPresetColor = COLOR_PRESETS.includes(themeColor.toUpperCase())
 
   useEffect(() => {
     setThemeColor(student.theme_color || DEFAULT_THEME_COLOR)
@@ -75,7 +78,9 @@ export function StudentProfileCustomizer({ student, disabled = false, onSaved }:
 
   function handleOpenChange(nextOpen: boolean) {
     setOpen(nextOpen)
-    if (!nextOpen) {
+    if (nextOpen) {
+      setCustomOpen(!COLOR_PRESETS.includes((student.theme_color || DEFAULT_THEME_COLOR).toUpperCase()))
+    } else {
       setError("")
       setCompressedAvatar(null)
       setThemeColor(student.theme_color || DEFAULT_THEME_COLOR)
@@ -211,16 +216,21 @@ export function StudentProfileCustomizer({ student, disabled = false, onSaved }:
                     style={{ backgroundColor: color }}
                   />
                 ))}
-                <label className="relative h-9 w-9 cursor-pointer overflow-hidden rounded-full border-2 border-background shadow ring-1 ring-border" title="Elegir otro color">
-                  <input
-                    type="color"
-                    value={themeColor}
-                    onChange={(event) => setThemeColor(event.target.value.toUpperCase())}
-                    className="absolute -inset-2 h-14 w-14 cursor-pointer border-0 p-0"
-                    aria-label="Elegir otro color"
-                  />
-                </label>
+                <button
+                  type="button"
+                  onClick={() => setCustomOpen((o) => !o)}
+                  aria-label="Elegir un color personalizado"
+                  aria-pressed={customOpen || !isPresetColor}
+                  title="Elegir otro color"
+                  className="h-9 w-9 rounded-full border-2 border-background shadow ring-1 ring-border transition-transform hover:scale-110 aria-pressed:ring-2 aria-pressed:ring-foreground aria-pressed:ring-offset-2"
+                  style={{
+                    background: isPresetColor
+                      ? "conic-gradient(from 180deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)"
+                      : themeColor,
+                  }}
+                />
               </div>
+              {customOpen && <ColorPicker value={themeColor} onChange={setThemeColor} />}
             </div>
 
             {error && <p role="alert" className="rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-500">{error}</p>}
