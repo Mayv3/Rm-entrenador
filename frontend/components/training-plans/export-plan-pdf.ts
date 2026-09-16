@@ -71,6 +71,7 @@ function roundedRect(
 type Row = {
   categoria: string
   nombre: string
+  orden: number
   series: number
   semanas: Record<number, { dosis: string; rpe: string }>
 }
@@ -92,6 +93,9 @@ function buildRows(dia: PlanHoja["dias"][number], { localData, pendingByDay, ord
   const guardados = dia.ejercicios
     .filter((ej) => !pendingDeletes.includes(ej.id))
     .sort((a, b) => {
+      const aActivador = (localData[a.id]?.categoria ?? a.categoria).toUpperCase() === "ACTIVADOR"
+      const bActivador = (localData[b.id]?.categoria ?? b.categoria).toUpperCase() === "ACTIVADOR"
+      if (aActivador !== bActivador) return aActivador ? -1 : 1
       return (order?.[a.id] ?? a.orden) - (order?.[b.id] ?? b.orden)
     })
 
@@ -110,6 +114,7 @@ function buildRows(dia: PlanHoja["dias"][number], { localData, pendingByDay, ord
     return {
       categoria: local?.categoria ?? ej.categoria,
       nombre: ej.ejercicios?.nombre ?? "",
+      orden: order?.[ej.id] ?? ej.orden,
       series: local?.series ?? ej.series ?? 3,
       semanas,
     }
@@ -123,10 +128,15 @@ function buildRows(dia: PlanHoja["dias"][number], { localData, pendingByDay, ord
         rpe: p.rpe[s] || (s % 2 === 0 ? p.rpe[s - 1] ?? "" : ""),
       }
     })
-    rows.push({ categoria: p.categoria, nombre: p.ejercicio.nombre, series: p.series ?? 3, semanas })
+    rows.push({ categoria: p.categoria, nombre: p.ejercicio.nombre, orden: p.orden, series: p.series ?? 3, semanas })
   })
 
-  return rows
+  return rows.sort((a, b) => {
+    const aActivador = a.categoria.toUpperCase() === "ACTIVADOR"
+    const bActivador = b.categoria.toUpperCase() === "ACTIVADOR"
+    if (aActivador !== bActivador) return aActivador ? -1 : 1
+    return a.orden - b.orden
+  })
 }
 
 /** WinAnsi no cubre todo lo que puede venir del input del profe. */

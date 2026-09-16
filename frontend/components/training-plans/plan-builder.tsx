@@ -245,10 +245,7 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
           newSemanas[semana] = { ...newSemanas[semana], rpe: value }
         }
       } else {
-        const semanasDestino = semana % 2 === 1 ? [semana, semana + 1] : [semana]
-        for (const s of semanasDestino) {
-          newSemanas[s] = { ...newSemanas[s], notas: value }
-        }
+        newSemanas[semana] = { ...newSemanas[semana], notas: value }
       }
       return { ...prev, [planEjId]: { ...prev[planEjId], semanas: newSemanas } }
     })
@@ -1350,7 +1347,12 @@ function PlanPreviewDialog({
                 orden: p.orden,
                 isPending: true,
               }))
-              const allEjs = [...savedEjs, ...pendingEjs].sort((a, b) => a.orden - b.orden)
+              const allEjs = [...savedEjs, ...pendingEjs].sort((a, b) => {
+                const aActivador = (a.categoria ?? "").toUpperCase() === "ACTIVADOR"
+                const bActivador = (b.categoria ?? "").toUpperCase() === "ACTIVADOR"
+                if (aActivador !== bActivador) return aActivador ? -1 : 1
+                return a.orden - b.orden
+              })
 
               return (
                 <div key={dia.id}>

@@ -10,7 +10,7 @@ import { Loader } from "@/components/ui/loader"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { queryKeys } from "@/lib/query-keys"
 import { TrendingUp, AlertTriangle, StickyNote, Loader2, SkipForward, Undo2, CheckCircle2, Activity } from "lucide-react"
-import type { PlanEjercicio, Planificacion, PlanSemana } from "@/types/planificaciones"
+import type { Planificacion } from "@/types/planificaciones"
 import { CATEGORIA_ROW_STYLE } from "@/types/planificaciones"
 
 const SEMANAS_PREVIEW = [1, 2, 3, 4, 5, 6]
@@ -35,7 +35,7 @@ export function PlanProgresoDialog({
   const [estadoPopover, setEstadoPopover] = useState<string | null>(null)
   const [comentarioModal, setComentarioModal] = useState<{ ejercicio: string; comentario: string } | null>(null)
   const [prescripcionEdits, setPrescripcionEdits] = useState<Record<string, { dosis: string; rpe: string; notas: string }>>({})
-  const [savingKey, setSavingKey] = useState<string | null>(null)
+  const [savingWeekKey, setSavingWeekKey] = useState<string | null>(null)
   const [skipKey, setSkipKey] = useState<string | null>(null)
 
   const cellKey = (diaId: number, semana: number, ejId: number) => `${diaId}-${semana}-${ejId}`
@@ -101,43 +101,34 @@ export function PlanProgresoDialog({
     })
   }
 
-  const savePrescripcion = async (ej: PlanEjercicio, semana: number) => {
-    const key = prescripcionKey(ej.id, semana)
-    const edit = prescripcionEdits[key]
-    if (!edit) return
-    setSavingKey(key)
+  const savePrescripcionesSemana = async (diaId: number, semana: number, ejercicioIds: number[]) => {
+    const edits = ejercicioIds
+      .map((ejId) => ({ ejId, key: prescripcionKey(ejId, semana), edit: prescripcionEdits[prescripcionKey(ejId, semana)] }))
+      .filter((item): item is { ejId: number; key: string; edit: { dosis: string; rpe: string; notas: string } } => !!item.edit)
+    if (edits.length === 0) return
+    const weekKey = `${diaId}-${semana}`
+    setSavingWeekKey(weekKey)
     try {
-      const notaOriginal = ej.semanas?.find((sw: PlanSemana) => sw.semana === semana)?.notas_profesor ?? ""
-      // Las notas se comparten por bloques de dos semanas: 1–2, 3–4 y 5–6.
-      // Nunca deben propagarse al resto del plan.
-      const semanasDestino = edit.notas !== notaOriginal && semana % 2 === 1
-        ? [semana, semana + 1].filter((s) => s <= plan.semanas)
-        : [semana]
-
-      await Promise.all(semanasDestino.map((semanaDestino) => {
-        const destinoKey = prescripcionKey(ej.id, semanaDestino)
-        const destino = semanaDestino === semana
-          ? edit
-          : prescripcionEdits[destinoKey] ?? getPrescripcion(ej, semanaDestino)
-        return axios.put(
-          process.env.NEXT_PUBLIC_URL_BACKEND + "/planificaciones/ejercicios/" + ej.id + "/semanas/" + semanaDestino,
+      await Promise.all(edits.map(({ ejId, edit }) =>
+        axios.put(
+          process.env.NEXT_PUBLIC_URL_BACKEND + "/planificaciones/ejercicios/" + ejId + "/semanas/" + semana,
           {
-            dosis: destino.dosis || null,
-            rpe: destino.rpe ? Number(destino.rpe) : null,
+            dosis: edit.dosis || null,
+            rpe: edit.rpe ? Number(edit.rpe) : null,
             notas_profesor: edit.notas || null,
           }
         )
-      }))
+      ))
       queryClient.invalidateQueries({ queryKey: queryKeys.planificacionById(planId) })
       setPrescripcionEdits((prev) => {
         const next = { ...prev }
-        semanasDestino.forEach((semanaDestino) => delete next[prescripcionKey(ej.id, semanaDestino)])
+        edits.forEach(({ key }) => delete next[key])
         return next
       })
     } catch (err) {
       console.error("Error guardando prescripción:", err)
     } finally {
-      setSavingKey(null)
+      setSavingWeekKey(null)
     }
   }
 
@@ -297,6 +288,9 @@ export function PlanProgresoDialog({
                             const popoverKey = `${dia.id}-${s}`
                             const esDiaSaltado = diaSaltado(dia, s)
                             const esDiaCopiado = !esDiaSaltado && diaCopiadoAnterior(dia, s)
+                            const ejercicioIds = ejercicios.map((ej) => ej.id)
+                            const hayCambiosSemana = ejercicioIds.some((ejId) => !!prescripcionEdits[prescripcionKey(ejId, s)])
+                            const semanaGuardando = savingWeekKey === `${dia.id}-${s}`
                             return (
                               <th key={s} className={`px-0 py-2.5 text-center font-semibold w-[200px] relative ${s > 1 ? "border-l-2 border-border" : ""}`}>
                                 <div className="flex items-center justify-center gap-1 mb-1">
@@ -335,6 +329,12 @@ export function PlanProgresoDialog({
                                     )}
                                   </div>
                                 )}
+                                {!readOnly && hayCambiosSemana && (
+                                  <Button size="sm" onClick={() => savePrescripcionesSemana(dia.id, s, ejercicioIds)} disabled={semanaGuardando}
+                                    className="h-6 text-[10px] px-2 mb-1 bg-[var(--primary-color)] hover:bg-[var(--primary-color)]/90 text-white">
+                                    {semanaGuardando ? <Loader2 className="h-3 w-3 animate-spin" /> : "Guardar semana"}
+                                  </Button>
+                                )}
                                 <div className="flex text-[10px] font-normal text-muted-foreground">
                                   <span className="w-6"></span>
                                   <span className="flex-1 text-center">kg</span>
@@ -369,9 +369,6 @@ export function PlanProgresoDialog({
                                 const registro = sesion ? registroMap.get(`${sesion.id}-${ej.id}`) : null
                                 const borderSemana = semana > 1 ? "border-l-2 border-border" : ""
                                 const presc = getPrescripcion(ej, semana)
-                                const presKey = prescripcionKey(ej.id, semana)
-                                const isDirty = !!prescripcionEdits[presKey]
-                                const isSaving = savingKey === presKey
 
                                 const prescripcionStrip = readOnly ? (
                                   (presc.dosis || presc.rpe || presc.notas) ? (
@@ -422,16 +419,6 @@ export function PlanProgresoDialog({
                                       placeholder={`Nota S${semana}`}
                                       className="h-7 text-[11px] px-1 placeholder:text-muted-foreground/40 bg-background/60 border-dashed"
                                     />
-                                    {isDirty && (
-                                      <Button
-                                        size="sm"
-                                        onClick={() => savePrescripcion(ej, semana)}
-                                        disabled={isSaving}
-                                        className="h-7 text-[11px] px-2 bg-[var(--primary-color)] hover:bg-[var(--primary-color)]/90 text-white"
-                                      >
-                                        {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : "Guardar"}
-                                      </Button>
-                                    )}
                                   </div>
                                 )
 

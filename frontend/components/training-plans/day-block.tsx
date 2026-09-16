@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Trash2, Youtube, ChevronDown, ChevronUp, Loader2, GripVertical, Pencil, Plus, ArrowUp, ArrowDown, Copy } from "lucide-react"
+import { Trash2, Youtube, ChevronDown, ChevronUp, Loader2, GripVertical, Pencil, Plus, ArrowUp, ArrowDown, Copy, ListOrdered } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import axios from "axios"
 import { useQueryClient } from "@tanstack/react-query"
@@ -21,6 +21,7 @@ const DOSIS_INPUT_CLASS = "h-7 text-xs text-center px-1 placeholder:text-gray-30
 const SERIES_SELECT_CLASS = "h-7 w-14 text-xs px-1 shrink-0 mx-auto"
 const RPE_SELECT_CLASS = "h-7 w-10 text-xs px-1 shrink-0"
 type OrderOption = { orden: number; label: string }
+const esActivador = (categoria: string | null | undefined) => categoria === "ACTIVADOR"
 
 // Nombres de más de 2 palabras colapsan a 2 renglones — solo en mobile (<md).
 // La tabla es table-fixed con min-w-[1150px]: la columna mide ~195px fijos aunque el
@@ -95,7 +96,9 @@ export function DayBlock({
   const handleOrdenChange = (planEjId: number, orden: number) => {
     const actual = orderedEjs.find((ej) => ej.id === planEjId)
     if (!actual || actual.orden === orden) return
-    const intercambiado = orderedEjs.find((ej) => ej.id !== planEjId && ej.orden === orden)
+    const intercambiado = orderedEjs.find((ej) =>
+      ej.id !== planEjId && !esActivador(localData[ej.id]?.categoria ?? ej.categoria) && ej.orden === orden
+    )
 
     setOrderedEjs((prev) => prev
       .map((ej) => {
@@ -248,7 +251,9 @@ export function DayBlock({
     const actual = pending.find((p) => p.tempId === tempId)
     if (!actual || actual.orden === orden) return
     const pendingIntercambiado = pending.find((p) => p.tempId !== tempId && p.orden === orden)
-    const savedIntercambiado = orderedEjs.find((ej) => ej.orden === orden)
+    const savedIntercambiado = orderedEjs.find((ej) =>
+      !esActivador(localData[ej.id]?.categoria ?? ej.categoria) && ej.orden === orden
+    )
 
     onPendingChange(pending.map((p) => {
       if (p.tempId === tempId) return { ...p, orden }
@@ -260,10 +265,32 @@ export function DayBlock({
 
   const totalCount = dia.ejercicios.length + pending.length
 
+  const displayEjs = [...orderedEjs].sort((a, b) => {
+    const aActivador = esActivador(localData[a.id]?.categoria ?? a.categoria)
+    const bActivador = esActivador(localData[b.id]?.categoria ?? b.categoria)
+    if (aActivador !== bActivador) return aActivador ? -1 : 1
+    return a.orden - b.orden
+  })
+
+  const normalizarOrden = () => {
+    const regulares = displayEjs.filter((ej) => !esActivador(localData[ej.id]?.categoria ?? ej.categoria))
+    const nuevoOrden = new Map(regulares.map((ej, index) => [ej.id, index]))
+    setOrderedEjs((prev) => prev.map((ej) => ({ ...ej, orden: nuevoOrden.get(ej.id) ?? ej.orden })))
+    regulares.forEach((ej, index) => {
+      if (ej.orden !== index) onOrderChange(ej.id, index)
+    })
+
+    const pendientesRegulares = pending.filter((p) => !esActivador(p.categoria))
+    if (pendientesRegulares.length > 0) {
+      const pendingOrden = new Map(pendientesRegulares.map((p, index) => [p.tempId, regulares.length + index]))
+      onPendingChange(pending.map((p) => ({ ...p, orden: pendingOrden.get(p.tempId) ?? p.orden })))
+    }
+  }
+
   const orderOptions: OrderOption[] = Array.from({ length: 10 }, (_, orden) => {
     const nombres = [
-      ...orderedEjs.filter((ej) => ej.orden === orden).map((ej) => ej.ejercicios.nombre),
-      ...pending.filter((p) => p.orden === orden).map((p) => p.ejercicio.nombre),
+      ...orderedEjs.filter((ej) => !esActivador(localData[ej.id]?.categoria ?? ej.categoria) && ej.orden === orden).map((ej) => ej.ejercicios.nombre),
+      ...pending.filter((p) => !esActivador(p.categoria) && p.orden === orden).map((p) => p.ejercicio.nombre),
     ]
     return { orden, label: nombres.length ? `${orden + 1} - ${nombres.join(", ")}` : `${orden + 1} - Sin asignar` }
   })
@@ -309,6 +336,15 @@ export function DayBlock({
 
         <div className="flex items-center gap-1 ml-auto" onClick={(e) => e.stopPropagation()}>
           <span className="text-xs text-muted-foreground">{totalCount} ejerc.</span>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 w-7 p-0 text-muted-foreground"
+            onClick={normalizarOrden}
+            title="Normalizar orden (1, 2, 3...)"
+          >
+            <ListOrdered className="h-3.5 w-3.5" />
+          </Button>
           <Button
             size="sm"
             variant="ghost"
@@ -386,7 +422,7 @@ export function DayBlock({
                       </tr>
                     )}
 
-                    {orderedEjs.map((ej) => (
+                    {displayEjs.map((ej) => (
                       <ExerciseRow
                         key={ej.id}
                         ej={ej}
@@ -400,6 +436,7 @@ export function DayBlock({
                         onReplace={onReplaceEj}
                         onOrdenChange={handleOrdenChange}
                         orderOptions={orderOptions}
+                        showOrder={!esActivador(localData[ej.id]?.categoria ?? ej.categoria)}
                       />
                     ))}
 
@@ -433,11 +470,9 @@ export function DayBlock({
                           </div>
                         </td>
                         <td className="px-1 py-1.5 text-center">
-                          <OrderSelect
-                            orden={p.orden}
-                            onOrdenChange={(v) => setPendingOrden(p.tempId, v)}
-                            options={orderOptions}
-                          />
+                          {esActivador(p.categoria) ? <span className="text-muted-foreground">—</span> : (
+                            <OrderSelect orden={p.orden} onOrdenChange={(v) => setPendingOrden(p.tempId, v)} options={orderOptions} />
+                          )}
                         </td>
                         <td className="px-1 py-1.5 text-center" title="Aeróbico">
                           <Checkbox
@@ -522,7 +557,7 @@ export function DayBlock({
 
 function ExerciseRow({
   ej, localData, onSemanaChange, onCategoriaChange, onNotasProfesorChange, onSeriesChange, onEsAerobicoChange, onDelete, onReplace,
-  onOrdenChange, orderOptions,
+  onOrdenChange, orderOptions, showOrder,
 }: {
   ej: PlanEjercicio
   localData: Record<number, EjercicioLocal>
@@ -535,6 +570,7 @@ function ExerciseRow({
   onReplace: (planEjId: number) => void
   onOrdenChange: (planEjId: number, orden: number) => void
   orderOptions: OrderOption[]
+  showOrder: boolean
 }) {
   const local = localData[ej.id]
   const categoria = local?.categoria ?? ej.categoria
@@ -573,7 +609,9 @@ function ExerciseRow({
         </div>
       </td>
       <td className="px-1 py-1.5 text-center">
-        <OrderSelect orden={ej.orden} onOrdenChange={(orden) => onOrdenChange(ej.id, orden)} options={orderOptions} />
+        {showOrder ? (
+          <OrderSelect orden={ej.orden} onOrdenChange={(orden) => onOrdenChange(ej.id, orden)} options={orderOptions} />
+        ) : <span className="text-muted-foreground">—</span>}
       </td>
       <td className="px-1 py-1.5 text-center" title="Aeróbico">
         <Checkbox
