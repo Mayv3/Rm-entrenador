@@ -108,8 +108,10 @@ export function PlanProgresoDialog({
     setSavingKey(key)
     try {
       const notaOriginal = ej.semanas?.find((sw: PlanSemana) => sw.semana === semana)?.notas_profesor ?? ""
-      const semanasDestino = edit.notas !== notaOriginal
-        ? Array.from({ length: plan.semanas - semana + 1 }, (_, index) => semana + index)
+      // Las notas se comparten por bloques de dos semanas: 1–2, 3–4 y 5–6.
+      // Nunca deben propagarse al resto del plan.
+      const semanasDestino = edit.notas !== notaOriginal && semana % 2 === 1
+        ? [semana, semana + 1].filter((s) => s <= plan.semanas)
         : [semana]
 
       await Promise.all(semanasDestino.map((semanaDestino) => {

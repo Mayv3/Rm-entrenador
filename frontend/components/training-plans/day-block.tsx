@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, startTransition } from "react"
+import React, { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -20,6 +20,7 @@ const SEMANAS = [1, 2, 3, 4, 5, 6]
 const DOSIS_INPUT_CLASS = "h-7 text-xs text-center px-1 placeholder:text-gray-300 min-w-[60px] flex-1"
 const SERIES_SELECT_CLASS = "h-7 w-14 text-xs px-1 shrink-0 mx-auto"
 const RPE_SELECT_CLASS = "h-7 w-10 text-xs px-1 shrink-0"
+type OrderOption = { orden: number; label: string }
 
 // Nombres de más de 2 palabras colapsan a 2 renglones — solo en mobile (<md).
 // La tabla es table-fixed con min-w-[1150px]: la columna mide ~195px fijos aunque el
@@ -44,7 +45,7 @@ interface DayBlockProps {
   onSeriesChange: (planEjId: number, series: number) => void
   onEsAerobicoChange: (planEjId: number, es_aerobico: boolean) => void
   onPendingChange: (pending: PendingEjercicio[]) => void
-  onOrderChange: (orderedIds: number[]) => void
+  onOrderChange: (planEjId: number, orden: number) => void
   onDeleteEj: (planEjId: number) => void
   onReplaceEj: (planEjId: number) => void
   onOpenLibrary: () => void
@@ -91,18 +92,21 @@ export function DayBlock({
     })
   }, [dia.ejercicios])
 
-  // Mover ejercicio guardado arriba/abajo con flechas (reemplaza el drag & drop)
-  const moveEjercicio = (index: number, dir: -1 | 1) => {
-    const target = index + dir
-    if (target < 0 || target >= orderedEjs.length) return
-    const reordered = [...orderedEjs]
-    const [moved] = reordered.splice(index, 1)
-    reordered.splice(target, 0, moved)
-    // Reorden visual inmediato (urgente, solo re-renderiza este día)
-    setOrderedEjs(reordered)
-    // Notificar al padre (dirty + payload de guardado) en transición:
-    // no bloquea el reorden visual con el re-render del PlanBuilder completo.
-    startTransition(() => onOrderChange(reordered.map((e) => e.id)))
+  const handleOrdenChange = (planEjId: number, orden: number) => {
+    const actual = orderedEjs.find((ej) => ej.id === planEjId)
+    if (!actual || actual.orden === orden) return
+    const intercambiado = orderedEjs.find((ej) => ej.id !== planEjId && ej.orden === orden)
+
+    setOrderedEjs((prev) => prev
+      .map((ej) => {
+        if (ej.id === planEjId) return { ...ej, orden }
+        if (ej.id === intercambiado?.id) return { ...ej, orden: actual.orden }
+        return ej
+      })
+      .sort((a, b) => a.orden - b.orden)
+    )
+    onOrderChange(planEjId, orden)
+    if (intercambiado) onOrderChange(intercambiado.id, actual.orden)
   }
 
   const refetch = () => queryClient.invalidateQueries({ queryKey: queryKeys.planificacionById(planId) })
@@ -125,6 +129,7 @@ export function DayBlock({
         dosis: {},
         rpe: {},
         notas: {},
+        orden: Math.min(9, dia.ejercicios.length + pending.length),
       }
       onPendingChange([...pending, newPending])
       setCollapsed(false)
@@ -183,7 +188,7 @@ export function DayBlock({
     onDeleteEj(planEjId)
   }
 
-  const setPendingField = (tempId: string, field: "categoria" | "dosis" | "rpe" | "notas_profesor" | "notas_semana" | "series", semana: number | null, value: string) => {
+  const setPendingField = (tempId: string, field: "categoria" | "dosis" | "rpe" | "notas_profesor" | "notas_semana" | "series" | "orden", semana: number | null, value: string) => {
     if (field === "series") {
       const n = Math.max(1, Math.min(8, parseInt(value) || 3))
       onPendingChange(pending.map((p) => (p.tempId === tempId ? { ...p, series: n } : p)))
@@ -191,6 +196,11 @@ export function DayBlock({
     }
     if (field === "categoria") {
       onPendingChange(pending.map((p) => (p.tempId === tempId ? { ...p, categoria: value } : p)))
+      return
+    }
+    if (field === "orden") {
+      const orden = Math.max(0, Math.min(9, Number(value) - 1))
+      onPendingChange(pending.map((p) => (p.tempId === tempId ? { ...p, orden } : p)))
       return
     }
     onPendingChange(pending.map((p) => {
@@ -234,7 +244,29 @@ export function DayBlock({
 
   const removePending = (tempId: string) => onPendingChange(pending.filter((p) => p.tempId !== tempId))
 
+  const setPendingOrden = (tempId: string, orden: number) => {
+    const actual = pending.find((p) => p.tempId === tempId)
+    if (!actual || actual.orden === orden) return
+    const pendingIntercambiado = pending.find((p) => p.tempId !== tempId && p.orden === orden)
+    const savedIntercambiado = orderedEjs.find((ej) => ej.orden === orden)
+
+    onPendingChange(pending.map((p) => {
+      if (p.tempId === tempId) return { ...p, orden }
+      if (p.tempId === pendingIntercambiado?.tempId) return { ...p, orden: actual.orden }
+      return p
+    }))
+    if (savedIntercambiado) handleOrdenChange(savedIntercambiado.id, actual.orden)
+  }
+
   const totalCount = dia.ejercicios.length + pending.length
+
+  const orderOptions: OrderOption[] = Array.from({ length: 10 }, (_, orden) => {
+    const nombres = [
+      ...orderedEjs.filter((ej) => ej.orden === orden).map((ej) => ej.ejercicios.nombre),
+      ...pending.filter((p) => p.orden === orden).map((p) => p.ejercicio.nombre),
+    ]
+    return { orden, label: nombres.length ? `${orden + 1} - ${nombres.join(", ")}` : `${orden + 1} - Sin asignar` }
+  })
 
   const allAerobico = totalCount > 0 &&
     orderedEjs.every((e) => localData[e.id]?.es_aerobico ?? e.es_aerobico ?? false) &&
@@ -323,8 +355,9 @@ export function DayBlock({
             <table className="w-full table-fixed text-xs min-w-[1150px]">
               <thead>
                 <tr className="border-b bg-muted/30">
-                  <th className="px-1 py-2 w-[112px]" />
+                  <th className="px-1 py-2 w-[72px]" />
                   <th className="px-3 py-2 text-left font-medium text-muted-foreground w-[17%]">Ejercicio</th>
+                  <th className="px-1 py-2 text-center font-medium text-muted-foreground w-[58px]">Orden</th>
                   <th className="px-1 py-2 text-center font-medium text-muted-foreground w-[44px]" title="Marcar todos como aeróbico">
                     <div className="flex items-center justify-center gap-1">
                       <Checkbox
@@ -347,13 +380,13 @@ export function DayBlock({
               <tbody className="divide-y">
                     {totalCount === 0 && (
                       <tr>
-                        <td colSpan={10} className="px-3 py-6 text-center text-muted-foreground">
+                        <td colSpan={11} className="px-3 py-6 text-center text-muted-foreground">
                           {isActive ? "Hacé click en un ejercicio del panel para agregarlo." : "Seleccioná este día."}
                         </td>
                       </tr>
                     )}
 
-                    {orderedEjs.map((ej, idx) => (
+                    {orderedEjs.map((ej) => (
                       <ExerciseRow
                         key={ej.id}
                         ej={ej}
@@ -365,10 +398,8 @@ export function DayBlock({
                         onEsAerobicoChange={onEsAerobicoChange}
                         onDelete={handleDeleteSaved}
                         onReplace={onReplaceEj}
-                        canMoveUp={idx > 0}
-                        canMoveDown={idx < orderedEjs.length - 1}
-                        onMoveUp={() => moveEjercicio(idx, -1)}
-                        onMoveDown={() => moveEjercicio(idx, 1)}
+                        onOrdenChange={handleOrdenChange}
+                        orderOptions={orderOptions}
                       />
                     ))}
 
@@ -400,6 +431,13 @@ export function DayBlock({
                             )}
                             <span className={nombreEjClass(p.ejercicio.nombre)} title={p.ejercicio.nombre}>{p.ejercicio.nombre}</span>
                           </div>
+                        </td>
+                        <td className="px-1 py-1.5 text-center">
+                          <OrderSelect
+                            orden={p.orden}
+                            onOrdenChange={(v) => setPendingOrden(p.tempId, v)}
+                            options={orderOptions}
+                          />
                         </td>
                         <td className="px-1 py-1.5 text-center" title="Aeróbico">
                           <Checkbox
@@ -484,7 +522,7 @@ export function DayBlock({
 
 function ExerciseRow({
   ej, localData, onSemanaChange, onCategoriaChange, onNotasProfesorChange, onSeriesChange, onEsAerobicoChange, onDelete, onReplace,
-  canMoveUp, canMoveDown, onMoveUp, onMoveDown,
+  onOrdenChange, orderOptions,
 }: {
   ej: PlanEjercicio
   localData: Record<number, EjercicioLocal>
@@ -495,10 +533,8 @@ function ExerciseRow({
   onEsAerobicoChange: (planEjId: number, es_aerobico: boolean) => void
   onDelete: (planEjId: number) => void
   onReplace: (planEjId: number) => void
-  canMoveUp: boolean
-  canMoveDown: boolean
-  onMoveUp: () => void
-  onMoveDown: () => void
+  onOrdenChange: (planEjId: number, orden: number) => void
+  orderOptions: OrderOption[]
 }) {
   const local = localData[ej.id]
   const categoria = local?.categoria ?? ej.categoria
@@ -509,29 +545,8 @@ function ExerciseRow({
     <tr className="bg-[var(--primary-color)]/[0.13] hover:bg-[var(--primary-color)]/[0.22] transition-colors" style={CATEGORIA_ROW_STYLE[categoria]}>
       <td className="px-1 py-1.5">
         <div className="flex items-center w-full">
-          <div className="flex flex-col shrink-0">
-            <button
-              type="button"
-              onClick={onMoveUp}
-              disabled={!canMoveUp}
-              title="Subir ejercicio"
-              className="flex items-center justify-center h-7 w-7 md:h-6 md:w-6 rounded text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-25 disabled:pointer-events-none transition-colors"
-            >
-              <ArrowUp className="h-4 w-4 md:h-3.5 md:w-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={onMoveDown}
-              disabled={!canMoveDown}
-              title="Bajar ejercicio"
-              className="flex items-center justify-center h-7 w-7 md:h-6 md:w-6 rounded text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-25 disabled:pointer-events-none transition-colors"
-            >
-              <ArrowDown className="h-4 w-4 md:h-3.5 md:w-3.5" />
-            </button>
-          </div>
-          {/* Spacers iguales: editar/borrar centrado entre las flechas y el ejercicio. */}
           <div className="flex-1" />
-          <div className="flex flex-col shrink-0">
+          <div className="flex shrink-0">
             <Button size="sm" variant="ghost" className="h-7 w-7 md:h-6 md:w-6 p-0 text-muted-foreground hover:text-foreground"
               onClick={() => onReplace(ej.id)}
               title="Reemplazar ejercicio">
@@ -556,6 +571,9 @@ function ExerciseRow({
           )}
           <span className={nombreEjClass(ej.ejercicios.nombre)} title={ej.ejercicios.nombre}>{ej.ejercicios.nombre}</span>
         </div>
+      </td>
+      <td className="px-1 py-1.5 text-center">
+        <OrderSelect orden={ej.orden} onOrdenChange={(orden) => onOrdenChange(ej.id, orden)} options={orderOptions} />
       </td>
       <td className="px-1 py-1.5 text-center" title="Aeróbico">
         <Checkbox
@@ -629,6 +647,23 @@ function SeriesSelect({
         <SelectSeparator />
         {[1,2, 3, 4].map((n) => (
           <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  )
+}
+
+function OrderSelect({ orden, onOrdenChange, options }: { orden: number; onOrdenChange: (orden: number) => void; options: OrderOption[] }) {
+  const value = String(Math.max(1, Math.min(10, orden + 1)))
+
+  return (
+    <Select value={value} onValueChange={(v) => onOrdenChange(Number(v) - 1)}>
+      <SelectTrigger className="h-7 w-12 text-xs px-1 mx-auto">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((option) => (
+          <SelectItem key={option.orden} value={String(option.orden + 1)}>{option.label}</SelectItem>
         ))}
       </SelectContent>
     </Select>

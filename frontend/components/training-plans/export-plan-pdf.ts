@@ -80,7 +80,7 @@ interface ExportArgs {
   hoja: PlanHoja
   localData: Record<number, EjercicioLocal>
   pendingByDay: Record<number, PendingEjercicio[]>
-  orderByDay: Record<number, number[]>
+  orderByDay: Record<number, Record<number, number>>
   pendingDeletes: number[]
 }
 
@@ -92,14 +92,7 @@ function buildRows(dia: PlanHoja["dias"][number], { localData, pendingByDay, ord
   const guardados = dia.ejercicios
     .filter((ej) => !pendingDeletes.includes(ej.id))
     .sort((a, b) => {
-      if (order) {
-        const ia = order.indexOf(a.id)
-        const ib = order.indexOf(b.id)
-        if (ia !== -1 && ib !== -1) return ia - ib
-        if (ia !== -1) return -1
-        if (ib !== -1) return 1
-      }
-      return a.orden - b.orden
+      return (order?.[a.id] ?? a.orden) - (order?.[b.id] ?? b.orden)
     })
 
   const rows: Row[] = guardados.map((ej) => {

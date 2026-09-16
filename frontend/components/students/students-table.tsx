@@ -199,8 +199,9 @@ function StudentProgresoDialog({
     setSavingKey(key)
     try {
       const notaOriginal = ej.semanas?.find((sw) => sw.semana === semana)?.notas_profesor ?? ""
-      const semanasDestino = edit.notas !== notaOriginal
-        ? Array.from({ length: plan.semanas - semana + 1 }, (_, index) => semana + index)
+      // Las notas se comparten únicamente dentro del bloque de dos semanas.
+      const semanasDestino = edit.notas !== notaOriginal && semana % 2 === 1
+        ? [semana, semana + 1].filter((s) => s <= plan.semanas)
         : [semana]
 
       await Promise.all(semanasDestino.map((semanaDestino) => {

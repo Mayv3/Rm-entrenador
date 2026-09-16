@@ -514,7 +514,6 @@ export function StudentPlanificacionSection({
     [dias, diaSeleccionadoId]
   )
 
-  const CATEGORIA_ORDER: Record<string, number> = { ACTIVADOR: 0, A: 1, B: 2, C: 3, D: 4, E: 5 }
   const esAccesorio = (cat: string | null | undefined) => (cat ?? "").toUpperCase() === "ACTIVADOR"
 
   // Accesorios (activadores): solo vista, no se completan ni se guardan
@@ -530,10 +529,7 @@ export function StudentPlanificacionSection({
     () =>
       [...(diaSeleccionado?.ejercicios ?? [])]
         .filter((e) => !esAccesorio(e.categoria))
-        .sort(
-          (a, b) =>
-            (CATEGORIA_ORDER[a.categoria ?? ""] ?? 99) - (CATEGORIA_ORDER[b.categoria ?? ""] ?? 99)
-        ),
+        .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0)),
     [diaSeleccionado]
   )
 

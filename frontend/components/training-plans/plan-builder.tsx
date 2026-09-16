@@ -37,6 +37,7 @@ export type PendingEjercicio = {
   dosis: Record<number, string>
   rpe: Record<number, string>
   notas: Record<number, string>
+  orden: number
 }
 
 interface PlanBuilderProps {
@@ -123,7 +124,7 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
   // Ejercicios pendientes por día
   const [pendingByDay, setPendingByDay] = useState<Record<number, PendingEjercicio[]>>({})
   // Orden personalizado de ejercicios por día (diaId → [planEjId, ...])
-  const [orderByDay, setOrderByDay] = useState<Record<number, number[]>>({})
+  const [orderByDay, setOrderByDay] = useState<Record<number, Record<number, number>>>({})
   // IDs de ejercicios a eliminar al guardar
   const [pendingDeletes, setPendingDeletes] = useState<number[]>([])
   const [isDirty, setIsDirty] = useState(false)
@@ -244,7 +245,8 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
           newSemanas[semana] = { ...newSemanas[semana], rpe: value }
         }
       } else {
-        for (let s = semana; s <= 6; s++) {
+        const semanasDestino = semana % 2 === 1 ? [semana, semana + 1] : [semana]
+        for (const s of semanasDestino) {
           newSemanas[s] = { ...newSemanas[s], notas: value }
         }
       }
@@ -295,8 +297,11 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
     if (pending.length > 0) markDirty()
   }
 
-  const handleOrderChange = (diaId: number, orderedIds: number[]) => {
-    setOrderByDay((prev) => ({ ...prev, [diaId]: orderedIds }))
+  const handleOrderChange = (diaId: number, planEjId: number, orden: number) => {
+    setOrderByDay((prev) => ({
+      ...prev,
+      [diaId]: { ...prev[diaId], [planEjId]: orden },
+    }))
     markDirty()
   }
 
@@ -375,7 +380,7 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
           .map((p, i) => ({
             ejercicio_id: p.ejercicio.id,
             categoria: p.categoria || "",
-            orden: i,
+            orden: p.orden ?? i,
             series: p.series ?? 3,
             es_aerobico: p.es_aerobico ?? false,
             notas_profesor: p.notas_profesor || null,
@@ -388,8 +393,8 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
           }))
       }
 
-      const ordenItems = Object.entries(snapshotOrderByDay).flatMap(([, orderedIds]) =>
-        orderedIds.map((planEjId, idx) => ({ id: planEjId, orden: idx }))
+      const ordenItems = Object.entries(snapshotOrderByDay).flatMap(([, orderMap]) =>
+        Object.entries(orderMap).map(([planEjId, orden]) => ({ id: Number(planEjId), orden }))
       )
 
       // Un solo request — todas las ops corren en paralelo en el backend
@@ -1061,7 +1066,7 @@ export function PlanBuilder({ planId, onBack, plantillaId }: PlanBuilderProps) {
                 onSeriesChange={handleSeriesChange}
                 onEsAerobicoChange={handleEsAerobicoChange}
                 onPendingChange={(p) => handlePendingChange(dia.id, p)}
-                onOrderChange={(ids) => handleOrderChange(dia.id, ids)}
+                onOrderChange={(planEjId, orden) => handleOrderChange(dia.id, planEjId, orden)}
                 onDeleteEj={handleDeleteEj}
                 onReplaceEj={handleReplaceEj}
                 canMoveUp={index > 0}
@@ -1332,6 +1337,7 @@ function PlanPreviewDialog({
                   nombre: ej.ejercicios.nombre,
                   categoria: localData[ej.id]?.categoria ?? ej.categoria,
                   semanas: localData[ej.id]?.semanas ?? {},
+                  orden: ej.orden,
                   isPending: false,
                 }))
               const pendingEjs = pending.map((p) => ({
@@ -1341,14 +1347,10 @@ function PlanPreviewDialog({
                 semanas: Object.fromEntries(
                   SEMANAS_PREVIEW.map((s) => [s, { dosis: p.dosis[s] ?? "", rpe: p.rpe[s] ?? "" }])
                 ),
+                orden: p.orden,
                 isPending: true,
               }))
-              // Los activadores se mantienen identificables; el resto conserva su orden.
-              const allEjs = [...savedEjs, ...pendingEjs].sort((a, b) => {
-                const aAct = (a.categoria ?? "").toUpperCase() === "ACTIVADOR" ? 0 : 1
-                const bAct = (b.categoria ?? "").toUpperCase() === "ACTIVADOR" ? 0 : 1
-                return aAct - bAct
-              })
+              const allEjs = [...savedEjs, ...pendingEjs].sort((a, b) => a.orden - b.orden)
 
               return (
                 <div key={dia.id}>
